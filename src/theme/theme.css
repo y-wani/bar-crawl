@@ -1,7 +1,7 @@
 /* Theme CSS Custom Properties */
 
 :root {
-  /* Light theme (default) */
+  /* Light theme (default) - Refreshed for a cleaner look */
   --bg-primary: #ffffff;
   --bg-secondary: #f8f9fa;
   --bg-tertiary: #e9ecef;
@@ -14,7 +14,7 @@
   
   --primary: #007bff;
   --primary-hover: #0056b3;
-  --primary-light: #e3f2fd;
+  --primary-light: rgba(0, 123, 255, 0.1);
   
   --secondary: #6c757d;
   --secondary-hover: #545b62;
@@ -26,70 +26,67 @@
   
   --border: #dee2e6;
   --border-light: #e9ecef;
-  --border-dark: #adb5bd;
   
-  --shadow: rgba(0, 0, 0, 0.1);
-  --shadow-elevated: rgba(0, 0, 0, 0.15);
+  --shadow: rgba(0, 0, 0, 0.05);
+  --shadow-elevated: rgba(0, 0, 0, 0.1);
   
-  --radius: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
   
   --transition: all 0.2s ease-in-out;
 }
 
 [data-theme="party"] {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2d2d2d;
-  --bg-tertiary: #404040;
-  --bg-elevated: #2d2d2d;
+  /* New "Party" theme inspired by the swirl background */
+  --bg-primary: #0D0C1D; /* Deep Space Blue */
+  --bg-secondary: #16152B;
+  --bg-tertiary: #211F37;
+  --bg-elevated: #16152B;
   
-  --text-primary: #ffffff;
-  --text-secondary: #b0b0b0;
-  --text-muted: #808080;
-  --text-inverse: #1a1a1a;
+  --text-primary: #F0F2F5;
+  --text-secondary: #A8A7B3;
+  --text-muted: #7A7989;
+  --text-inverse: #ffffff;
   
   --primary: #8A2BE2; /* BlueViolet */
-  --primary-hover: #9370DB; /* MediumPurple */
-  --primary-light: #E6E6FA; /* Lavender */
+  --primary-hover: #A052E0;
+  --primary-light: rgba(138, 43, 226, 0.15);
   
-  --secondary: #FF69B4; /* HotPink */
-  --secondary-hover: #FFC0CB; /* Pink */
+  --secondary: #FF1493; /* DeepPink */
+  --secondary-hover: #FF69B4;
   
-  --success: #32CD32; /* LimeGreen */
-  --warning: #FFD700; /* Gold */
-  --error: #FF4500; /* OrangeRed */
-  --info: #1E90FF; /* DodgerBlue */
+  --success: #32CD32;
+  --warning: #FFD700;
+  --error: #FF4500;
+  --info: #1E90FF;
   
-  --border: #404040;
-  --border-light: #2d2d2d;
-  --border-dark: #6c757d;
+  --border: #3A3852;
+  --border-light: #211F37;
   
-  --shadow: rgba(0, 0, 0, 0.3);
-  --shadow-elevated: rgba(0, 0, 0, 0.4);
+  --shadow: rgba(138, 43, 226, 0.1);
+  --shadow-elevated: rgba(138, 43, 226, 0.2);
   
-  --radius: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
   
   --transition: all 0.2s ease-in-out;
 }
 
 [data-theme="dark"] {
-  /* Dark theme */
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2d2d2d;
-  --bg-tertiary: #404040;
-  --bg-elevated: #2d2d2d;
+  /* Refreshed Dark theme */
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #2a2a2a;
+  --bg-elevated: #1e1e1e;
   
-  --text-primary: #ffffff;
-  --text-secondary: #b0b0b0;
-  --text-muted: #808080;
-  --text-inverse: #1a1a1a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-muted: #707070;
+  --text-inverse: #ffffff;
   
   --primary: #4dabf7;
   --primary-hover: #74c0fc;
-  --primary-light: #1a1a1a;
+  --primary-light: rgba(77, 171, 247, 0.15);
   
   --secondary: #868e96;
   --secondary-hover: #adb5bd;
@@ -99,16 +96,14 @@
   --error: #ff6b6b;
   --info: #74c0fc;
   
-  --border: #404040;
-  --border-light: #2d2d2d;
-  --border-dark: #6c757d;
+  --border: #3a3a3a;
+  --border-light: #2a2a2a;
   
-  --shadow: rgba(0, 0, 0, 0.3);
-  --shadow-elevated: rgba(0, 0, 0, 0.4);
+  --shadow: rgba(0, 0, 0, 0.2);
+  --shadow-elevated: rgba(0, 0, 0, 0.3);
   
-  --radius: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
   
   --transition: all 0.2s ease-in-out;
 }
@@ -124,22 +119,24 @@ body {
 .btn {
   background-color: var(--primary);
   color: var(--text-inverse);
-  border: 1px solid var(--primary);
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
   transition: var(--transition);
   cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
 .btn:hover {
   background-color: var(--primary-hover);
-  border-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--shadow-elevated);
 }
 
 .btn-secondary {
   background-color: var(--secondary);
-  color: var(--text-inverse);
-  border: 1px solid var(--secondary);
+  border-color: var(--secondary);
 }
 
 .btn-secondary:hover {
@@ -150,35 +147,39 @@ body {
 /* Card styles */
 .card {
   background-color: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
-  padding: 1rem;
-  box-shadow: 0 2px 4px var(--shadow);
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px var(--shadow);
+  transition: var(--transition);
 }
 
 /* Input styles */
 .input {
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.5rem;
+  padding: 0.75rem 1rem;
   transition: var(--transition);
+  width: 100%;
 }
 
 .input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-light);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 /* Link styles */
 .link {
   color: var(--primary);
   text-decoration: none;
+  font-weight: 600;
   transition: var(--transition);
 }
 
 .link:hover {
   color: var(--primary-hover);
-} 
+  text-decoration: underline;
+}

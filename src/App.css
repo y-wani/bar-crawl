@@ -1,10 +1,6 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+/* src/App.css */
 
+/* You can remove most of the old styles, as they are handled in global.css */
 .logo {
   height: 6em;
   padding: 1.5em;

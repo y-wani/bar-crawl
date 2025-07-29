@@ -1,3 +1,5 @@
+// src/pages/SignUp.tsx
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
@@ -14,7 +16,7 @@ const SignUp: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
 
-  // Validation functions
+  // Validation functions remain the same...
   const validateName = (name: string): string => {
     if (!name.trim()) return 'Name is required';
     if (name.trim().length < 2) return 'Name must be at least 2 characters';
@@ -42,33 +44,27 @@ const SignUp: React.FC = () => {
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
-    
     const nameError = validateName(formData.name);
     if (nameError) newErrors.name = nameError;
-    
     const emailError = validateEmail(formData.email);
     if (emailError) newErrors.email = emailError;
-    
     const passwordError = validatePassword(formData.password);
     if (passwordError) newErrors.password = passwordError;
-    
     const confirmPasswordError = validateConfirmPassword(formData.password, formData.confirmPassword);
     if (confirmPasswordError) newErrors.confirmPassword = confirmPasswordError;
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Password strength checker
   const getPasswordStrength = () => {
     const { password } = formData;
     if (!password) return { score: 0, requirements: [] };
     
     const requirements = [
-      { text: 'At least 6 characters', valid: password.length >= 6 },
-      { text: 'Contains a number', valid: /\d/.test(password) },
-      { text: 'Contains a letter', valid: /[a-zA-Z]/.test(password) },
-      { text: 'Contains a special character', valid: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+      { text: '6+ characters', valid: password.length >= 6 },
+      { text: 'A number', valid: /\d/.test(password) },
+      { text: 'A letter', valid: /[a-zA-Z]/.test(password) },
+      { text: 'A symbol', valid: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
     ];
     
     const score = requirements.filter(req => req.valid).length;
@@ -91,7 +87,6 @@ const SignUp: React.FC = () => {
     } catch (error: unknown) {
       let errorMessage = 'Failed to create account. Please try again.';
       
-      // Handle specific Firebase auth errors
       if (error && typeof error === 'object' && 'code' in error) {
         const errorCode = error.code as string;
         if (errorCode === 'auth/email-already-in-use') {
@@ -119,7 +114,6 @@ const SignUp: React.FC = () => {
       [name]: value,
     });
     
-    // Clear field-specific error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -128,11 +122,11 @@ const SignUp: React.FC = () => {
   const { requirements } = getPasswordStrength();
 
   return (
-    <div className="auth-container">
+    <div className="signup-container">
       <div className="auth-card">
         <div className="auth-header">
           <h1 className="auth-title">Create Account</h1>
-          <p className="auth-subtitle">Join Bar Crawl Route today</p>
+          <p className="auth-subtitle">Join the ultimate bar crawl experience.</p>
         </div>
         
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -147,7 +141,7 @@ const SignUp: React.FC = () => {
               value={formData.name}
               onChange={handleChange}
               className={`form-input ${errors.name ? 'error' : ''}`}
-              placeholder="Enter your full name"
+              placeholder="Your Name"
               required
             />
             {errors.name && (
@@ -166,7 +160,7 @@ const SignUp: React.FC = () => {
               value={formData.email}
               onChange={handleChange}
               className={`form-input ${errors.email ? 'error' : ''}`}
-              placeholder="Enter your email"
+              placeholder="you@example.com"
               required
             />
             {errors.email && (
@@ -185,7 +179,7 @@ const SignUp: React.FC = () => {
               value={formData.password}
               onChange={handleChange}
               className={`form-input ${errors.password ? 'error' : ''}`}
-              placeholder="Create a password"
+              placeholder="Create a strong password"
               required
             />
             {errors.password && (
@@ -194,13 +188,9 @@ const SignUp: React.FC = () => {
             
             {formData.password && (
               <div className="password-requirements">
-                <div style={{ marginBottom: '0.5rem', fontWeight: '600' }}>Password Requirements:</div>
                 {requirements.map((req, index) => (
                   <div key={index} className={`requirement ${req.valid ? 'valid' : 'invalid'}`}>
-                    <span className="requirement-icon">
-                      {req.valid ? '✓' : '○'}
-                    </span>
-                    {req.text}
+                    {req.valid ? '✓' : '○'} {req.text}
                   </div>
                 ))}
               </div>
@@ -235,19 +225,19 @@ const SignUp: React.FC = () => {
             className={`auth-button ${loading ? 'loading' : ''}`}
             disabled={loading}
           >
-            {loading ? 'Creating Account...' : 'Create Account'}
+            {loading ? '' : 'Create Account'}
           </button>
         </form>
         
         <div className="auth-footer">
-          <p style={{ marginBottom: '1rem' }}>
+          <p>
             Already have an account?{' '}
             <Link to="/signin" className="auth-link">
-              Sign in here
+              Sign In
             </Link>
           </p>
           <Link to="/" className="back-link">
-            ← Back to Home
+            &larr; Back to Landing
           </Link>
         </div>
       </div>
@@ -255,4 +245,4 @@ const SignUp: React.FC = () => {
   );
 };
 
-export default SignUp; 
+export default SignUp;

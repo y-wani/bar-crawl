@@ -1,6 +1,6 @@
 // src/components/SwirlBackground.tsx
 
-import React, { useRef, useMemo, useEffect } from "react";
+import React, { useRef, useMemo, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -27,7 +27,7 @@ const fragmentShader = `
   float noise(vec2 st) {
     vec2 i = floor(st);
     vec2 f = fract(st);
-    vec2 u = f*f*(3.0-2.0*f);
+    vec2 u = f * f * (3.0 - 2.0 * f);
 
     float a = random(i);
     float b = random(i + vec2(1.0, 0.0));
@@ -72,18 +72,22 @@ const fragmentShader = `
   }
 `;
 
+// Component to render swirl plane
 const SwirlPlane: React.FC = () => {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const { size } = useThree();
 
-  // Uniforms memoized to preserve reference
-  const uniforms = useMemo(() => ({
-    u_time: { value: 0 },
-    u_mouse: { value: new THREE.Vector2(0, 0) },
-    u_resolution: { value: new THREE.Vector2(size.width, size.height) },
-  }), [size.width, size.height]);
+  // Uniforms memoized
+  const uniforms = useMemo(
+    () => ({
+      u_time: { value: 0 },
+      u_mouse: { value: new THREE.Vector2(0, 0) },
+      u_resolution: { value: new THREE.Vector2(size.width, size.height) },
+    }),
+    [size.width, size.height]
+  );
 
-  // Animate time and mouse each frame
+  // Animate time & mouse
   useFrame((state) => {
     if (matRef.current) {
       matRef.current.uniforms.u_time.value = state.clock.getElapsedTime();
@@ -94,10 +98,10 @@ const SwirlPlane: React.FC = () => {
   // Update resolution on resize
   useEffect(() => {
     uniforms.u_resolution.value.set(size.width, size.height);
-  }, [size]);
+  }, [size, uniforms.u_resolution]);
 
   return (
-    <mesh scale={[size.width / size.height, 1, 1]}>  {/* maintain aspect ratio */}
+    <mesh scale={[size.width / size.height, 1, 1]}> {/* full-screen */}
       <planeGeometry args={[2, 2]} />
       <shaderMaterial
         ref={matRef}
@@ -109,24 +113,77 @@ const SwirlPlane: React.FC = () => {
   );
 };
 
+// Laser burst effect on first load
+const LaserEffect: React.FC = () => {
+  const group = useRef<THREE.Group>(null);
+  const { viewport } = useThree();
+  const [startTime] = useState(() => performance.now());
+
+  // Define corners in world units
+  const corners = useMemo(() => [
+    new THREE.Vector3(viewport.width / 2, viewport.height / 2, 0),
+    new THREE.Vector3(-viewport.width / 2, viewport.height / 2, 0),
+    new THREE.Vector3(-viewport.width / 2, -viewport.height / 2, 0),
+    new THREE.Vector3(viewport.width / 2, -viewport.height / 2, 0),
+  ], [viewport.width, viewport.height]);
+
+  // Animate burst over 1s then fade
+  useFrame(() => {
+    const elapsed = (performance.now() - startTime) / 1000;
+    const t = Math.min(elapsed / 1, 1);
+    if (group.current) {
+      group.current.children.forEach((child: THREE.Object3D) => {
+        if (child instanceof THREE.Line) {
+          child.scale.set(t, t, 1);
+          if (child.material instanceof THREE.LineBasicMaterial) {
+            child.material.opacity = 1 - t;
+          }
+        }
+      });
+    }
+  });
+
+  return (
+    <group ref={group}>
+      {corners.map((corner, i) => {
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array([0, 0, 0, corner.x, corner.y, 0]);
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        return (
+          <line key={i} geometry={geometry}>
+            <lineBasicMaterial
+              color={new THREE.Color(0x00ffcc)}
+              transparent
+              linewidth={2}
+              opacity={1}
+            />
+          </line>
+        );
+      })}
+    </group>
+  );
+};
+
 /**
- * Full-screen swirl background.
- * Placed behind all content with zIndex: -1.
+ * Full-screen swirl background with initial laser burst.
  */
 const SwirlBackground: React.FC = () => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100vw',
-    height: '100vh',
-    zIndex: -1,
-    pointerEvents: 'none'
-  }}>
-    <Canvas
-      gl={{ antialias: true }}
-      camera={{ position: [0, 0, 1], fov: 75 }}
-    >
+  <div
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      zIndex: -1,
+      pointerEvents: 'none',
+    }}
+  >
+    <Canvas gl={{ antialias: true }} camera={{ position: [0, 0, 1], fov: 75 }}>
+      {/* Laser rays on open */}
+      <LaserEffect />
+      {/* Continuous swirl */}
       <SwirlPlane />
     </Canvas>
   </div>

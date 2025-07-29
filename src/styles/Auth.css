@@ -1,23 +1,29 @@
-/* Authentication Pages Styling */
+/* src/styles/Auth.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&family=Poppins:wght@400;600&display=swap');
 
 .auth-container {
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  padding: 2rem 1rem;
+  position: relative;
+  z-index: 1;
+  height: 100vh; /* Ensure container takes full height */
 }
 
 .auth-card {
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(22, 21, 43, 0.7), rgba(12, 11, 22, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-lg);
   padding: 2.5rem;
-  box-shadow: 0 8px 32px var(--shadow-elevated);
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: fadeIn 1s ease-out;
+  box-shadow: 0 8px 32px 0 rgba(138, 43, 226, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  margin: auto;
 }
 
 .auth-header {
@@ -26,13 +32,15 @@
 }
 
 .auth-title {
-  font-size: 2rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2.5rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #ffffff;
   margin-bottom: 0.5rem;
 }
 
 .auth-subtitle {
+  font-family: 'Poppins', sans-serif;
   color: var(--text-secondary);
   font-size: 1rem;
 }
@@ -40,72 +48,51 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem; 
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
 .form-label {
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 0.9rem;
+  margin-bottom: 0.5rem;
 }
 
 .form-input {
-  background-color: var(--bg-primary);
+  background-color: var(--bg-secondary);
   color: var(--text-primary);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.75rem 1rem;
+  padding: 0.575rem 1rem;
   font-size: 1rem;
   transition: var(--transition);
   width: 100%;
 }
 
+.form-input::placeholder {
+    color: var(--text-muted);
+}
+
 .form-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
-}
-
-.form-input.error {
-  border-color: var(--error);
-  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
-}
-
-.form-input.success {
-  border-color: var(--success);
-  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+  box-shadow: 0 0 0 3px var(--primary-light), 0 0 15px var(--primary-light);
 }
 
 .error-message {
   color: var(--error);
   font-size: 0.875rem;
   margin-top: 0.5rem;
-  text-align: center;
-  padding: 0.5rem;
-  background-color: rgba(220, 53, 69, 0.1);
-  border-radius: var(--radius);
-  border: 1px solid rgba(220, 53, 69, 0.2);
-}
-
-.success-message {
-  color: var(--success);
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  text-align: center;
-  padding: 0.5rem;
-  background-color: rgba(40, 167, 69, 0.1);
-  border-radius: var(--radius);
-  border: 1px solid rgba(40, 167, 69, 0.2);
+  text-align: left;
 }
 
 .auth-button {
-  background-color: var(--primary);
+  background: var(--primary);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius);
@@ -116,29 +103,30 @@
   transition: var(--transition);
   width: 100%;
   margin-top: 1rem;
+  position: relative;
 }
 
 .auth-button:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--shadow-elevated);
 }
 
 .auth-button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-}
-
-.auth-button:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 .auth-footer {
   text-align: center;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border);
+}
+
+.auth-footer p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
 }
 
 .auth-link {
@@ -154,9 +142,6 @@
 }
 
 .back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 0.9rem;
@@ -167,21 +152,23 @@
   color: var(--text-primary);
 }
 
+/* Password Strength Indicator */
 .password-requirements {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1rem;
   font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: var(--bg-secondary);
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background-color: rgba(0,0,0,0.2);
   border-radius: var(--radius);
-  border-left: 3px solid var(--info);
 }
 
 .requirement {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  margin-bottom: 0.25rem;
+  gap: 0.5rem;
+  transition: color 0.3s ease;
 }
 
 .requirement.valid {
@@ -192,46 +179,145 @@
   color: var(--text-muted);
 }
 
-.requirement-icon {
-  font-size: 0.75rem;
-}
-
 /* Loading animation */
-.auth-button.loading {
-  position: relative;
-  color: transparent;
-}
-
 .auth-button.loading::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
   width: 20px;
   height: 20px;
-  border: 2px solid transparent;
-  border-top: 2px solid var(--text-inverse);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  transform: translate(-50%, -50%);
 }
 
 @keyframes spin {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
-/* Responsive design */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Styles for Sign Up Page ---
+  These styles make the sign-up card more compact to prevent scrolling on smaller screens.
+*/
+.signup-card {
+  padding: 2rem 2.5rem; /* Slightly less vertical padding */
+}
+
+.signup-card .auth-header {
+  margin-bottom: 1.5rem; /* Reduced margin */
+}
+
+.signup-card .auth-form {
+  gap: 1rem; /* Tighter gap between form elements */
+}
+
+.signup-card .auth-footer {
+  margin-top: 1.5rem; /* Reduced margin */
+  padding-top: 1rem;
+}
+
+.signup-card .auth-button {
+    margin-top: 0.5rem; /* Reduced margin */
+}
+
+
+/* Responsive adjustments */
+@media (max-height: 800px) {
+  /* More aggressive adjustments for shorter screens, especially for the signup form */
+  .signup-card {
+    padding: 1.5rem;
+  }
+  .signup-card .auth-title {
+    font-size: 2rem;
+  }
+  .signup-card .auth-form {
+    gap: 0.75rem;
+  }
+  .signup-card .password-requirements {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+  }
+}
+
 @media (max-width: 480px) {
   .auth-container {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
   }
   
   .auth-card {
-    padding: 2rem;
+    padding: 1.5rem;
   }
   
   .auth-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
   }
-} 
+  
+  .password-requirements {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+/* =================================
+/* Sign-Up Page Specific Styles
+/* =================================
+*/
+
+.signup-container {
+  height: 100%
+}
+
+/* This class will be used for the container on the sign-up page */
+.signup-container .auth-card {
+  padding: 1.5rem 2rem; /* Reduced vertical padding */
+}
+
+/* Tighter gap between form elements to save space */
+.signup-container .auth-form {
+  gap: 1rem;
+}
+
+/* Adjustments for smaller screen heights to prevent scrolling */
+@media (max-height: 750px) {
+  .signup-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .signup-container .auth-header {
+    margin-bottom: 1rem;
+  }
+
+  .signup-container .auth-form {
+    gap: 0.75rem;
+  }
+
+  .signup-container .password-requirements {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .signup-container .auth-button {
+    margin-top: 0.75rem;
+  }
+
+  .signup-container .auth-footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+}
