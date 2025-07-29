@@ -12,11 +12,16 @@
   "dependencies": {
     "@react-three/drei": "^10.6.1",
     "@react-three/fiber": "^9.3.0",
+    "@tsparticles/engine": "^3.8.1",
+    "@tsparticles/react": "^3.0.0",
     "firebase": "^12.0.0",
+    "party-js": "^2.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.7.1",
+    "react-tsparticles": "^2.12.2",
     "three": "^0.178.0",
+    "tsparticles-plugin-sounds": "^2.12.0",
     "vanta": "^0.5.24"
   },
   "devDependencies": {

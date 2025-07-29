@@ -38,6 +38,43 @@
   --transition: all 0.2s ease-in-out;
 }
 
+[data-theme="party"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #404040;
+  --bg-elevated: #2d2d2d;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-muted: #808080;
+  --text-inverse: #1a1a1a;
+  
+  --primary: #8A2BE2; /* BlueViolet */
+  --primary-hover: #9370DB; /* MediumPurple */
+  --primary-light: #E6E6FA; /* Lavender */
+  
+  --secondary: #FF69B4; /* HotPink */
+  --secondary-hover: #FFC0CB; /* Pink */
+  
+  --success: #32CD32; /* LimeGreen */
+  --warning: #FFD700; /* Gold */
+  --error: #FF4500; /* OrangeRed */
+  --info: #1E90FF; /* DodgerBlue */
+  
+  --border: #404040;
+  --border-light: #2d2d2d;
+  --border-dark: #6c757d;
+  
+  --shadow: rgba(0, 0, 0, 0.3);
+  --shadow-elevated: rgba(0, 0, 0, 0.4);
+  
+  --radius: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  
+  --transition: all 0.2s ease-in-out;
+}
+
 [data-theme="dark"] {
   /* Dark theme */
   --bg-primary: #1a1a1a;
