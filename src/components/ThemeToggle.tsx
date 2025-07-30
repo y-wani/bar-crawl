@@ -8,24 +8,42 @@ interface ThemeToggleProps {
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
   const { theme, toggleTheme } = useTheme();
 
+  const getThemeIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <span role="img" aria-label="moon">🌙</span>;
+      case 'dark':
+        return <span role="img" aria-label="sun">☀️</span>;
+      case 'party':
+        return <span role="img" aria-label="party">🎉</span>;
+      default:
+        return <span role="img" aria-label="moon">🌙</span>;
+    }
+  };
+
+  const getNextThemeName = () => {
+    switch (theme) {
+      case 'light':
+        return 'Dark';
+      case 'dark':
+        return 'Party';
+      case 'party':
+        return 'Light';
+      default:
+        return 'Dark';
+    }
+  };
+
   return (
     <button
       onClick={toggleTheme}
       className={`btn ${className}`}
-      aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-      title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+      aria-label={`Switch to ${getNextThemeName().toLowerCase()} mode`}
+      title={`Switch to ${getNextThemeName().toLowerCase()} mode`}
     >
-      {theme === 'light' ? (
-        <span role="img" aria-label="moon">
-          🌙
-        </span>
-      ) : (
-        <span role="img" aria-label="sun">
-          ☀️
-        </span>
-      )}
+      {getThemeIcon()}
       <span style={{ marginLeft: '0.5rem' }}>
-        {theme === 'light' ? 'Dark' : 'Light'} Mode
+        {getNextThemeName()} Mode
       </span>
     </button>
   );

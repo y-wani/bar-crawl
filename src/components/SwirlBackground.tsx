@@ -149,16 +149,19 @@ const LaserEffect: React.FC = () => {
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array([0, 0, 0, corner.x, corner.y, 0]);
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        
         return (
-          <line key={i} geometry={geometry}>
-            <lineBasicMaterial
-              color={new THREE.Color(0x00ffcc)}
-              transparent
-              linewidth={2}
-              opacity={1}
-            />
-          </line>
+          <primitive
+            key={i}
+            object={new THREE.Line(
+              geometry,
+              new THREE.LineBasicMaterial({
+                color: 0x00ffcc,
+                transparent: true,
+                opacity: 1,
+                linewidth: 2, // Note: linewidth is only supported in WebGL with special settings
+              })
+            )}
+          />
         );
       })}
     </group>

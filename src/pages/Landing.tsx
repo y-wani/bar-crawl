@@ -2,26 +2,19 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { useTheme } from "../theme/useTheme";
+// import { useTheme } from "../theme/useTheme";
 import SwirlBackground from "../components/SwirlBackground";
-import '../styles/Landing.css'; // We'll create this file next
+import "../styles/Landing.css"; // We'll create this file next
 
 const Landing: React.FC = () => {
-  const { setTheme } = useTheme();
-
-  // Set the 'party' theme on component mount
-  React.useEffect(() => {
-    setTheme("party");
-  }, [setTheme]);
+ // const { setTheme } = useTheme();
 
   return (
     <>
       <SwirlBackground />
       <div className="landing-container">
         <div className="landing-content">
-          <h1 className="landing-title">
-            Your Night, Your Route.
-          </h1>
+          <h1 className="landing-title">Your Night, Your Route.</h1>
           <p className="landing-subtitle">
             Discover, plan, and share the ultimate bar crawl.
           </p>

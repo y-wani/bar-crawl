@@ -5,31 +5,26 @@ import type { Theme, ThemeContextType, ThemeProviderProps } from './types';
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 // Local storage key for theme persistence
-const THEME_STORAGE_KEY = 'bar-crawl-theme';
+const THEME_STORAGE_KEY = 'party';
 
 // Get initial theme from localStorage or system preference
 const getInitialTheme = (defaultTheme?: Theme): Theme => {
   // Check localStorage first
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme;
-  if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
+  if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'party')) {
     return storedTheme;
   }
   
-  // Check system preference
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
-  
-  // Return default theme or light as fallback
-  return defaultTheme || 'light';
+  // Return default theme or party as fallback
+  return defaultTheme || 'party';
 };
 
 // Apply theme to document
 const applyTheme = (theme: Theme) => {
   const html = document.documentElement;
   
-  if (theme === 'dark') {
-    html.setAttribute('data-theme', 'dark');
+  if (theme === 'dark' || theme === 'party') {
+    html.setAttribute('data-theme', theme);
   } else {
     html.removeAttribute('data-theme');
   }
@@ -41,10 +36,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 }) => {
   const [theme, setThemeState] = useState<Theme>(() => getInitialTheme(defaultTheme));
 
-  // Toggle between light and dark themes
+  // Toggle between light, dark, and party themes
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setThemeState(newTheme);
+    const themes: Theme[] = ['light', 'dark', 'party'];
+    const currentIndex = themes.indexOf(theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    setThemeState(themes[nextIndex]);
   };
 
   // Set specific theme
@@ -58,7 +55,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
-  // Listen for system theme changes
+  // Listen for system theme changes (only for light/dark, not party)
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     

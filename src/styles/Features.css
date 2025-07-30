@@ -1,0 +1,38 @@
+.features-section {
+  padding: 6rem 2rem;
+  background: var(--bg-secondary);
+}
+
+.features-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: var(--bg-elevated);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.feature-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.feature-description {
+  color: var(--text-secondary);
+} 
+

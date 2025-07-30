@@ -1,73 +1,173 @@
-import React from 'react';
-import { useTheme } from '../theme/useTheme';
-import { useAuth } from '../context/useAuth';
+// src/pages/Home.tsx
+
+import React, { useState, useMemo, useEffect } from "react";
+import { Sidebar } from "../components/Sidebar";
+import { MapContainer } from "../components/MapContainer";
+import { useAuth } from "../context/useAuth";
+import type { Bar } from "../components/BarListItem";
+import { MapSearchControl } from "../components/MapSearchControl";
+
+// The Bar type needs to be consistently used
+export interface AppBat extends Bar {
+  location: {
+    type: "Point";
+    coordinates: [number, number]; // [lng, lat]
+  };
+}
+
+const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const Home: React.FC = () => {
-  const { theme } = useTheme();
   const { user, signout } = useAuth();
+  const [bars, setBars] = useState<AppBat[]>([]);
+  const [selectedBarIds, setSelectedBarIds] = useState<Set<string>>(new Set());
+  const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-83.0007, 39.9612]);
+  const [searchRadius, setSearchRadius] = useState<number>(1);
+  const [searchedLocation, setSearchedLocation] = useState("Columbus, Ohio");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignOut = async () => {
+  const handleLocationSearch = async (location: string, radius: number) => {
+    setIsLoading(true);
+    setSearchedLocation(location);
+    setSearchRadius(radius);
+    setSelectedBarIds(new Set());
+    setHoveredBarId(null);
+
     try {
-      await signout();
+      // First, get the coordinates for the given location name
+      console.log("Mapbox token:", MAPBOX_ACCESS_TOKEN);
+      console.log(`Starting geocode for "${location}" with radius ${radius}`);  // Identify the query :contentReference[oaicite:1]{index=1}
+
+
+      const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+        location
+      )}.json?access_token=${MAPBOX_ACCESS_TOKEN}`;
+
+      const geoResponse = await fetch(geocodeUrl);
+
+      console.log('Geocode HTTP status:', geoResponse.status);  
+      const geoData = await geoResponse.json();
+
+      console.log('Geocode response:', geoData);
+
+      if (!geoData.features.length) {
+        console.warn('No geocode results, aborting bar search');            // Warn if empty :contentReference[oaicite:4]{index=4}
+        setBars([]);
+        return;
+      }
+
+      const [lng, lat] = geoData.features[0].center;
+      setMapCenter([lng, lat]);
+
+      // Now search for bars using the Mapbox Search Box API
+      const barsUrl = new URL('https://api.mapbox.com/search/searchbox/v1/category');
+      barsUrl.searchParams.set('access_token', MAPBOX_ACCESS_TOKEN);
+      barsUrl.searchParams.set('types', 'poi');
+      barsUrl.searchParams.set('categories', 'bar');
+      barsUrl.searchParams.set('proximity', `${lng},${lat}`);
+      barsUrl.searchParams.set('limit', '25');
+
+      const barsResponse = await fetch(barsUrl.toString());
+
+      console.log('Bars HTTP status:', barsResponse.status);
+      if (!barsResponse.ok) {
+        console.error('Bar fetch failed:', barsResponse.status, await barsResponse.text());
+        setBars([]);
+        return;
+      }
+      
+      const barsData = await barsResponse.json();
+
+      console.log('Bars response:', barsData);
+
+      if (barsData.features) {
+        console.log('Found bars:', barsData.features.length);
+
+        const newBars: AppBat[] = barsData.features.map((feature: {
+          id: string;
+          properties: { name: string };
+          geometry: { type: "Point"; coordinates: [number, number] }
+        }) => ({
+          id: feature.id,
+          name: feature.properties.name || 'Unknown Bar',
+          rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)), // Placeholder rating
+          distance: 0, // This could be calculated if needed
+          location: feature.geometry,
+        }));
+        setBars(newBars);
+      } else {
+        setBars([]);
+      }
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error("Failed to search for location or bars:", error);
+      alert(
+        "An error occurred while searching. Please check the console for details."
+      );
+      setBars([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // 3. Watch your `bars` state changes
+useEffect(() => {
+  console.log('Updated bars state:', bars);                               // Confirm state updates :contentReference[oaicite:8]{index=8}
+}, [bars]);
+
+  // CRITICAL FIX: Changed useEffect dependency array to []
+  // This ensures the initial search runs only ONCE on component mount.
+  useEffect(() => {
+    handleLocationSearch(searchedLocation, searchRadius);
+  }, []); // Empty array means this effect runs only once
+
+  const selectedBars = useMemo(() => {
+    return bars.filter((bar) => selectedBarIds.has(bar.id));
+  }, [bars, selectedBarIds]);
+
+  const handleToggleBar = (barId: string) => {
+    setSelectedBarIds((prev) => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(barId)) {
+        newSelected.delete(barId);
+      } else {
+        newSelected.add(barId);
+      }
+      return newSelected;
+    });
+  };
+
   return (
-    <div style={{ padding: '2rem', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1>Welcome to Bar Crawl Route App</h1>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          {user && (
-            <span style={{ color: 'var(--text-secondary)' }}>
-              Welcome, {user.displayName || user.email}!
-            </span>
-          )}
-          <button onClick={handleSignOut} className="btn btn-secondary">
-            Sign Out
-          </button>
-        </div>
-      </div>
-      
-      <div className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <h2>Dashboard</h2>
-        <p>Current theme: <strong>{theme}</strong></p>
-        {user && (
-          <p>Logged in as: <strong>{user.email}</strong></p>
-        )}
-        
-        <div style={{ marginTop: '2rem' }}>
-          <h2>Plan Your Perfect Bar Crawl</h2>
-          <p>
-            Discover the best bars in your area and create the perfect route for your next night out.
-            Our app helps you find the hottest spots, plan your route, and make the most of your evening.
-          </p>
-        </div>
-
-        <div style={{ marginTop: '2rem' }}>
-          <h3>Features Coming Soon:</h3>
-          <ul style={{ textAlign: 'left', marginTop: '1rem' }}>
-            <li>🎯 Find bars near you</li>
-            <li>🗺️ Plan optimal routes</li>
-            <li>⭐ Read reviews and ratings</li>
-            <li>📱 Save your favorite routes</li>
-            <li>👥 Share with friends</li>
-            <li>🍺 Filter by drink preferences</li>
-          </ul>
-        </div>
-
-        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-          <button className="btn" style={{ marginRight: '1rem' }}>
-            Start Planning
-          </button>
-          <button className="btn btn-secondary">
-            Browse Bars
-          </button>
-        </div>
+    <div className="planner-page">
+      <Sidebar
+        user={user}
+        onSignOut={signout}
+        bars={bars}
+        selectedBarIds={selectedBarIds}
+        hoveredBarId={hoveredBarId}
+        onToggleBar={handleToggleBar}
+        onHoverBar={setHoveredBarId}
+        searchedLocation={searchedLocation}
+      />
+      <div className="map-wrapper">
+        <MapSearchControl
+          onSearch={handleLocationSearch}
+          isLoading={isLoading}
+          initialLocation={searchedLocation}
+          initialRadius={searchRadius}
+        />
+        <MapContainer
+          center={mapCenter}
+          radius={searchRadius}
+          bars={bars}
+          selectedBars={selectedBars}
+          selectedBarIds={selectedBarIds}
+          hoveredBarId={hoveredBarId}
+          onOptimizedRoute={() => {}}
+        />
       </div>
     </div>
   );
 };
 
-export default Home; 
+export default Home;
