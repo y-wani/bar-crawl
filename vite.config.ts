@@ -17,5 +17,14 @@ export default defineConfig({
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+    '__dirname': JSON.stringify(''),
+    'global': 'globalThis',
+    'process': JSON.stringify({}),
+  },
+  resolve: {
+    alias: {
+      'fs': 'rollup-plugin-node-polyfills/polyfills/empty',
+      'path': 'rollup-plugin-node-polyfills/polyfills/path',
+    },
   },
 })

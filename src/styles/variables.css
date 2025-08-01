@@ -1,0 +1,15 @@
+/* CSS Custom Properties and Enhanced Theme Variables */
+@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --gradient-primary: linear-gradient(135deg, #3bb2d0 0%, #2d8fa8 100%);
+  --gradient-secondary: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  --gradient-accent: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  --gradient-dark: linear-gradient(135deg, rgba(22, 21, 43, 0.95) 0%, rgba(12, 11, 22, 0.9) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --shadow-glow: 0 0 20px rgba(59, 178, 208, 0.3);
+  --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.3), 0 15px 12px rgba(0, 0, 0, 0.2);
+  --border-glow: 1px solid rgba(59, 178, 208, 0.4);
+  --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+} 

@@ -1,0 +1,142 @@
+/* Premium Responsive Design */
+
+@media (max-width: 1200px) {
+  .planner-sidebar {
+    width: 350px;
+    padding: 1.5rem;
+  }
+  
+  .sidebar-title {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .planner-page {
+    flex-direction: column;
+  }
+  
+  .planner-sidebar {
+    width: 100%;
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: var(--border-glow);
+    border-radius: 0;
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+  
+  .sidebar-title {
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .map-controls-overlay {
+    width: 95%;
+    max-width: none;
+    gap: 0.75rem;
+    top: 15px;
+  }
+  
+  .search-input {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    padding-right: 2.75rem;
+  }
+  
+  .search-button {
+    width: 42px;
+    height: 42px;
+  }
+  
+  .suggestion-item {
+    padding: 0.875rem 1rem;
+    gap: 0.875rem;
+  }
+  
+  .map-radius-control {
+    padding: 0.875rem 1rem;
+    max-width: 300px;
+  }
+  
+  .radius-label span:first-child {
+    font-size: 0.9rem;
+  }
+  
+  .radius-value {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .bar-list-item {
+    padding: 1rem 1.25rem;
+    gap: 1rem;
+  }
+  
+  .bar-item-name {
+    font-size: 1.2rem;
+  }
+  
+  .bar-item-meta {
+    gap: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .custom-checkbox-container {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .checkmark {
+    height: 24px;
+    width: 24px;
+  }
+  
+  .map-container {
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .planner-sidebar {
+    padding: 1rem;
+  }
+  
+  .sidebar-title {
+    font-size: 1.4rem;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .bar-list-item {
+    padding: 0.875rem 1rem;
+  }
+  
+  .bar-item-name {
+    font-size: 1.1rem;
+  }
+  
+  .bar-item-meta {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .btn-generate-route {
+    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
+  }
+  
+  .map-controls-overlay {
+    top: 10px;
+    gap: 0.5rem;
+  }
+  
+  .map-radius-control {
+    padding: 0.75rem 0.875rem;
+    max-width: 280px;
+  }
+} 
