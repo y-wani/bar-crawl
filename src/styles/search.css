@@ -19,7 +19,7 @@
 .search-container {
   position: relative;
   width: 100%;
-  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.25));
+  filter: drop-shadow(0 6px 15px rgba(0, 0, 0, 0.25));
 }
 
 .map-search-bar {
@@ -28,10 +28,10 @@
   width: 100%;
   background: var(--gradient-dark);
   border: var(--border-glow);
-  border-radius: 20px;
-  padding: 0.6rem;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+  border-radius: 12px; /* Sharper radius */
+  padding: 0.3rem; /* Reduced padding */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   box-shadow: var(--shadow-premium);
   transition: var(--transition-smooth);
   position: relative;
@@ -75,12 +75,11 @@
   border: none;
   outline: none;
   color: var(--text-primary);
-  padding: 0.5rem 0.75rem;
-  padding-right: 2.5rem;
-  font-size: 0.95rem;
+  padding: 0.4rem 0.8rem; /* Adjusted padding */
+  padding-right: 2.2rem;
+  font-size: 0.9rem; /* Slightly smaller font */
   font-family: "Poppins", sans-serif;
   font-weight: 500;
-  letter-spacing: 0.3px;
 }
 
 .search-input::placeholder {
@@ -101,19 +100,16 @@
   background: var(--gradient-primary);
   color: var(--text-inverse);
   border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  border-radius: 8px; /* Matching sharper radius */
+  width: 36px; /* Smaller button */
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: var(--transition-bounce);
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(59, 178, 208, 0.4);
-  position: relative;
-  overflow: hidden;
-  z-index: 1;
+  box-shadow: 0 2px 10px rgba(59, 178, 208, 0.35);
 }
 
 .search-button::before {
@@ -323,18 +319,14 @@
 
 /* Ultra-Premium Radius Control */
 .map-radius-control {
-  background: var(--gradient-dark);
-  border: var(--border-glow);
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  box-shadow: var(--shadow-premium);
-  width: 100%;
-  max-width: 280px;
-  transition: var(--transition-smooth);
   position: relative;
-  overflow: hidden;
+  padding: 1rem;
+  background: rgba(30, 32, 40, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .map-radius-control::before {
@@ -351,42 +343,51 @@
 }
 
 .map-radius-control:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
   border-color: var(--primary);
-  box-shadow: var(--shadow-glow), var(--shadow-premium);
-  transform: translateY(-1px);
 }
 
 .map-radius-control:hover::before {
   opacity: 1;
 }
 
-.radius-label {
+.radius-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.radius-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-family: "Rajdhani", sans-serif;
-  z-index: 1;
-  position: relative;
+  flex-shrink: 0;
 }
 
 .radius-label span:first-child {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .radius-value {
   font-weight: 700;
   color: var(--text-inverse);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   background: var(--gradient-primary);
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(59, 178, 208, 0.3);
-  box-shadow: 0 3px 12px rgba(59, 178, 208, 0.2);
+  padding: 0.2rem 0.6rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(59, 178, 208, 0.4);
+  box-shadow: 0 2px 8px rgba(59, 178, 208, 0.3);
   transition: var(--transition-bounce);
+  letter-spacing: 0.5px;
+  font-family: "Rajdhani", sans-serif;
 }
 
 .radius-value:hover {
@@ -400,15 +401,15 @@
 }
 
 .radius-slider {
+  -webkit-appearance: none;
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
   background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
   outline: none;
-  appearance: none;
-  cursor: pointer;
-  transition: var(--transition-smooth);
   position: relative;
+  transition: background 0.3s ease;
 }
 
 .radius-slider::before {
@@ -425,44 +426,148 @@
 
 .radius-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--gradient-primary);
   cursor: pointer;
   border: 2px solid var(--bg-primary);
-  box-shadow: 0 3px 12px rgba(59, 178, 208, 0.4);
+  box-shadow: 0 4px 15px rgba(59, 178, 208, 0.5),
+    0 0 0 2px rgba(59, 178, 208, 0.2);
   transition: var(--transition-bounce);
   position: relative;
   z-index: 2;
 }
 
 .radius-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: var(--shadow-glow);
+  transform: scale(1.2);
+  box-shadow: 0 6px 20px rgba(59, 178, 208, 0.6),
+    0 0 0 3px rgba(59, 178, 208, 0.3);
+}
+
+.radius-slider:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.radius-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    var(--primary) 0%,
+    var(--primary) calc(((--val) - 0.5) / (5 - 0.5) * 100%),
+    rgba(255, 255, 255, 0.1) calc(((--val) - 0.5) / (5 - 0.5) * 100%),
+    rgba(255, 255, 255, 0.1) 100%
+  );
+}
+.radius-slider::-moz-range-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+.radius-slider::-ms-track {
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
 }
 
 .radius-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--gradient-primary);
   cursor: pointer;
   border: 2px solid var(--bg-primary);
-  box-shadow: 0 3px 12px rgba(59, 178, 208, 0.4);
+  box-shadow: 0 4px 15px rgba(59, 178, 208, 0.5),
+    0 0 0 2px rgba(59, 178, 208, 0.2);
   transition: var(--transition-bounce);
 }
 
 .radius-marks {
   display: flex;
   justify-content: space-between;
-  margin-top: 0.4rem;
-  font-size: 0.65rem;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
-  font-weight: 500;
-  opacity: 0.8;
+  font-weight: 600;
+  opacity: 0.9;
   z-index: 1;
   position: relative;
+  font-family: "Rajdhani", sans-serif;
+  letter-spacing: 0.3px;
+}
+
+/* Radius Footer Layout */
+.radius-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  gap: 1rem;
+}
+
+/* Compact Radius Filter Toggle for Map Controls */
+.map-radius-control .radius-filter-toggle {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  transition: none;
+  position: static;
+  overflow: visible;
+}
+
+.map-radius-control .radius-filter-toggle::before {
+  display: none;
+}
+
+.map-radius-control .radius-filter-toggle:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.map-radius-control .radius-filter-toggle:hover::before {
+  display: none;
+}
+
+.map-radius-control .radius-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  width: auto;
+  z-index: 1;
+  position: relative;
+}
+
+.map-radius-control .radius-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition-bounce);
+}
+
+.map-radius-control .radius-checkbox:checked {
+  transform: scale(1.1);
+}
+
+.map-radius-control .radius-toggle-label {
+  font-family: "Poppins", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex-grow: 1;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  transition: var(--transition-smooth);
+}
+
+.map-radius-control .radius-toggle-container:hover .radius-toggle-label {
+  color: var(--text-primary);
 }
 
 /* --- Premium Floating Radius Toggle --- */
@@ -573,4 +678,4 @@
 .radius-filter-button:hover .radius-indicator-badge {
   transform: scale(1.05);
   box-shadow: var(--shadow-glow);
-} 
+}

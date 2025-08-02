@@ -33,6 +33,7 @@ interface SidebarProps {
   searchedLocation: string;
   mapCenter: [number, number];
   radius: number;
+  showOnlyInRadius: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -46,10 +47,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 //   searchedLocation,
   mapCenter,
   radius,
+  showOnlyInRadius,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'Distance' | 'Popularity'>('Distance');
-  const [showOnlyInRadius, setShowOnlyInRadius] = useState(false);
 
   const filteredAndSortedBars = useMemo(() => {
     let filteredBars = bars.filter((bar) => 
@@ -85,17 +86,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   }, [bars, searchTerm, activeFilter, showOnlyInRadius, mapCenter, radius]);
 
-  // Calculate how many bars are within radius
-  const barsInRadius = useMemo(() => {
-    return bars.filter((bar) => {
-      if (!bar.location?.coordinates) return false;
-      const [barLng, barLat] = bar.location.coordinates;
-      const [centerLng, centerLat] = mapCenter;
-      const distance = calculateDistance(centerLat, centerLng, barLat, barLng);
-      return distance <= radius;
-    }).length;
-  }, [bars, mapCenter, radius]);
-
   return (
     <div className="planner-sidebar">
       <SidebarHeader user={user} onSignOut={onSignOut} />
@@ -105,24 +95,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="search-and-filters">
         <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
         <FilterGroup activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-        
-        {/* Radius Filter Toggle */}
-        <div className="radius-filter-toggle">
-          <label className="radius-toggle-container">
-            <input
-              type="checkbox"
-              checked={showOnlyInRadius}
-              onChange={(e) => setShowOnlyInRadius(e.target.checked)}
-              className="radius-checkbox"
-            />
-            <span className="radius-toggle-label">
-              Show only bars in radius ({barsInRadius} of {bars.length})
-            </span>
-            <div className="radius-info">
-              <span className="radius-badge">{radius.toFixed(1)} mi</span>
-            </div>
-          </label>
-        </div>
       </div>
 
       <BarList

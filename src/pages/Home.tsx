@@ -1,6 +1,6 @@
 // src/pages/Home.tsx
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Sidebar } from "../components/Sidebar";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
@@ -30,6 +30,19 @@ interface MapboxFeature {
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
+// Calculate distance between two points using Haversine formula
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
 const Home: React.FC = () => {
   const { user, signout } = useAuth();
   const [bars, setBars] = useState<AppBat[]>([]);
@@ -41,6 +54,18 @@ const Home: React.FC = () => {
   const [searchRadius, setSearchRadius] = useState<number>(1);
   const [searchedLocation, setSearchedLocation] = useState("Columbus, Ohio");
   const [isLoading, setIsLoading] = useState(false);
+  const [showOnlyInRadius, setShowOnlyInRadius] = useState(false);
+
+  // Calculate bars within radius
+  const barsInRadius = useMemo(() => {
+    return bars.filter((bar) => {
+      if (!bar.location?.coordinates) return false;
+      const [barLng, barLat] = bar.location.coordinates;
+      const [centerLng, centerLat] = mapCenter;
+      const distance = calculateDistance(centerLat, centerLng, barLat, barLng);
+      return distance <= searchRadius;
+    }).length;
+  }, [bars, mapCenter, searchRadius]);
 
   // --- NEW: Function to fetch bars within specific map bounds ---
   const fetchBarsInArea = async (bounds: MapBounds | [number, number]) => {
@@ -158,6 +183,11 @@ const Home: React.FC = () => {
     setSearchRadius(radius);
   };
 
+  // Handler for radius filter toggle
+  const handleRadiusFilterToggle = (showOnlyInRadius: boolean) => {
+    setShowOnlyInRadius(showOnlyInRadius);
+  };
+
   // Handler for draw complete events
   const handleDrawComplete = (feature: Feature | null) => {
     // TODO: Implement filtering bars within drawn polygon
@@ -177,15 +207,20 @@ const Home: React.FC = () => {
         searchedLocation={searchedLocation}
         mapCenter={mapCenter}
         radius={searchRadius}
+        showOnlyInRadius={showOnlyInRadius}
       />
 
       <div className="map-wrapper">
         <MapSearchControl
           onSearch={handleLocationSearch}
           onRadiusChange={handleRadiusChange}
+          onRadiusFilterToggle={handleRadiusFilterToggle}
           isLoading={isLoading}
           initialLocation={searchedLocation}
           initialRadius={searchRadius}
+          showOnlyInRadius={showOnlyInRadius}
+          barsInRadius={barsInRadius}
+          totalBars={bars.length}
         />
 
         <MapContainer

@@ -30,8 +30,8 @@ export const BarListItem: React.FC<BarListItemProps> = ({
   bar,
   isSelected,
   isHovered,
-  onToggle,
   onHover,
+  onToggle,
   actualDistance,
   isWithinRadius,
   radius,
@@ -42,10 +42,10 @@ export const BarListItem: React.FC<BarListItemProps> = ({
     isWithinRadius === true ? "within-radius" : ""
   }`;
 
-  // Stop propagation on the checkbox label to prevent the
-  // main div's click event from firing simultaneously.
-  const handleCheckboxClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // This handler prevents the main div's onClick from firing when the checkbox is clicked,
+  // avoiding a double toggle.
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation(); // Stop the click from bubbling up to the parent div
     onToggle(bar.id);
   };
 
@@ -53,18 +53,24 @@ export const BarListItem: React.FC<BarListItemProps> = ({
     <div
       className={itemClasses}
       onMouseEnter={() => onHover(bar.id)}
-      onClick={() => onToggle(bar.id)} // Allow clicking the whole item to toggle
+      onClick={() => onToggle(bar.id)} // The whole item is clickable
     >
       <div className="bar-item-details">
         <h3 className="bar-item-name">
           {bar.name}
           {isWithinRadius === false && (
-            <span className="radius-indicator outside" title={`Outside ${radius?.toFixed(1)}mi radius`}>
+            <span
+              className="radius-indicator outside"
+              title={`Outside ${radius?.toFixed(1)}mi radius`}
+            >
               🚫
             </span>
           )}
           {isWithinRadius === true && (
-            <span className="radius-indicator within" title={`Within ${radius?.toFixed(1)}mi radius`}>
+            <span
+              className="radius-indicator within"
+              title={`Within ${radius?.toFixed(1)}mi radius`}
+            >
               ✅
             </span>
           )}
@@ -75,18 +81,21 @@ export const BarListItem: React.FC<BarListItemProps> = ({
           </span>
           <span>
             <FaMapMarkerAlt /> {(actualDistance ?? bar.distance).toFixed(2)} mi
-            {isWithinRadius === false && <span className="distance-warning"> (outside radius)</span>}
+            {isWithinRadius === false && (
+              <span className="distance-warning"> (outside radius)</span>
+            )}
           </span>
         </div>
       </div>
       <label
         className="custom-checkbox-container"
-        onClick={handleCheckboxClick}
+        // Prevent clicking the label from triggering the parent div's onClick
+        onClick={(e) => e.stopPropagation()}
       >
         <input
           type="checkbox"
           checked={isSelected}
-          onChange={() => {}} // The onClick on the label handles the logic
+          onChange={handleCheckboxChange} // Use the new handler
           aria-label={`Select ${bar.name}`}
         />
         <span className="checkmark"></span>

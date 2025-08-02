@@ -208,12 +208,17 @@
 .radius-toggle-container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.6rem; /* Spacing between switch and label */
   cursor: pointer;
-  gap: 0.75rem;
-  width: 100%;
-  z-index: 1;
   position: relative;
+  user-select: none; /* Prevents text selection on click */
+}
+
+.radius-checkbox-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .radius-checkbox {
@@ -223,6 +228,63 @@
   cursor: pointer;
   flex-shrink: 0;
   transition: var(--transition-bounce);
+}
+
+.radius-toggle-switch {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.radius-toggle-switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Change track background when checked */
+.radius-checkbox-input:checked + .radius-toggle-switch {
+  background: var(--gradient-primary);
+  border-color: rgba(59, 178, 208, 0.5);
+}
+
+/* Move the thumb to the right when checked */
+.radius-checkbox-input:checked + .radius-toggle-switch::before {
+  transform: translateX(18px); /* Moves the thumb across the track */
+}
+
+/* Add a subtle glow to the container on hover for better UX */
+.radius-toggle-container:hover .radius-toggle-switch {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.radius-toggle-label {
+  font-family: "Poppins", sans-serif;
+  font-size: 0.75rem; /* Readjusted for perfect alignment */
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+/* Make the label text brighter when the toggle is active */
+.radius-checkbox-input:checked ~ .radius-toggle-label {
+    color: var(--text-primary);
 }
 
 .radius-checkbox:checked {
@@ -260,4 +322,4 @@
 .radius-badge:hover {
   transform: scale(1.05);
   box-shadow: var(--shadow-glow);
-} 
+}

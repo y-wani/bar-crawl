@@ -64,9 +64,18 @@
 }
 
 @keyframes checkmark-bounce {
-  0% { opacity: 0; transform: scale(0) rotate(45deg); }
-  50% { opacity: 1; transform: scale(1.2) rotate(45deg); }
-  100% { opacity: 1; transform: scale(1) rotate(45deg); }
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(45deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(45deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
 }
 
 .custom-checkbox-container .checkmark:after {
@@ -98,6 +107,10 @@
   overflow: hidden;
   z-index: 1;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .btn-generate-route::before {
@@ -166,4 +179,58 @@
 }
 .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
   border-left-color: var(--border) !important;
-} 
+}
+
+/* --- Directions Control Styling --- */
+.mapboxgl-ctrl-directions {
+  background-color: rgba(33, 33, 33, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+.mapboxgl-ctrl-directions .directions-input-group input {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.mapboxgl-ctrl-directions .mapbox-directions-route-summary h1,
+.mapboxgl-ctrl-directions .mapbox-directions-route-summary span {
+  color: #fff !important;
+}
+
+.mapbox-directions-steps {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.mapbox-directions-step .mapbox-directions-step-maneuver {
+  color: #fff !important;
+}
+
+/* --- Geocoder Control Styling --- */
+.mapboxgl-ctrl-geocoder {
+  background-color: rgba(33, 33, 33, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  border-radius: var(--radius) !important;
+}
+
+.mapboxgl-ctrl-geocoder--input {
+  background-color: transparent !important;
+  color: #fff !important;
+}
+
+.mapboxgl-ctrl-geocoder--suggestion {
+  background-color: rgba(33, 33, 33, 0.9) !important;
+  color: #fff !important;
+}
+
+.mapboxgl-ctrl-geocoder--suggestion-active {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+.mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--pin-right > * {
+  background-color: transparent;
+  fill: #fff;
+}

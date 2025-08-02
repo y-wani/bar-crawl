@@ -1,8 +1,6 @@
-// src/components/MapSearchControl.tsx
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { debounce } from 'lodash';
-import '../styles/Home.css';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { debounce } from "lodash";
+import "../styles/Home.css";
 
 interface AutocompleteSuggestion {
   id: string;
@@ -15,9 +13,13 @@ interface AutocompleteSuggestion {
 interface MapSearchControlProps {
   onSearch: (location: string) => void;
   onRadiusChange: (radius: number) => void;
+  onRadiusFilterToggle: (showOnlyInRadius: boolean) => void;
   isLoading: boolean;
   initialLocation?: string;
   initialRadius?: number;
+  showOnlyInRadius?: boolean;
+  barsInRadius?: number;
+  totalBars?: number;
 }
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -25,9 +27,13 @@ const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 export const MapSearchControl: React.FC<MapSearchControlProps> = ({
   onSearch,
   onRadiusChange,
+  onRadiusFilterToggle,
   isLoading,
-  initialLocation = 'Columbus, Ohio',
+  initialLocation = "Columbus, Ohio",
   initialRadius = 1,
+  showOnlyInRadius = false,
+  barsInRadius = 0,
+  totalBars = 0,
 }) => {
   const [location, setLocation] = useState(initialLocation);
   const [radius, setRadius] = useState(initialRadius);
@@ -35,7 +41,7 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -52,17 +58,19 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
       setIsLoadingSuggestions(true);
       try {
         const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=5&types=place,locality,neighborhood,address`
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+            query
+          )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=5&types=place,locality,neighborhood,address`
         );
         const data = await response.json();
-        
+
         if (data.features) {
           setSuggestions(data.features);
           setShowSuggestions(true);
           setSelectedIndex(-1);
         }
       } catch (error) {
-        console.error('Error fetching suggestions:', error);
+        console.error("Error fetching suggestions:", error);
         setSuggestions([]);
       } finally {
         setIsLoadingSuggestions(false);
@@ -100,19 +108,19 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
     if (!showSuggestions || suggestions.length === 0) return;
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
-        setSelectedIndex(prev => 
+        setSelectedIndex((prev) =>
           prev < suggestions.length - 1 ? prev + 1 : 0
         );
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
-        setSelectedIndex(prev => 
+        setSelectedIndex((prev) =>
           prev > 0 ? prev - 1 : suggestions.length - 1
         );
         break;
-      case 'Enter':
+      case "Enter":
         e.preventDefault();
         if (selectedIndex >= 0) {
           handleSuggestionSelect(suggestions[selectedIndex]);
@@ -120,7 +128,7 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
           handleSearch(e);
         }
         break;
-      case 'Escape':
+      case "Escape":
         setShowSuggestions(false);
         setSelectedIndex(-1);
         inputRef.current?.blur();
@@ -141,7 +149,7 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
   useEffect(() => {
     if (selectedIndex >= 0 && suggestionRefs.current[selectedIndex]) {
       suggestionRefs.current[selectedIndex]?.scrollIntoView({
-        block: 'nearest',
+        block: "nearest",
       });
     }
   }, [selectedIndex]);
@@ -149,22 +157,25 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setShowSuggestions(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Get place type icon
   const getPlaceIcon = (placeTypes: string[]) => {
-    if (placeTypes.includes('place')) return '🏙️';
-    if (placeTypes.includes('locality')) return '🏘️';
-    if (placeTypes.includes('neighborhood')) return '🏠';
-    if (placeTypes.includes('address')) return '📍';
-    return '📍';
+    if (placeTypes.includes("place")) return "🏙️";
+    if (placeTypes.includes("locality")) return "🏘️";
+    if (placeTypes.includes("neighborhood")) return "🏠";
+    if (placeTypes.includes("address")) return "📍";
+    return "📍";
   };
 
   return (
@@ -178,8 +189,12 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
               value={location}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              onFocus={() => location.length >= 2 && suggestions.length > 0 && setShowSuggestions(true)}
-              placeholder="Search for a city, neighborhood, or address..."
+              onFocus={() =>
+                location.length >= 2 &&
+                suggestions.length > 0 &&
+                setShowSuggestions(true)
+              }
+              placeholder="Search for a city..."
               disabled={isLoading}
               className="search-input"
               autoComplete="off"
@@ -198,7 +213,14 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
                 <div className="spinner"></div>
               </div>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
@@ -211,8 +233,12 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
             {suggestions.map((suggestion, index) => (
               <div
                 key={suggestion.id}
-                                 ref={el => { suggestionRefs.current[index] = el; }}
-                className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
+                ref={(el) => {
+                  suggestionRefs.current[index] = el;
+                }}
+                className={`suggestion-item ${
+                  index === selectedIndex ? "selected" : ""
+                }`}
                 onClick={() => handleSuggestionSelect(suggestion)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
@@ -221,10 +247,19 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
                 </div>
                 <div className="suggestion-content">
                   <div className="suggestion-title">{suggestion.text}</div>
-                  <div className="suggestion-subtitle">{suggestion.place_name}</div>
+                  <div className="suggestion-subtitle">
+                    {suggestion.place_name}
+                  </div>
                 </div>
                 <div className="suggestion-action">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
                     <path d="M7 17L17 7"></path>
                     <path d="M7 7h10v10"></path>
                   </svg>
@@ -235,30 +270,50 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
         )}
       </div>
 
-      <div className="map-radius-control">
-        <div className="radius-label">
-          <span>Search Radius</span>
-          <span className="radius-value">{radius.toFixed(1)} mi</span>
+      <div
+        className="map-radius-control"
+        style={{ "--val": radius } as React.CSSProperties}
+      >
+        <div className="radius-header">
+          <div className="radius-label">
+            <span>Radius</span>
+            <span className="radius-value">{radius.toFixed(1)} mi</span>
+          </div>
+          <div className="radius-slider-wrapper">
+            <input
+              id="radius-slider"
+              type="range"
+              min="0.5"
+              max="5"
+              step="0.1"
+              value={radius}
+              onChange={(e) => handleRadiusChange(parseFloat(e.target.value))}
+              disabled={isLoading}
+              className="radius-slider"
+              style={{
+                background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${progressPercentage}%, rgba(255, 255, 255, 0.1) ${progressPercentage}%, rgba(255, 255, 255, 0.1) 100%)`,
+              }}
+            />
+          </div>
         </div>
-        <div className="radius-slider-wrapper">
-          <input
-            id="radius-slider"
-            type="range"
-            min="0.5"
-            max="5"
-            step="0.1"
-            value={radius}
-            onChange={(e) => handleRadiusChange(parseFloat(e.target.value))}
-            disabled={isLoading}
-            className="radius-slider"
-            style={{
-              background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${progressPercentage}%, rgba(255, 255, 255, 0.1) ${progressPercentage}%, rgba(255, 255, 255, 0.1) 100%)`
-            }}
-          />
+        <div className="radius-footer">
           <div className="radius-marks">
             <span>0.5</span>
-            <span>2.5</span>
             <span>5.0</span>
+          </div>
+          <div className="radius-filter-toggle">
+            <label className="radius-toggle-container">
+              <input
+                type="checkbox"
+                checked={showOnlyInRadius}
+                onChange={(e) => onRadiusFilterToggle(e.target.checked)}
+                className="radius-checkbox-input" // Renamed class for clarity
+              />
+              <div className="radius-toggle-switch"></div>
+              <span className="radius-toggle-label">
+                Show only in radius ({barsInRadius}/{totalBars})
+              </span>
+            </label>
           </div>
         </div>
       </div>
