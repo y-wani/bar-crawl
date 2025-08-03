@@ -69,6 +69,7 @@ const Home: React.FC = () => {
 
   // --- NEW: Function to fetch bars within specific map bounds ---
   const fetchBarsInArea = async (bounds: MapBounds | [number, number]) => {
+    console.log("Fetching bars for bounds:", bounds);
     setIsLoading(true);
     const categories = ["bar", "pub", "nightclub"];
     const allBars: AppBat[] = [];
@@ -116,6 +117,7 @@ const Home: React.FC = () => {
       }
     }
 
+    console.log("Fetched bars:", allBars.length);
     setBars(allBars);
     setIsLoading(false);
   };
@@ -160,7 +162,7 @@ const Home: React.FC = () => {
   // Initial load
   useEffect(() => {
     fetchBarsInArea(mapCenter);
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // const selectedBars = useMemo(
   //   () => bars.filter((bar) => selectedBarIds.has(bar.id)),

@@ -1,6 +1,7 @@
 // src/components/Sidebar.tsx
 
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { User } from '../context/types';
 import { SidebarHeader } from './SidebarHeader';
 import { SearchBar } from './SearchBar';
@@ -49,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   radius,
   showOnlyInRadius,
 }) => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'Distance' | 'Popularity'>('Distance');
 
@@ -110,6 +112,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         className="btn-generate-route"
         disabled={selectedBarIds.size < 2}
+        onClick={() => {
+          if (selectedBarIds.size >= 2) {
+            const selectedBars = bars.filter(bar => selectedBarIds.has(bar.id));
+            navigate('/route', {
+              state: {
+                selectedBars,
+                mapCenter,
+                searchRadius: radius
+              }
+            });
+          }
+        }}
       >
         Generate My Route ({selectedBarIds.size})
       </button>

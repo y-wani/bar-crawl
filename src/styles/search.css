@@ -320,7 +320,7 @@
 /* Ultra-Premium Radius Control */
 .map-radius-control {
   position: relative;
-  padding: 1rem;
+  padding: 0.8rem;
   background: rgba(30, 32, 40, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
