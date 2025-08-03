@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { debounce } from "lodash";
+import { FiSearch, FiMapPin, FiCrosshair } from "react-icons/fi";
 import "../styles/Home.css";
 
 interface AutocompleteSuggestion {
@@ -171,11 +172,11 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
 
   // Get place type icon
   const getPlaceIcon = (placeTypes: string[]) => {
-    if (placeTypes.includes("place")) return "🏙️";
-    if (placeTypes.includes("locality")) return "🏘️";
-    if (placeTypes.includes("neighborhood")) return "🏠";
-    if (placeTypes.includes("address")) return "📍";
-    return "📍";
+    if (placeTypes.includes("place")) return <FiMapPin size={14} />;
+    if (placeTypes.includes("locality")) return <FiMapPin size={14} />;
+    if (placeTypes.includes("neighborhood")) return <FiMapPin size={14} />;
+    if (placeTypes.includes("address")) return <FiCrosshair size={14} />;
+    return <FiMapPin size={14} />;
   };
 
   return (
@@ -213,17 +214,7 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
                 <div className="spinner"></div>
               </div>
             ) : (
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
+              <FiSearch size={18} />
             )}
           </button>
         </form>

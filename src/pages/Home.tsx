@@ -68,12 +68,25 @@ const Home: React.FC = () => {
   }, [bars, mapCenter, searchRadius]);
 
   // --- NEW: Function to fetch bars within specific map bounds ---
-  const fetchBarsInArea = async (bounds: MapBounds | [number, number]) => {
+  const fetchBarsInArea = useCallback(async (bounds: MapBounds | [number, number]) => {
     console.log("Fetching bars for bounds:", bounds);
     setIsLoading(true);
     const categories = ["bar", "pub", "nightclub"];
     const allBars: AppBat[] = [];
     const fetchedBarIds = new Set<string>();
+
+    // Determine center coordinates for distance calculation
+    let centerCoords: [number, number];
+    if (Array.isArray(bounds) && bounds.length === 4) {
+      // For bounds, use the center of the bounding box
+      centerCoords = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
+    } else if (Array.isArray(bounds) && bounds.length === 2) {
+      // For point search, use the provided coordinates
+      centerCoords = bounds;
+    } else {
+      // Fallback to map center
+      centerCoords = mapCenter;
+    }
 
     const searchParams = new URLSearchParams({
       access_token: MAPBOX_ACCESS_TOKEN,
@@ -97,13 +110,19 @@ const Home: React.FC = () => {
 
         if (barsData.features) {
           const newBars: AppBat[] = barsData.features.map(
-            (feature: MapboxFeature) => ({
-              id: feature.properties.mapbox_id,
-              name: feature.properties.name || "Unknown Bar",
-              rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
-              distance: 0,
-              location: feature.geometry,
-            })
+            (feature: MapboxFeature) => {
+              const [barLng, barLat] = feature.geometry.coordinates;
+              const [centerLng, centerLat] = centerCoords;
+              const distance = calculateDistance(centerLat, centerLng, barLat, barLng);
+              
+              return {
+                id: feature.properties.mapbox_id,
+                name: feature.properties.name || "Unknown Bar",
+                rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
+                distance: distance,
+                location: feature.geometry,
+              };
+            }
           );
           newBars.forEach((bar) => {
             if (!fetchedBarIds.has(bar.id)) {
@@ -117,10 +136,15 @@ const Home: React.FC = () => {
       }
     }
 
-    console.log("Fetched bars:", allBars.length);
+    console.log(`🍺 Fetched ${allBars.length} bars from API:`, allBars.map(bar => ({ 
+      name: bar.name, 
+      distance: bar.distance.toFixed(2), 
+      rating: bar.rating,
+      coordinates: bar.location.coordinates 
+    })));
     setBars(allBars);
     setIsLoading(false);
-  };
+  }, [mapCenter]);
 
   // --- UPDATED: Geocode search to use the new fetch function ---
   const handleLocationSearch = async (location: string) => {
@@ -151,18 +175,22 @@ const Home: React.FC = () => {
   };
 
   // Debounced handler for when map view changes (optional)
-  const handleMapViewChange = useCallback(
-    debounce((bounds: MapBounds) => {
+  const debouncedFetchBars = useMemo(
+    () => debounce((bounds: MapBounds) => {
       fetchBarsInArea(bounds);
       setSearchedLocation("Current map area");
     }, 800),
-    []
+    [fetchBarsInArea]
   );
+
+  const handleMapViewChange = useCallback((bounds: MapBounds) => {
+    debouncedFetchBars(bounds);
+  }, [debouncedFetchBars]);
 
   // Initial load
   useEffect(() => {
     fetchBarsInArea(mapCenter);
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [fetchBarsInArea, mapCenter]); // Include dependencies
 
   // const selectedBars = useMemo(
   //   () => bars.filter((bar) => selectedBarIds.has(bar.id)),

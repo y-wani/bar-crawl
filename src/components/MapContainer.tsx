@@ -59,6 +59,16 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   startCoordinates,
   // selectedBars, // Temporarily removed until directions are re-implemented
 }) => {
+  // Debug props on component load
+  console.log("🗺️ MapContainer received props:", {
+    center,
+    radius,
+    barsCount: bars.length,
+    selectedBarIds: Array.from(selectedBarIds),
+    hoveredBarId,
+    hasRoute: !!route,
+    startCoordinates
+  });
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
@@ -155,15 +165,25 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       m.addSource(BARS_SOURCE_ID, {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
+        promoteId: "id", // Use the 'id' property from GeoJSON properties as the feature's ID
       });
+      console.log("🏗️ Creating bars layer with beer-marker icon");
       m.addLayer({
         id: BARS_LAYER_ID,
         type: "symbol",
         source: BARS_SOURCE_ID,
         layout: {
           "icon-image": "beer-marker",
-          "icon-size": ["interpolate", ["linear"], ["zoom"], 10, 0.5, 18, 1],
+          "icon-size": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false],
+            1.4, // Enhanced hover size
+            ["boolean", ["feature-state", "selected"], false],
+            1.2, // Enhanced selected size
+            1.0, // Enhanced default size
+          ],
           "icon-allow-overlap": true,
+          "icon-rotation-alignment": "map",
         },
         paint: {
           "icon-opacity": [
@@ -176,22 +196,88 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           ],
         },
       });
+      console.log("✅ Bars layer created successfully");
+
+      // Add source for hover highlight circles
+      m.addSource("hover-highlight", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      // Add hover highlight circle layer
+      m.addLayer({
+        id: "bars-hover-highlight",
+        type: "circle",
+        source: "hover-highlight",
+        paint: {
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10,
+            25,
+            18,
+            45,
+          ],
+          "circle-color": "#00ffff",
+          "circle-opacity": 0.3,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ff00ff",
+          "circle-stroke-opacity": 0.6,
+          "circle-blur": 1,
+        },
+      });
+
+      // Add source for selected highlight circles
+      m.addSource("selected-highlight", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      // Add selected highlight circle layer
+      m.addLayer({
+        id: "bars-selected-highlight",
+        type: "circle",
+        source: "selected-highlight",
+        paint: {
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10,
+            20,
+            18,
+            35,
+          ],
+          "circle-color": "#ffff00",
+          "circle-opacity": 0.4,
+          "circle-stroke-width": 3,
+          "circle-stroke-color": "#ff00ff",
+          "circle-stroke-opacity": 0.8,
+          "circle-blur": 0.5,
+        },
+      });
 
       // Initialize with current data if available
       if (bars.length > 0) {
+        console.log(`🎯 Initializing map with ${bars.length} bars on map load`);
         const features = bars.map((bar) => ({
           type: "Feature" as const,
           geometry: bar.location,
           properties: {
-            id: bar.id,
+            id: bar.id, // This is now used as the feature's unique ID
             name: bar.name,
             rating: bar.rating,
+            distance: bar.distance,
           },
         }));
         const src = m.getSource(BARS_SOURCE_ID) as mapboxgl.GeoJSONSource;
         if (src) {
           src.setData({ type: "FeatureCollection", features });
+          console.log("✅ Initial bars data set on map");
         }
+      } else {
+        console.log("📍 No bars to initialize on map load");
       }
 
       // Initialize radius circle
@@ -201,51 +287,131 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         radiusSrc.setData(circleGeojson);
       }
 
-      // -- Pulsing Dot for Bar Marker --
-      const size = 100;
-      const pulsingDot = {
-        width: size,
-        height: size,
-        data: new Uint8Array(size * size * 4),
-        context: null as CanvasRenderingContext2D | null,
-        onAdd: function () {
-          const canvas = document.createElement("canvas");
-          canvas.width = size;
-          canvas.height = size;
-          this.context = canvas.getContext("2d");
-        },
-        render: function () {
-          if (!this.context) return false;
-          const duration = 1500;
-          const t = (performance.now() % duration) / duration;
-          const inner = size * 0.1;
-          const outer = size * 0.3 * t + inner;
-          const ctx = this.context!;
-          ctx.clearRect(0, 0, size, size);
+      // -- Epic Neon Cocktail Bar Marker --
+      const loadBarMarker = () => {
+        if (m.hasImage("beer-marker")) {
+          console.log("🍸 Bar marker already loaded");
+          return;
+        }
 
-          // Outer expanding circle
-          ctx.beginPath();
-          ctx.arc(size / 2, size / 2, outer, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(138,43,226,${1 - t})`;
-          ctx.fill();
+        console.log("🎨 Creating neon cocktail bar marker...");
+        const neonBarSvg = `
+          <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Enhanced neon filters -->
+              <filter id="barNeonGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#ff00ff" flood-opacity="0.9"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#ff00ff" flood-opacity="0.6"/>
+              </filter>
+              <filter id="barCyanGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#00ffff" flood-opacity="0.8"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#00ffff" flood-opacity="0.4"/>
+              </filter>
+              <filter id="barYellowGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#ffff00" flood-opacity="0.9"/>
+              </filter>
+              <linearGradient id="cocktailGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#ff00ff;stop-opacity:0.8" />
+                <stop offset="50%" style="stop-color:#00ffff;stop-opacity:0.8" />
+                <stop offset="100%" style="stop-color:#ffff00;stop-opacity:0.8" />
+              </linearGradient>
+              <radialGradient id="glowGradient" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.3" />
+                <stop offset="100%" style="stop-color:#00ffff;stop-opacity:0" />
+              </radialGradient>
+            </defs>
+            
+            <!-- Outer energy ring -->
+            <circle cx="30" cy="30" r="28" fill="url(#glowGradient)" opacity="0.4"/>
+            
+            <!-- Pulsing glow ring -->
+            <circle cx="30" cy="30" r="25" fill="none" stroke="#ff00ff" stroke-width="1" opacity="0.5" filter="url(#barNeonGlow)">
+              <animate attributeName="r" values="23;27;23" dur="3s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            
+            <!-- Main cocktail glass base -->
+            <path d="M18 20 L42 20 L38 38 L22 38 Z" 
+                  fill="none" 
+                  stroke="#00ffff" 
+                  stroke-width="2.5" 
+                  filter="url(#barCyanGlow)"/>
+            
+            <!-- Cocktail liquid with gradient -->
+            <path d="M20 22 L40 22 L36 35 L24 35 Z" 
+                  fill="url(#cocktailGradient)" 
+                  opacity="0.7"/>
+            
+            <!-- Glass stem -->
+            <line x1="30" y1="38" x2="30" y2="46" 
+                  stroke="#00ffff" 
+                  stroke-width="2" 
+                  filter="url(#barCyanGlow)"/>
+            
+            <!-- Base plate -->
+            <ellipse cx="30" cy="47" rx="6" ry="1.5" 
+                     fill="none" 
+                     stroke="#00ffff" 
+                     stroke-width="1.5" 
+                     filter="url(#barCyanGlow)"/>
+            
+            <!-- Magical bubbles -->
+            <circle cx="26" cy="28" r="1" fill="#ffff00" filter="url(#barYellowGlow)">
+              <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="28;24;28" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="34" cy="30" r="0.8" fill="#ff00ff" filter="url(#barNeonGlow)">
+              <animate attributeName="opacity" values="1;0;1" dur="2.5s" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="30;26;30" dur="2.5s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="30" cy="32" r="1.2" fill="#00ffff" filter="url(#barCyanGlow)">
+              <animate attributeName="opacity" values="0;1;0" dur="1.8s" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="32;28;32" dur="1.8s" repeatCount="indefinite"/>
+            </circle>
+            
+            <!-- Cocktail garnish -->
+            <circle cx="35" cy="20" r="1.5" fill="#ff00ff" filter="url(#barNeonGlow)"/>
+            <path d="M35 18 L37 16" stroke="#00ff00" stroke-width="1" filter="url(#barYellowGlow)"/>
+          </svg>
+        `;
 
-          // Inner solid dot
-          ctx.beginPath();
-          ctx.arc(size / 2, size / 2, inner, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(138,43,226,1)";
-          ctx.lineWidth = 2 + 4 * (1 - t);
-          ctx.strokeStyle = "#fff";
-          ctx.fill();
-          ctx.stroke();
+        const barCanvas = document.createElement("canvas");
+        barCanvas.width = 60;
+        barCanvas.height = 60;
+        const barCtx = barCanvas.getContext("2d");
 
-          // Copy to image data
-          const image = ctx.getImageData(0, 0, size, size);
-          this.data = new Uint8Array(image.data);
-          map.current!.triggerRepaint();
-          return true;
-        },
+        if (!barCtx) {
+          console.error("❌ Failed to get canvas context for bar marker");
+          return;
+        }
+
+        const barImg = new Image();
+        barImg.onload = () => {
+          try {
+            barCtx.drawImage(barImg, 0, 0, 60, 60);
+            const barImageData = barCtx.getImageData(0, 0, 60, 60);
+            
+            if (m && !m.hasImage("beer-marker")) {
+              m.addImage("beer-marker", {
+                width: 60,
+                height: 60,
+                data: new Uint8Array(barImageData.data),
+              });
+              console.log("✅ Neon cocktail bar marker loaded successfully!");
+            }
+          } catch (error) {
+            console.error("❌ Error loading bar marker:", error);
+          }
+        };
+        
+        barImg.onerror = () => {
+          console.error("❌ Failed to load bar marker SVG");
+        };
+        
+        barImg.src = "data:image/svg+xml;base64," + btoa(neonBarSvg);
       };
-      m.addImage("beer-marker", pulsingDot, { pixelRatio: 2 });
+
+      loadBarMarker();
 
       // -- Map Move Event for Bounds Tracking --
       m.on("moveend", () => {
@@ -272,21 +438,50 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       m.on("mousemove", BARS_LAYER_ID, (e) => {
         const feat = e.features?.[0];
         if (feat) {
+          console.log("🎯 Hovering over bar:", feat.properties?.name, "ID:", feat.id);
           m.getCanvas().style.cursor = "pointer";
-          const id = String(feat.properties!.id);
-          onHoverBar(id);
+          if (feat.id) {
+            onHoverBar(String(feat.id));
+          }
 
           popupRef.current?.remove();
           popupRef.current = new mapboxgl.Popup({
             closeButton: false,
-            offset: 25,
-            className: "bar-popup",
+            offset: 40,
+            className: "neon-bar-popup",
+            maxWidth: "280px",
           })
             .setLngLat((feat.geometry as MapboxPointGeometry).coordinates)
             .setHTML(
-              `<h3>${feat.properties!.name}</h3><p>Rating: ${
-                feat.properties!.rating
-              } ⭐</p>`
+              `
+              <div class="neon-popup-container">
+                <div class="neon-popup-header">
+                  <div class="neon-bar-icon">🍸</div>
+                  <h3 class="neon-bar-name">${feat.properties!.name || 'Unknown Bar'}</h3>
+                </div>
+                <div class="neon-popup-content">
+                  <div class="neon-stat">
+                    <span class="neon-stat-icon">⭐</span>
+                    <span class="neon-stat-label">Rating:</span>
+                    <span class="neon-stat-value">${feat.properties!.rating ? feat.properties!.rating.toFixed(1) : '4.0'}/5</span>
+                  </div>
+                  <div class="neon-stat">
+                    <span class="neon-stat-icon">📍</span>
+                    <span class="neon-stat-label">Distance:</span>
+                    <span class="neon-stat-value">${feat.properties!.distance !== undefined && feat.properties!.distance !== null ? feat.properties!.distance.toFixed(2) : 'Calculating...'} mi</span>
+                  </div>
+                  <div class="neon-stat">
+                    <span class="neon-stat-icon">🎉</span>
+                    <span class="neon-stat-label">Vibe:</span>
+                    <span class="neon-stat-value">${(feat.properties!.rating || 4.0) >= 4.5 ? 'LEGENDARY' : (feat.properties!.rating || 4.0) >= 4.0 ? 'EPIC' : (feat.properties!.rating || 4.0) >= 3.5 ? 'GREAT' : 'DECENT'}</span>
+                  </div>
+                  <div class="neon-action-hint">
+                    <span class="neon-click-hint">💫 Click to ${selectedBarIds.has(feat.properties!.id) ? 'remove from' : 'add to'} route</span>
+                  </div>
+                </div>
+                <div class="neon-popup-glow"></div>
+              </div>
+              `
             )
             .addTo(m);
         }
@@ -305,7 +500,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       }
       map.current?.remove();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // ^ Only run once on mount - map initialization should not re-run when props change
 
   // 2. Fly to new center when it changes
   useEffect(() => {
@@ -338,49 +534,89 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
   // 4. Update bar markers when \`bars\` changes
   useEffect(() => {
-    if (!map.current) return;
-
-    console.log("Updating bars on map:", bars.length);
-
-    const updateBars = () => {
-      if (!map.current?.isStyleLoaded()) return;
-      const src = map.current.getSource(
-        BARS_SOURCE_ID
-      ) as mapboxgl.GeoJSONSource;
-      if (!src) return;
-
-      const features = bars.map((bar) => ({
-        type: "Feature" as const,
-        geometry: bar.location,
-        properties: {
-          id: bar.id,
-          name: bar.name,
-          rating: bar.rating,
-        },
-      }));
-      console.log("Setting bar features:", features.length);
-      src.setData({ type: "FeatureCollection", features });
-    };
-
-    if (map.current.isStyleLoaded()) {
-      updateBars();
-    } else {
-      map.current.once("styledata", updateBars);
+    if (!map.current || !map.current.isStyleLoaded()) {
+      // If map is not ready, wait for it
+      if(map.current) {
+        map.current.once("styledata", () => {
+            // Re-run this effect once the style is loaded
+            // A simple way is to manage a state, but this is a quick fix
+        });
+      }
+      return;
     }
+
+    console.log(`🗺️ Updating map with ${bars.length} bars:`, bars.map(bar => ({ name: bar.name, id: bar.id, distance: bar.distance })));
+
+    const src = map.current.getSource(BARS_SOURCE_ID) as mapboxgl.GeoJSONSource;
+    if (!src) {
+        console.warn("❌ Bars source not found, cannot update");
+        return;
+    }
+    
+    // **FIX**: Mapbox requires a top-level \`id\` for feature-state to work.
+    // The \`promoteId: 'id'\` on the source tells Mapbox to use the \`id\` from the \`properties\` object.
+    const features = bars.map((bar) => ({
+      type: "Feature" as const,
+      geometry: bar.location,
+      properties: {
+        id: bar.id, // This is now used as the feature's unique ID
+        name: bar.name,
+        rating: bar.rating,
+        distance: bar.distance,
+      },
+    }));
+    
+    console.log(`✅ Setting ${features.length} bar features on map`);
+    src.setData({ type: "FeatureCollection", features });
+
   }, [bars]);
 
-  // 5. Sync hover/selected feature states
+  // 5. Sync hover/selected feature states and update highlight sources
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
 
-    // Clear old hover
-    if (hoveredStateId.current) {
-      map.current.setFeatureState(
-        { source: BARS_SOURCE_ID, id: hoveredStateId.current },
-        { hover: false }
-      );
+    // Update hover highlight
+    const hoverSource = map.current.getSource("hover-highlight") as mapboxgl.GeoJSONSource;
+    if (hoverSource) {
+      if (hoveredBarId) {
+        const hoveredBar = bars.find(bar => bar.id === hoveredBarId);
+        if (hoveredBar) {
+          hoverSource.setData({
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              geometry: hoveredBar.location,
+              properties: { id: hoveredBar.id }
+            }]
+          });
+        }
+      } else {
+        hoverSource.setData({ type: "FeatureCollection", features: [] });
+      }
     }
-    // Set new hover
+
+    // Update selected highlights
+    const selectedSource = map.current.getSource("selected-highlight") as mapboxgl.GeoJSONSource;
+    if (selectedSource) {
+      const selectedBars = bars.filter(bar => selectedBarIds.has(bar.id));
+      selectedSource.setData({
+        type: "FeatureCollection",
+        features: selectedBars.map(bar => ({
+          type: "Feature" as const,
+          geometry: bar.location,
+          properties: { id: bar.id }
+        }))
+      });
+    }
+
+    // Update feature states for icon sizing
+    if (hoveredStateId.current) {
+      map.current.removeFeatureState({
+        source: BARS_SOURCE_ID,
+        id: hoveredStateId.current
+      });
+    }
+
     if (hoveredBarId) {
       map.current.setFeatureState(
         { source: BARS_SOURCE_ID, id: hoveredBarId },
@@ -389,13 +625,15 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
     hoveredStateId.current = hoveredBarId;
 
-    // Mark selected bars
     bars.forEach((bar) => {
-      map.current!.setFeatureState(
-        { source: BARS_SOURCE_ID, id: bar.id },
-        { selected: selectedBarIds.has(bar.id) }
-      );
+        if (map.current) {
+            map.current.setFeatureState(
+                { source: BARS_SOURCE_ID, id: bar.id },
+                { selected: selectedBarIds.has(bar.id) }
+            );
+        }
     });
+
   }, [hoveredBarId, selectedBarIds, bars]);
 
   // Animation frame reference for route animation
@@ -478,7 +716,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         });
       }
 
-      // Add background route layer (solid, semi-transparent)
+      // Add electric neon background route layer
       if (!map.current.getLayer("route-background")) {
         map.current.addLayer({
           id: "route-background",
@@ -489,15 +727,34 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             "line-cap": "round",
           },
           paint: {
-            "line-color": "#8A2BE2",
-            "line-width": 12,
-            "line-opacity": 0.25,
-            "line-blur": 2,
+            "line-color": "#ff00ff",
+            "line-width": 18,
+            "line-opacity": 0.4,
+            "line-blur": 6,
           },
         });
       }
 
-      // Add flowing gradient route layer using line-gradient
+      // Add electric outer glow layer
+      if (!map.current.getLayer("route-electric-glow")) {
+        map.current.addLayer({
+          id: "route-electric-glow",
+          type: "line",
+          source: "route-background",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#00ffff",
+            "line-width": 25,
+            "line-opacity": 0.2,
+            "line-blur": 12,
+          },
+        });
+      }
+
+      // Add electric flowing gradient route layer
       if (!map.current.getLayer("route-flow")) {
         map.current.addLayer({
           id: "route-flow",
@@ -508,24 +765,42 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             "line-cap": "round",
           },
           paint: {
-            "line-color": "#FF6B6B",
-            "line-width": 8,
-            "line-opacity": 0.9,
-            // Use line-gradient for smooth flowing effect
+            "line-color": "#ffffff",
+            "line-width": 10,
+            "line-opacity": 1,
+            // Electric neon gradient that flows
             "line-gradient": [
               "interpolate",
               ["linear"],
               ["line-progress"],
               0,
-              "rgba(255, 107, 107, 0)",
+              "rgba(255, 0, 255, 0)",
               1,
-              "rgba(255, 107, 107, 0)",
+              "rgba(255, 0, 255, 0)",
             ],
           },
         });
       }
 
-      // Add moving particles layer for extra flow effect
+      // Add inner electric core
+      if (!map.current.getLayer("route-electric-core")) {
+        map.current.addLayer({
+          id: "route-electric-core",
+          type: "line",
+          source: "route-flow",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#ffffff",
+            "line-width": 4,
+            "line-opacity": 0.8,
+          },
+        });
+      }
+
+      // Add electric energy particles layer
       if (!map.current.getLayer("route-particles")) {
         map.current.addLayer({
           id: "route-particles",
@@ -537,46 +812,89 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               ["linear"],
               ["zoom"],
               10,
-              4,
+              6,
               18,
-              10,
+              14,
             ],
-            "circle-color": "#FFD700",
-            "circle-opacity": 0.9,
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#FF6B6B",
-            "circle-stroke-opacity": 0.8,
+            "circle-color": "#00ffff",
+            "circle-opacity": 1,
+            "circle-stroke-width": 3,
+            "circle-stroke-color": "#ff00ff",
+            "circle-stroke-opacity": 1,
+            "circle-blur": 0.5,
+          },
+        });
+      }
+
+      // Add electric spark particles
+      if (!map.current.getLayer("route-sparks")) {
+        map.current.addLayer({
+          id: "route-sparks",
+          type: "circle",
+          source: "route-particles",
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              10,
+              2,
+              18,
+              6,
+            ],
+            "circle-color": "#ffffff",
+            "circle-opacity": 0.8,
+            "circle-blur": 1,
           },
         });
       }
 
       // Add directional arrows layer
       if (!map.current.getLayer("route-arrows")) {
-        // Create arrow icon if it doesn't exist
+        // Create electric arrow icon if it doesn't exist
         if (!map.current.hasImage("direction-arrow")) {
           const arrowSvg = `
-            <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 2 L18 10 L14 10 L14 16 L6 16 L6 10 L2 10 Z" 
-                    fill="#FF6B6B" 
-                    stroke="#FFFFFF" 
-                    stroke-width="1"/>
+            <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <filter id="arrowGlow" x="-50%" y="-50%" width="300%" height="300%">
+                  <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#00ffff" flood-opacity="0.8"/>
+                  <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#00ffff" flood-opacity="0.4"/>
+                </filter>
+                <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#00ffff;stop-opacity:1" />
+                  <stop offset="50%" style="stop-color:#ffffff;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#ff00ff;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              
+              <!-- Electric arrow with lightning effect -->
+              <path d="M15 3 L25 13 L20 13 L20 21 L10 21 L10 13 L5 13 Z" 
+                    fill="url(#arrowGradient)" 
+                    stroke="#ffffff" 
+                    stroke-width="2"
+                    filter="url(#arrowGlow)"/>
+              
+              <!-- Inner lightning bolt -->
+              <path d="M15 8 L18 12 L16 12 L17 16 L14 12 L16 12 Z" 
+                    fill="#ffffff" 
+                    opacity="0.9"/>
             </svg>
           `;
 
           const canvas = document.createElement("canvas");
-          canvas.width = 20;
-          canvas.height = 20;
+          canvas.width = 30;
+          canvas.height = 30;
           const ctx = canvas.getContext("2d");
 
           const img = new Image();
           img.onload = () => {
             if (ctx) {
-              ctx.drawImage(img, 0, 0, 20, 20);
-              const imageData = ctx.getImageData(0, 0, 20, 20);
+              ctx.drawImage(img, 0, 0, 30, 30);
+              const imageData = ctx.getImageData(0, 0, 30, 30);
               if (map.current && !map.current.hasImage("direction-arrow")) {
                 map.current.addImage("direction-arrow", {
-                  width: 20,
-                  height: 20,
+                  width: 30,
+                  height: 30,
                   data: new Uint8Array(imageData.data),
                 });
               }
@@ -611,7 +929,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         });
       }
 
-      // Add highlighted bars along route
+      // Add electric highlighted bars along route
       if (!map.current.getLayer("route-bars-highlight")) {
         map.current.addLayer({
           id: "route-bars-highlight",
@@ -623,15 +941,41 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               ["linear"],
               ["zoom"],
               10,
-              4,
+              8,
               18,
-              10,
+              16,
             ],
-            "circle-color": "#FFD700",
-            "circle-opacity": 0.8,
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#FF6B6B",
+            "circle-color": "#ffff00",
+            "circle-opacity": 0.9,
+            "circle-stroke-width": 4,
+            "circle-stroke-color": "#ff00ff",
             "circle-stroke-opacity": 1,
+            "circle-blur": 1,
+          },
+        });
+      }
+
+      // Add electric rings around highlighted bars
+      if (!map.current.getLayer("route-bars-rings")) {
+        map.current.addLayer({
+          id: "route-bars-rings",
+          type: "circle",
+          source: "route-bars-highlight",
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              10,
+              12,
+              18,
+              24,
+            ],
+            "circle-color": "transparent",
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#00ffff",
+            "circle-stroke-opacity": 0.6,
+            "circle-blur": 2,
           },
         });
       }
@@ -639,74 +983,92 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       // Create start and end marker icons
       if (!map.current.hasImage("start-marker")) {
         const startSvg = `
-          <svg width="60" height="80" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
+          <svg width="80" height="100" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="startGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#3bb2d0;stop-opacity:1" />
-                <stop offset="50%" style="stop-color:#00d4ff;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#0099cc;stop-opacity:1" />
-              </linearGradient>
-              <linearGradient id="startGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#3bb2d0;stop-opacity:0.8" />
-                <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.4" />
-              </linearGradient>
-              <filter id="startShadow" x="-50%" y="-50%" width="300%" height="300%">
-                <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#3bb2d0" flood-opacity="0.6"/>
-                <feDropShadow dx="0" dy="2" stdDeviation="12" flood-color="#00d4ff" flood-opacity="0.3"/>
-              </filter>
-              <filter id="startInnerGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <!-- Neon glow filters -->
+              <filter id="neonGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                 <feMerge> 
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
+              <filter id="pinkGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#ff0080" flood-opacity="0.8"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="15" flood-color="#ff0080" flood-opacity="0.4"/>
+              </filter>
+              <filter id="cyanGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#00ffff" flood-opacity="0.9"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#00ffff" flood-opacity="0.5"/>
+              </filter>
             </defs>
             
-            <!-- Outer glow ring -->
-            <circle cx="30" cy="30" r="32" fill="url(#startGlow)" opacity="0.3" filter="url(#startShadow)"/>
+            <!-- Outer energy ring -->
+            <circle cx="40" cy="40" r="38" fill="none" stroke="#00ffff" stroke-width="1" opacity="0.3" filter="url(#cyanGlow)"/>
+            <circle cx="40" cy="40" r="35" fill="none" stroke="#ff0080" stroke-width="1" opacity="0.2" filter="url(#pinkGlow)"/>
             
-            <!-- Main pin shape with modern design -->
-            <path d="M30 75 C30 75 55 52 55 30 C55 16.193 43.807 5 30 5 C16.193 5 5 16.193 5 30 C5 52 30 75 30 75 Z" 
-                  fill="url(#startGradient)" 
-                  stroke="#ffffff" 
-                  stroke-width="3"
-                  filter="url(#startShadow)"/>
-            
-            <!-- Inner highlight -->
-            <path d="M30 70 C30 70 50 50 50 30 C50 18.954 41.046 10 30 10 C18.954 10 10 18.954 10 30 C10 50 30 70 30 70 Z" 
+            <!-- Neon house base -->
+            <path d="M15 45 L65 45 L65 75 L15 75 Z" 
                   fill="none" 
-                  stroke="rgba(255,255,255,0.4)" 
-                  stroke-width="1"/>
+                  stroke="#00ffff" 
+                  stroke-width="3" 
+                  filter="url(#cyanGlow)"/>
             
-            <!-- Center icon circle -->
-            <circle cx="30" cy="30" r="18" fill="rgba(255,255,255,0.95)" filter="url(#startInnerGlow)"/>
-            <circle cx="30" cy="30" r="15" fill="#1a1a2e" opacity="0.8"/>
+            <!-- Roof -->
+            <path d="M10 45 L40 15 L70 45" 
+                  fill="none" 
+                  stroke="#ff0080" 
+                  stroke-width="3" 
+                  stroke-linejoin="round"
+                  filter="url(#pinkGlow)"/>
             
-            <!-- Start flag icon -->
-            <path d="M25 22 L25 38 M25 22 L38 27 L25 32 Z" 
-                  fill="#3bb2d0" 
-                  stroke="#ffffff" 
-                  stroke-width="1.5" 
-                  stroke-linejoin="round"/>
-            <circle cx="25" cy="22" r="2" fill="#00d4ff"/>
+            <!-- Door -->
+            <rect x="32" y="55" width="16" height="20" 
+                  fill="none" 
+                  stroke="#00ff00" 
+                  stroke-width="2" 
+                  filter="url(#neonGlow)"/>
+            
+            <!-- Windows -->
+            <rect x="20" y="50" width="8" height="8" 
+                  fill="none" 
+                  stroke="#ffff00" 
+                  stroke-width="2" 
+                  filter="url(#neonGlow)"/>
+            <rect x="52" y="50" width="8" height="8" 
+                  fill="none" 
+                  stroke="#ffff00" 
+                  stroke-width="2" 
+                  filter="url(#neonGlow)"/>
+            
+            <!-- START text -->
+            <text x="40" y="92" text-anchor="middle" 
+                  font-family="Arial, sans-serif" 
+                  font-size="12" 
+                  font-weight="bold" 
+                  fill="#00ffff" 
+                  stroke="#00ffff" 
+                  stroke-width="0.5"
+                  filter="url(#cyanGlow)">START</text>
           </svg>
         `;
 
         const startCanvas = document.createElement("canvas");
-        startCanvas.width = 60;
-        startCanvas.height = 80;
+        startCanvas.width = 80;
+        startCanvas.height = 100;
         const startCtx = startCanvas.getContext("2d");
 
         const startImg = new Image();
         startImg.onload = () => {
           if (startCtx) {
-            startCtx.drawImage(startImg, 0, 0, 60, 80);
-            const startImageData = startCtx.getImageData(0, 0, 60, 80);
+            startCtx.drawImage(startImg, 0, 0, 80, 100);
+            const startImageData = startCtx.getImageData(0, 0, 80, 100);
             if (map.current && !map.current.hasImage("start-marker")) {
               map.current.addImage("start-marker", {
-                width: 60,
-                height: 80,
+                width: 80,
+                height: 100,
                 data: new Uint8Array(startImageData.data),
               });
             }
@@ -717,94 +1079,106 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
       if (!map.current.hasImage("end-marker")) {
         const endSvg = `
-          <svg width="60" height="80" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
+          <svg width="90" height="110" viewBox="0 0 90 110" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="endGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
-                <stop offset="50%" style="stop-color:#ff4757;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#ff3742;stop-opacity:1" />
-              </linearGradient>
-              <linearGradient id="endGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:0.8" />
-                <stop offset="100%" style="stop-color:#ff4757;stop-opacity:0.4" />
-              </linearGradient>
-              <linearGradient id="partyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-                <stop offset="50%" style="stop-color:#ffa502;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#ff6348;stop-opacity:1" />
-              </linearGradient>
-              <filter id="endShadow" x="-50%" y="-50%" width="300%" height="300%">
-                <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#FF6B6B" flood-opacity="0.6"/>
-                <feDropShadow dx="0" dy="2" stdDeviation="12" flood-color="#ff4757" flood-opacity="0.3"/>
+              <!-- Epic party neon filters -->
+              <filter id="partyGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#ff0040" flood-opacity="1"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#ff0040" flood-opacity="0.6"/>
               </filter>
-              <filter id="endInnerGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                <feMerge> 
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
+              <filter id="goldGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#ffff00" flood-opacity="0.9"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#ffff00" flood-opacity="0.5"/>
               </filter>
-              <filter id="sparkle" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
-                <feMerge> 
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
+              <filter id="purpleGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#8000ff" flood-opacity="0.8"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#8000ff" flood-opacity="0.4"/>
               </filter>
+              <filter id="greenGlow" x="-50%" y="-50%" width="300%" height="300%">
+                <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#00ff40" flood-opacity="0.9"/>
+              </filter>
+              <linearGradient id="discoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#ff0040;stop-opacity:1" />
+                <stop offset="25%" style="stop-color:#ffff00;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#00ff40;stop-opacity:1" />
+                <stop offset="75%" style="stop-color:#0080ff;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#8000ff;stop-opacity:1" />
+              </linearGradient>
             </defs>
             
-            <!-- Outer glow ring -->
-            <circle cx="30" cy="30" r="32" fill="url(#endGlow)" opacity="0.3" filter="url(#endShadow)"/>
+            <!-- Outer disco energy rings -->
+            <circle cx="45" cy="45" r="43" fill="none" stroke="#ff0040" stroke-width="1" opacity="0.4" filter="url(#partyGlow)"/>
+            <circle cx="45" cy="45" r="40" fill="none" stroke="#ffff00" stroke-width="1" opacity="0.3" filter="url(#goldGlow)"/>
+            <circle cx="45" cy="45" r="37" fill="none" stroke="#8000ff" stroke-width="1" opacity="0.3" filter="url(#purpleGlow)"/>
             
-            <!-- Main pin shape with party vibes -->
-            <path d="M30 75 C30 75 55 52 55 30 C55 16.193 43.807 5 30 5 C16.193 5 5 16.193 5 30 C5 52 30 75 30 75 Z" 
-                  fill="url(#endGradient)" 
-                  stroke="#ffffff" 
-                  stroke-width="3"
-                  filter="url(#endShadow)"/>
-            
-            <!-- Inner highlight -->
-            <path d="M30 70 C30 70 50 50 50 30 C50 18.954 41.046 10 30 10 C18.954 10 10 18.954 10 30 C10 50 30 70 30 70 Z" 
+            <!-- Neon cocktail glass -->
+            <path d="M25 25 L65 25 L55 55 L35 55 Z" 
                   fill="none" 
-                  stroke="rgba(255,255,255,0.4)" 
-                  stroke-width="1"/>
+                  stroke="#ff0040" 
+                  stroke-width="4" 
+                  filter="url(#partyGlow)"/>
             
-            <!-- Center icon circle -->
-            <circle cx="30" cy="30" r="18" fill="rgba(255,255,255,0.95)" filter="url(#endInnerGlow)"/>
-            <circle cx="30" cy="30" r="15" fill="#1a1a2e" opacity="0.8"/>
+            <!-- Cocktail liquid with gradient -->
+            <path d="M28 28 L62 28 L54 50 L36 50 Z" 
+                  fill="url(#discoGradient)" 
+                  opacity="0.7" 
+                  filter="url(#goldGlow)"/>
             
-            <!-- Party celebration icon - confetti and champagne -->
-            <path d="M26 38 L26 25 L28 25 L28 38 M24 28 L30 28" 
-                  stroke="#FFD700" 
-                  stroke-width="2" 
-                  stroke-linecap="round"/>
-            <path d="M28 25 Q30 22 32 25 L30 27 Z" 
-                  fill="url(#partyGradient)"/>
+            <!-- Stem -->
+            <line x1="45" y1="55" x2="45" y2="70" 
+                  stroke="#00ff40" 
+                  stroke-width="3" 
+                  filter="url(#greenGlow)"/>
             
-            <!-- Confetti particles -->
-            <circle cx="22" cy="24" r="1.5" fill="#FFD700" filter="url(#sparkle)"/>
-            <circle cx="38" cy="26" r="1" fill="#ff4757" filter="url(#sparkle)"/>
-            <circle cx="35" cy="35" r="1.5" fill="#3bb2d0" filter="url(#sparkle)"/>
-            <circle cx="24" cy="36" r="1" fill="#FFD700" filter="url(#sparkle)"/>
-            <rect x="36" y="22" width="2" height="2" fill="#ff4757" transform="rotate(45 37 23)" filter="url(#sparkle)"/>
-            <rect x="21" y="33" width="2" height="2" fill="#3bb2d0" transform="rotate(45 22 34)" filter="url(#sparkle)"/>
+            <!-- Base -->
+            <ellipse cx="45" cy="72" rx="12" ry="3" 
+                     fill="none" 
+                     stroke="#00ff40" 
+                     stroke-width="2" 
+                     filter="url(#greenGlow)"/>
+            
+            <!-- Disco ball sparkles -->
+            <circle cx="20" cy="20" r="2" fill="#ffff00" filter="url(#goldGlow)"/>
+            <circle cx="70" cy="25" r="1.5" fill="#ff0040" filter="url(#partyGlow)"/>
+            <circle cx="75" cy="45" r="2" fill="#8000ff" filter="url(#purpleGlow)"/>
+            <circle cx="15" cy="50" r="1" fill="#00ff40" filter="url(#greenGlow)"/>
+            <circle cx="75" cy="65" r="1.5" fill="#ffff00" filter="url(#goldGlow)"/>
+            <circle cx="15" cy="70" r="1" fill="#ff0040" filter="url(#partyGlow)"/>
+            
+            <!-- Dancing stars -->
+            <path d="M60 15 L62 20 L67 20 L63 23 L65 28 L60 25 L55 28 L57 23 L53 20 L58 20 Z" 
+                  fill="#ffff00" 
+                  filter="url(#goldGlow)"/>
+            <path d="M30 10 L31 13 L34 13 L32 15 L33 18 L30 16 L27 18 L28 15 L26 13 L29 13 Z" 
+                  fill="#ff0040" 
+                  filter="url(#partyGlow)"/>
+            
+            <!-- PARTY text with neon effect -->
+            <text x="45" y="95" text-anchor="middle" 
+                  font-family="Arial, sans-serif" 
+                  font-size="14" 
+                  font-weight="bold" 
+                  fill="#ff0040" 
+                  stroke="#ff0040" 
+                  stroke-width="0.5"
+                  filter="url(#partyGlow)">PARTY</text>
           </svg>
         `;
 
         const endCanvas = document.createElement("canvas");
-        endCanvas.width = 60;
-        endCanvas.height = 80;
+        endCanvas.width = 90;
+        endCanvas.height = 110;
         const endCtx = endCanvas.getContext("2d");
 
         const endImg = new Image();
         endImg.onload = () => {
           if (endCtx) {
-            endCtx.drawImage(endImg, 0, 0, 60, 80);
-            const endImageData = endCtx.getImageData(0, 0, 60, 80);
+            endCtx.drawImage(endImg, 0, 0, 90, 110);
+            const endImageData = endCtx.getImageData(0, 0, 90, 110);
             if (map.current && !map.current.hasImage("end-marker")) {
               map.current.addImage("end-marker", {
-                width: 60,
-                height: 80,
+                width: 90,
+                height: 110,
                 data: new Uint8Array(endImageData.data),
               });
             }
@@ -934,20 +1308,20 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             const stopsData = [
               {
                 p: Math.max(0, flowPosition - 0.2),
-                c: "rgba(255, 107, 107, 0)",
+                c: "rgba(255, 0, 255, 0)",
               },
               {
                 p: Math.max(0, flowPosition - 0.1),
-                c: "rgba(255, 107, 107, 0.5)",
+                c: "rgba(0, 255, 255, 0.7)",
               },
-              { p: flowPosition, c: "rgba(255, 107, 107, 1)" },
+              { p: flowPosition, c: "rgba(255, 255, 255, 1)" },
               {
                 p: Math.min(1, flowPosition + 0.1),
-                c: "rgba(255, 107, 107, 0.5)",
+                c: "rgba(255, 0, 255, 0.7)",
               },
               {
                 p: Math.min(1, flowPosition + 0.2),
-                c: "rgba(255, 107, 107, 0)",
+                c: "rgba(255, 0, 255, 0)",
               },
             ];
 
@@ -1009,8 +1383,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               };
             }> = [];
 
-            for (let i = 0; i < 6; i++) {
-              const particleProgress = (routeProgress.current + i * 0.15) % 1;
+            // Create more electric energy particles
+            for (let i = 0; i < 12; i++) {
+              const particleProgress = (routeProgress.current + i * 0.08) % 1;
               const segmentIndex = Math.floor(
                 particleProgress * (coordinates.length - 1)
               );
@@ -1071,6 +1446,29 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               });
             }
 
+            // Update sparks layer with offset particles for more electric effect
+            if (map.current.getLayer("route-sparks")) {
+              const offsetParticles = particles.map(particle => ({
+                ...particle,
+                geometry: {
+                  ...particle.geometry,
+                  coordinates: [
+                    particle.geometry.coordinates[0] + (Math.random() - 0.5) * 0.0001,
+                    particle.geometry.coordinates[1] + (Math.random() - 0.5) * 0.0001
+                  ]
+                }
+              }));
+              
+              (
+                map.current.getSource(
+                  "route-particles"
+                ) as mapboxgl.GeoJSONSource
+              ).setData({
+                type: "FeatureCollection",
+                features: [...particles, ...offsetParticles],
+              });
+            }
+
             if (map.current.getSource("route-arrows")) {
               (
                 map.current.getSource("route-arrows") as mapboxgl.GeoJSONSource
@@ -1094,11 +1492,15 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       }
 
       const layersToRemove = [
+        "route-electric-glow",
         "route-flow",
+        "route-electric-core",
         "route-background",
         "route-particles",
+        "route-sparks",
         "route-arrows",
         "route-bars-highlight",
+        "route-bars-rings",
         "route-start-end",
       ];
       const sourcesToRemove = [
@@ -1111,14 +1513,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       ];
 
       layersToRemove.forEach((layerId) => {
-        if (map.current!.getLayer(layerId)) {
-          map.current!.removeLayer(layerId);
+        if (map.current && map.current.getLayer(layerId)) {
+          map.current.removeLayer(layerId);
         }
       });
 
       sourcesToRemove.forEach((sourceId) => {
-        if (map.current!.getSource(sourceId)) {
-          map.current!.removeSource(sourceId);
+        if (map.current && map.current.getSource(sourceId)) {
+          map.current.removeSource(sourceId);
         }
       });
     }

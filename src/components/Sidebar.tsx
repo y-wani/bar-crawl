@@ -8,6 +8,7 @@ import { SearchBar } from './SearchBar';
 import { FilterGroup } from './FilterGroup';
 import { BarList } from './BarList';
 import type { Bar } from './BarListItem';
+import { FiNavigation } from 'react-icons/fi';
 import '../styles/Home.css';
 
 // Utility function to calculate distance between two coordinates in miles
@@ -125,6 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }
         }}
       >
+        <FiNavigation size={18} />
         Generate My Route ({selectedBarIds.size})
       </button>
     </div>

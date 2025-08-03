@@ -9,12 +9,15 @@ import {
   FaBars,
   FaTimes,
   FaGripVertical,
-  FaMapMarkerAlt,
-  FaRoute,
   FaArrowLeft,
-  FaLocationArrow,
-  FaMagic,
 } from "react-icons/fa";
+import { 
+  FiNavigation, 
+  FiZap, 
+  FiCompass,
+  FiPlay,
+  FiFlag
+} from "react-icons/fi";
 import "../styles/Route.css";
 
 interface RoutePageState {
@@ -135,6 +138,7 @@ const Route: React.FC = () => {
 
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [routeData, setRouteData] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
+  const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   
   const isInitialLoad = useRef(true);
 
@@ -345,9 +349,9 @@ const Route: React.FC = () => {
             radius={routeState.searchRadius}
             bars={memoizedBars}
             selectedBarIds={selectedBarIds}
-            hoveredBarId={null}
+            hoveredBarId={hoveredBarId}
             onToggleBar={() => {}}
-            onHoverBar={() => {}}
+            onHoverBar={setHoveredBarId}
             onMapViewChange={() => {}}
             onDrawComplete={() => {}}
             route={memoizedRouteData}
@@ -370,7 +374,7 @@ const Route: React.FC = () => {
                 {isLoading.optimizing ? (
                   <><div className="spinner"></div> Optimizing...</>
                 ) : (
-                  <><FaMagic /> Optimize Route</>
+                  <><FiZap size={16} /> Optimize Route</>
                 )}
               </button>
               <button
@@ -381,13 +385,13 @@ const Route: React.FC = () => {
                 {isLoading.location ? (
                   <><div className="spinner"></div> Finding...</>
                 ) : (
-                  <><FaLocationArrow /> Use My Location</>
+                  <><FiNavigation size={16} /> Use My Location</>
                 )}
               </button>
             </div>
             <div className="location-section">
               <div className="location-label">
-                <FaMapMarkerAlt className="location-icon start" />
+                <FiPlay size={18} className="location-icon start" />
                 <span>Start Location</span>
               </div>
               <input
@@ -439,7 +443,7 @@ const Route: React.FC = () => {
           <div className="drawer-footer">
             <div className="location-section">
               <div className="location-label">
-                <FaMapMarkerAlt className="location-icon end" />
+                <FiFlag size={18} className="location-icon end" />
                 <span>End Location</span>
               </div>
               <input
@@ -460,7 +464,7 @@ const Route: React.FC = () => {
                 {isLoading.generating ? (
                   <><div className="spinner"></div> Generating...</>
                 ) : (
-                  <><FaRoute /> Generate Final Route</>
+                  <><FiCompass size={18} /> Generate Final Route</>
                 )}
               </button>
             </div>
