@@ -21,6 +21,7 @@
     "@tsparticles/react": "^3.0.0",
     "@turf/turf": "^7.2.0",
     "@types/lodash": "^4.17.20",
+    "@vercel/analytics": "^1.5.0",
     "dotenv": "^17.2.1",
     "firebase": "^12.0.0",
     "framer-motion": "^12.23.12",
