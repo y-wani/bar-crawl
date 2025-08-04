@@ -11,16 +11,14 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import type { Feature, Geometry, GeoJsonProperties } from "geojson";
 
 // Import custom hooks and utilities
-import { usePulsingIndicators } from "../hooks/usePulsingIndicators";
 import { useRouteAnimations } from "../hooks/useRouteAnimations";
 import {
-  createPulsingIndicatorLayer,
-  createNeonDotMarker,
   createBarLayers,
   createHighlightLayers,
   BARS_SOURCE_ID,
-  BARS_LAYER_ID
-} from "../utils/mapLayers"; 
+  BARS_LAYER_ID,
+  createBarMarker,
+} from "../utils/mapLayers";
 
 // Constants
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -74,9 +72,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     selectedBarIds: Array.from(selectedBarIds),
     hoveredBarId,
     hasRoute: !!route,
-    startCoordinates
+    startCoordinates,
   });
-  
+
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
@@ -85,12 +83,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const isMapReady = useRef(false);
 
   // Custom hooks for animations
-  usePulsingIndicators({ 
-    map: map.current, 
-    bars, 
-    isMapReady: isMapReady.current 
-  });
-  
   useRouteAnimations({
     map: map.current,
     route: route || null,
@@ -98,7 +90,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     selectedBarIds,
     startCoordinates,
     endCoordinates,
-    center
+    center,
   });
 
   // 1. Initialize map and add all sources/layers on load
@@ -179,28 +171,32 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       // Create highlight layers
       createHighlightLayers(m, BARS_LAYER_ID);
 
-      // Create pulsing indicator layer  
-      createPulsingIndicatorLayer(m, center);
+      // Create and load bar marker, then create bars layer
+      createBarMarker(m)
+        .then(() => {
+          console.log("🏗️ Creating bars layer with neon-pin-marker");
+          createBarLayers(m);
+          console.log("✅ Bars layer created successfully");
 
-      // Create and load neon dot marker, then create bars layer
-      createNeonDotMarker(m).then(() => {
-        console.log("🏗️ Creating bars layer with neon-dot marker");
-        createBarLayers(m);
-        console.log("✅ Bars layer created successfully");
-        
-        // Update isMapReady flag
-        isMapReady.current = true;
-      }).catch((error) => {
-        console.error("❌ Failed to create neon dot marker:", error);
-        // Fallback: still create bars layer without custom icon
-        createBarLayers(m);
-        isMapReady.current = true;
-      });
+          // Update isMapReady flag
+          isMapReady.current = true;
+        })
+        .catch((error) => {
+          console.error("❌ Failed to create bar marker:", error);
+          // Fallback: still create bars layer without custom icon
+          createBarLayers(m);
+          isMapReady.current = true;
+        });
 
       // Initialize with current data if available
       if (bars.length > 0) {
         console.log(`🎯 Initializing map with ${bars.length} bars on map load`);
-        console.log("📍 First bar location:", bars[0]?.location, "Name:", bars[0]?.name);
+        console.log(
+          "📍 First bar location:",
+          bars[0]?.location,
+          "Name:",
+          bars[0]?.name
+        );
         const features = bars.map((bar) => ({
           type: "Feature" as const,
           geometry: bar.location,
@@ -249,11 +245,16 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           onToggleBar(String(feat.properties.id));
         }
       });
-      
+
       m.on("mousemove", BARS_LAYER_ID, (e) => {
         const feat = e.features?.[0];
         if (feat) {
-          console.log("🎯 Hovering over bar:", feat.properties?.name, "ID:", feat.id);
+          console.log(
+            "🎯 Hovering over bar:",
+            feat.properties?.name,
+            "ID:",
+            feat.id
+          );
           m.getCanvas().style.cursor = "pointer";
           if (feat.id) {
             onHoverBar(String(feat.id));
@@ -272,26 +273,49 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               <div class="neon-popup-container">
                 <div class="neon-popup-header">
                   <div class="neon-bar-icon">🍸</div>
-                  <h3 class="neon-bar-name">${feat.properties!.name || 'Unknown Bar'}</h3>
+                  <h3 class="neon-bar-name">${
+                    feat.properties!.name || "Unknown Bar"
+                  }</h3>
                 </div>
                 <div class="neon-popup-content">
                   <div class="neon-stat">
                     <span class="neon-stat-icon">⭐</span>
                     <span class="neon-stat-label">Rating:</span>
-                    <span class="neon-stat-value">${feat.properties!.rating ? feat.properties!.rating.toFixed(1) : '4.0'}/5</span>
+                    <span class="neon-stat-value">${
+                      feat.properties!.rating
+                        ? feat.properties!.rating.toFixed(1)
+                        : "4.0"
+                    }/5</span>
                   </div>
                   <div class="neon-stat">
                     <span class="neon-stat-icon">📍</span>
                     <span class="neon-stat-label">Distance:</span>
-                    <span class="neon-stat-value">${feat.properties!.distance !== undefined && feat.properties!.distance !== null ? feat.properties!.distance.toFixed(2) : 'Calculating...'} mi</span>
+                    <span class="neon-stat-value">${
+                      feat.properties!.distance !== undefined &&
+                      feat.properties!.distance !== null
+                        ? feat.properties!.distance.toFixed(2)
+                        : "Calculating..."
+                    } mi</span>
                   </div>
                   <div class="neon-stat">
                     <span class="neon-stat-icon">🎉</span>
                     <span class="neon-stat-label">Vibe:</span>
-                    <span class="neon-stat-value">${(feat.properties!.rating || 4.0) >= 4.5 ? 'LEGENDARY' : (feat.properties!.rating || 4.0) >= 4.0 ? 'EPIC' : (feat.properties!.rating || 4.0) >= 3.5 ? 'GREAT' : 'DECENT'}</span>
+                    <span class="neon-stat-value">${
+                      (feat.properties!.rating || 4.0) >= 4.5
+                        ? "LEGENDARY"
+                        : (feat.properties!.rating || 4.0) >= 4.0
+                        ? "EPIC"
+                        : (feat.properties!.rating || 4.0) >= 3.5
+                        ? "GREAT"
+                        : "DECENT"
+                    }</span>
                   </div>
                   <div class="neon-action-hint">
-                    <span class="neon-click-hint">💫 Click to ${selectedBarIds.has(feat.properties!.id) ? 'remove from' : 'add to'} route</span>
+                    <span class="neon-click-hint">💫 Click to ${
+                      selectedBarIds.has(feat.properties!.id)
+                        ? "remove from"
+                        : "add to"
+                    } route</span>
                   </div>
                 </div>
                 <div class="neon-popup-glow"></div>
@@ -301,7 +325,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             .addTo(m);
         }
       });
-      
+
       m.on("mouseleave", BARS_LAYER_ID, () => {
         m.getCanvas().style.cursor = "";
         onHoverBar(null);
@@ -328,7 +352,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
     const updateCircle = () => {
       if (!map.current?.isStyleLoaded()) return;
-      const src = map.current.getSource(RADIUS_SOURCE_ID) as mapboxgl.GeoJSONSource;
+      const src = map.current.getSource(
+        RADIUS_SOURCE_ID
+      ) as mapboxgl.GeoJSONSource;
       if (!src) return;
 
       const circleGeojson = turfCircle(center, radius, { units: "miles" });
@@ -345,7 +371,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   // 4. Update bar markers when bars changes
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) {
-      if(map.current) {
+      if (map.current) {
         map.current.once("styledata", () => {
           // Re-run this effect once the style is loaded
         });
@@ -353,14 +379,21 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       return;
     }
 
-    console.log(`🗺️ Updating map with ${bars.length} bars:`, bars.map(bar => ({ name: bar.name, id: bar.id, distance: bar.distance })));
+    console.log(
+      `🗺️ Updating map with ${bars.length} bars:`,
+      bars.map((bar) => ({
+        name: bar.name,
+        id: bar.id,
+        distance: bar.distance,
+      }))
+    );
 
     const src = map.current.getSource(BARS_SOURCE_ID) as mapboxgl.GeoJSONSource;
     if (!src) {
       console.warn("❌ Bars source not found, cannot update");
       return;
     }
-    
+
     const features = bars.map((bar) => ({
       type: "Feature" as const,
       geometry: bar.location,
@@ -371,11 +404,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         distance: bar.distance,
       },
     }));
-    
+
     console.log(`✅ Setting ${features.length} bar features on map`);
     console.log("📊 Bars data:", features.slice(0, 2));
     src.setData({ type: "FeatureCollection", features });
-
   }, [bars]);
 
   // 5. Sync hover/selected feature states and update highlight sources
@@ -383,18 +415,22 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     if (!map.current || !map.current.isStyleLoaded()) return;
 
     // Update hover highlight
-    const hoverSource = map.current.getSource("hover-highlight") as mapboxgl.GeoJSONSource;
+    const hoverSource = map.current.getSource(
+      "hover-highlight"
+    ) as mapboxgl.GeoJSONSource;
     if (hoverSource) {
       if (hoveredBarId) {
-        const hoveredBar = bars.find(bar => bar.id === hoveredBarId);
+        const hoveredBar = bars.find((bar) => bar.id === hoveredBarId);
         if (hoveredBar) {
           hoverSource.setData({
             type: "FeatureCollection",
-            features: [{
-              type: "Feature",
-              geometry: hoveredBar.location,
-              properties: { id: hoveredBar.id }
-            }]
+            features: [
+              {
+                type: "Feature",
+                geometry: hoveredBar.location,
+                properties: { id: hoveredBar.id },
+              },
+            ],
           });
         }
       } else {
@@ -403,30 +439,36 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
 
     // Update selected highlights
-    const selectedSource = map.current.getSource("selected-highlight") as mapboxgl.GeoJSONSource;
+    const selectedSource = map.current.getSource(
+      "selected-highlight"
+    ) as mapboxgl.GeoJSONSource;
     if (selectedSource) {
-      const selectedBars = bars.filter(bar => selectedBarIds.has(bar.id));
+      const selectedBars = bars.filter((bar) => selectedBarIds.has(bar.id));
       selectedSource.setData({
         type: "FeatureCollection",
-        features: selectedBars.map(bar => ({
+        features: selectedBars.map((bar) => ({
           type: "Feature" as const,
           geometry: bar.location,
-          properties: { id: bar.id }
-        }))
+          properties: { id: bar.id },
+        })),
       });
     }
 
     // Update non-selected highlights
-    const nonSelectedSource = map.current.getSource("nonselected-highlight") as mapboxgl.GeoJSONSource;
+    const nonSelectedSource = map.current.getSource(
+      "nonselected-highlight"
+    ) as mapboxgl.GeoJSONSource;
     if (nonSelectedSource) {
-      const nonSelectedBars = bars.filter(bar => !selectedBarIds.has(bar.id) && bar.id !== hoveredBarId);
+      const nonSelectedBars = bars.filter(
+        (bar) => !selectedBarIds.has(bar.id) && bar.id !== hoveredBarId
+      );
       nonSelectedSource.setData({
         type: "FeatureCollection",
-        features: nonSelectedBars.map(bar => ({
+        features: nonSelectedBars.map((bar) => ({
           type: "Feature" as const,
           geometry: bar.location,
-          properties: { id: bar.id }
-        }))
+          properties: { id: bar.id },
+        })),
       });
     }
 
@@ -434,7 +476,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     if (hoveredStateId.current) {
       map.current.removeFeatureState({
         source: BARS_SOURCE_ID,
-        id: hoveredStateId.current
+        id: hoveredStateId.current,
       });
     }
 
@@ -454,7 +496,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         );
       }
     });
-
   }, [hoveredBarId, selectedBarIds, bars]);
 
   return <div ref={mapContainer} className="map-container" />;
