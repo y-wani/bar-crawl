@@ -9,6 +9,7 @@ import "../styles/Home.css";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import type { Feature, Geometry, GeoJsonProperties } from "geojson";
+import MapLoadingIndicator from "./MapLoadingIndicator";
 
 // Import custom hooks and utilities
 import { useRouteAnimations } from "../hooks/useRouteAnimations";
@@ -48,6 +49,7 @@ interface MapContainerProps {
   route?: GeoJSON.Feature<GeoJSON.LineString> | null;
   startCoordinates?: [number, number] | null;
   endCoordinates?: [number, number] | null;
+  isLoadingBars?: boolean;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = ({
@@ -63,6 +65,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   route,
   startCoordinates,
   endCoordinates,
+  isLoadingBars = false,
 }) => {
   // Debug props on component load
   console.log("🗺️ MapContainer received props:", {
@@ -81,6 +84,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const hoveredStateId = useRef<string | null>(null);
   const isInitialLoad = useRef(true);
   const isMapReady = useRef(false);
+  const popupTimeout = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Custom hooks for animations
   useRouteAnimations({
@@ -249,92 +254,140 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       m.on("mousemove", BARS_LAYER_ID, (e) => {
         const feat = e.features?.[0];
         if (feat) {
-          console.log(
-            "🎯 Hovering over bar:",
-            feat.properties?.name,
-            "ID:",
-            feat.id
-          );
+          // Set cursor immediately for responsiveness
           m.getCanvas().style.cursor = "pointer";
-          if (feat.id) {
-            onHoverBar(String(feat.id));
+          
+          // Only debounce the hover state change, not the popup creation
+          if (hoverTimeout.current) {
+            clearTimeout(hoverTimeout.current);
+          }
+          
+          hoverTimeout.current = setTimeout(() => {
+            if (feat.id) {
+              onHoverBar(String(feat.id));
+            }
+          }, 30); // Minimal debounce for state
+
+          // Remove existing popup immediately for smoother transitions
+          if (popupRef.current) {
+            popupRef.current.remove();
+            popupRef.current = null;
           }
 
-          popupRef.current?.remove();
+          // Create new popup immediately with stable positioning
+          const rating = feat.properties!.rating || 4.0;
+          const vibeData = {
+            vibe:
+              rating >= 4.5
+                ? "LEGENDARY"
+                : rating >= 4.0
+                ? "EPIC"
+                : rating >= 3.5
+                ? "GREAT"
+                : "DECENT",
+            vibeIcon:
+              rating >= 4.5
+                ? "🌟"
+                : rating >= 4.0
+                ? "🎉"
+                : rating >= 3.5
+                ? "✨"
+                : "👍",
+            vibeColor:
+              rating >= 4.5
+                ? "#ffff00"
+                : rating >= 4.0
+                ? "#ff00ff"
+                : rating >= 3.5
+                ? "#00ffff"
+                : "#ffffff",
+          };
+
+          // Create popup immediately for instant response
           popupRef.current = new mapboxgl.Popup({
             closeButton: false,
-            offset: 40,
+            offset: [0, -50], // Reduced offset for better positioning
             className: "neon-bar-popup",
-            maxWidth: "280px",
+            maxWidth: "280px", // Slightly smaller
+            anchor: "bottom", // Stable anchor point
+            focusAfterOpen: false, // Prevent focus stealing
           })
             .setLngLat((feat.geometry as MapboxPointGeometry).coordinates)
             .setHTML(
               `
-              <div class="neon-popup-container">
-                <div class="neon-popup-header">
-                  <div class="neon-bar-icon">🍸</div>
-                  <h3 class="neon-bar-name">${
-                    feat.properties!.name || "Unknown Bar"
-                  }</h3>
-                </div>
-                <div class="neon-popup-content">
-                  <div class="neon-stat">
-                    <span class="neon-stat-icon">⭐</span>
-                    <span class="neon-stat-label">Rating:</span>
-                    <span class="neon-stat-value">${
-                      feat.properties!.rating
-                        ? feat.properties!.rating.toFixed(1)
-                        : "4.0"
-                    }/5</span>
-                  </div>
-                  <div class="neon-stat">
-                    <span class="neon-stat-icon">📍</span>
-                    <span class="neon-stat-label">Distance:</span>
-                    <span class="neon-stat-value">${
-                      feat.properties!.distance !== undefined &&
-                      feat.properties!.distance !== null
-                        ? feat.properties!.distance.toFixed(2)
-                        : "Calculating..."
-                    } mi</span>
-                  </div>
-                  <div class="neon-stat">
-                    <span class="neon-stat-icon">🎉</span>
-                    <span class="neon-stat-label">Vibe:</span>
-                    <span class="neon-stat-value">${
-                      (feat.properties!.rating || 4.0) >= 4.5
-                        ? "LEGENDARY"
-                        : (feat.properties!.rating || 4.0) >= 4.0
-                        ? "EPIC"
-                        : (feat.properties!.rating || 4.0) >= 3.5
-                        ? "GREAT"
-                        : "DECENT"
-                    }</span>
-                  </div>
-                  <div class="neon-action-hint">
-                    <span class="neon-click-hint">💫 Click to ${
-                      selectedBarIds.has(feat.properties!.id)
-                        ? "remove from"
-                        : "add to"
-                    } route</span>
-                  </div>
-                </div>
-                <div class="neon-popup-glow"></div>
+            <div class="neon-popup-container">
+              <div class="neon-popup-header">
+                <div class="neon-bar-icon">🍸</div>
+                <h3 class="neon-bar-name">${
+                  feat.properties!.name || "Unknown Bar"
+                }</h3>
               </div>
-              `
+              <div class="neon-popup-content">
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">⭐</span>
+                  <span class="neon-stat-label">Rating:</span>
+                  <span class="neon-stat-value">${rating.toFixed(
+                    1
+                  )}/5</span>
+                </div>
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">📍</span>
+                  <span class="neon-stat-label">Distance:</span>
+                  <span class="neon-stat-value">${
+                    feat.properties!.distance !== undefined &&
+                    feat.properties!.distance !== null
+                      ? feat.properties!.distance.toFixed(2)
+                      : "Calculating..."
+                  } mi</span>
+                </div>
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">${vibeData.vibeIcon}</span>
+                  <span class="neon-stat-label">Vibe:</span>
+                  <span class="neon-stat-value" style="color: ${
+                    vibeData.vibeColor
+                  }">${vibeData.vibe}</span>
+                </div>
+                <div class="neon-action-hint">
+                  <span class="neon-click-hint">💫 Click to ${
+                    selectedBarIds.has(feat.properties!.id)
+                      ? "remove from"
+                      : "add to"
+                  } route</span>
+                </div>
+              </div>
+              <div class="neon-popup-glow"></div>
+            </div>
+            `
             )
             .addTo(m);
         }
       });
 
       m.on("mouseleave", BARS_LAYER_ID, () => {
+        // Clear timeouts to prevent stale hover effects
+        if (hoverTimeout.current) {
+          clearTimeout(hoverTimeout.current);
+        }
+
         m.getCanvas().style.cursor = "";
         onHoverBar(null);
-        popupRef.current?.remove();
-        popupRef.current = null;
+        
+        // Remove popup immediately for better responsiveness
+        if (popupRef.current) {
+          popupRef.current.remove();
+          popupRef.current = null;
+        }
       });
     });
 
     return () => {
+      // Cleanup timeouts
+      if (hoverTimeout.current) {
+        clearTimeout(hoverTimeout.current);
+      }
+      if (popupTimeout.current) {
+        clearTimeout(popupTimeout.current);
+      }
       map.current?.remove();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -414,7 +467,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
 
-    // Update hover highlight
+    // Update enhanced hover highlight layers
     const hoverSource = map.current.getSource(
       "hover-highlight"
     ) as mapboxgl.GeoJSONSource;
@@ -422,16 +475,17 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       if (hoveredBarId) {
         const hoveredBar = bars.find((bar) => bar.id === hoveredBarId);
         if (hoveredBar) {
-          hoverSource.setData({
-            type: "FeatureCollection",
+          const hoverFeature = {
+            type: "FeatureCollection" as const,
             features: [
               {
-                type: "Feature",
+                type: "Feature" as const,
                 geometry: hoveredBar.location,
                 properties: { id: hoveredBar.id },
               },
             ],
-          });
+          };
+          hoverSource.setData(hoverFeature);
         }
       } else {
         hoverSource.setData({ type: "FeatureCollection", features: [] });
@@ -454,7 +508,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       });
     }
 
-    // Update non-selected highlights
+    // Update non-selected ambient highlights
     const nonSelectedSource = map.current.getSource(
       "nonselected-highlight"
     ) as mapboxgl.GeoJSONSource;
@@ -498,5 +552,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     });
   }, [hoveredBarId, selectedBarIds, bars]);
 
-  return <div ref={mapContainer} className="map-container" />;
+  return (
+    <div className="map-container" style={{ position: "relative" }}>
+      <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
+      {(isLoadingBars || (bars.length === 0 && !isMapReady.current)) && (
+        <MapLoadingIndicator 
+          message={
+            isLoadingBars 
+              ? "Finding the perfect bars..." 
+              : "Initializing the crawl map..."
+          }
+        />
+      )}
+    </div>
+  );
 };

@@ -1,0 +1,159 @@
+/* src/styles/map-pins.css */
+/* Enhanced Pin Interaction Styles */
+
+/* Map pin size transitions for smoother interactions */
+.mapboxgl-map .mapboxgl-marker {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Enhanced hover effects for map containers */
+.map-container {
+  position: relative;
+}
+
+.map-container .mapboxgl-canvas {
+  transition: all 0.2s ease;
+}
+
+/* Pin hover state improvements */
+.mapboxgl-marker:hover {
+  z-index: 1000;
+  transform: scale(1.1);
+}
+
+/* Custom cursor for interactive elements */
+.neon-pin-cursor {
+  cursor: url('data:image/svg+xml,<svg width="24" height="24" viewBox="0 0 24 24" fill="%23ff00ff" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="%23ff00ff" opacity="0.8"/><circle cx="12" cy="12" r="2" fill="%23ffffff"/></svg>') 12 12, pointer;
+}
+
+/* Enhanced pulsing indicators for selected pins */
+.pin-selected-indicator {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 0, 0.3) 0%, transparent 70%);
+  animation: selectedPinPulse 2s ease-in-out infinite;
+}
+
+@keyframes selectedPinPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.9;
+  }
+}
+
+/* Hover glow effects */
+.pin-hover-glow {
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  right: -15px;
+  bottom: -15px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 255, 255, 0.4) 0%, transparent 70%);
+  animation: hoverGlow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes hoverGlow {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+}
+
+/* Enhanced selection states */
+.pin-selection-ring {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border: 2px solid #ffff00;
+  border-radius: 50%;
+  animation: selectionRing 3s linear infinite;
+}
+
+@keyframes selectionRing {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.05);
+    opacity: 0.6;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.8;
+  }
+}
+
+/* Floating animation for pins */
+.pin-floating {
+  animation: pinFloat 4s ease-in-out infinite;
+}
+
+@keyframes pinFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Enhanced click feedback */
+.pin-click-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+  transform: translate(-50%, -50%) scale(0);
+  animation: clickRipple 0.6s ease-out;
+}
+
+@keyframes clickRipple {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+  }
+}
+
+/* Particle trail effects for active pins */
+.pin-particle-trail {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #00ffff;
+  border-radius: 50%;
+  animation: particleTrail 2s ease-out infinite;
+}
+
+@keyframes particleTrail {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--particle-x, 0), var(--particle-y, 0)) scale(0);
+    opacity: 0;
+  }
+}
