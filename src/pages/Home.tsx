@@ -67,7 +67,7 @@ const Home: React.FC = () => {
     }).length;
   }, [bars, mapCenter, searchRadius]);
 
-  // --- NEW: Function to fetch bars within specific map bounds ---
+  // Function to fetch bars within specific map bounds
   const fetchBarsInArea = useCallback(async (bounds: MapBounds | [number, number]) => {
     console.log("Fetching bars for bounds:", bounds);
     setIsLoading(true);
@@ -78,13 +78,10 @@ const Home: React.FC = () => {
     // Determine center coordinates for distance calculation
     let centerCoords: [number, number];
     if (Array.isArray(bounds) && bounds.length === 4) {
-      // For bounds, use the center of the bounding box
       centerCoords = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
     } else if (Array.isArray(bounds) && bounds.length === 2) {
-      // For point search, use the provided coordinates
       centerCoords = bounds;
     } else {
-      // Fallback to map center
       centerCoords = mapCenter;
     }
 
@@ -93,7 +90,6 @@ const Home: React.FC = () => {
       limit: "25",
     });
 
-    // Use bbox for bounds search, proximity for point search
     if (Array.isArray(bounds) && bounds.length === 4) {
       searchParams.set("bbox", bounds.join(","));
     } else if (Array.isArray(bounds) && bounds.length === 2) {
@@ -109,21 +105,20 @@ const Home: React.FC = () => {
         const barsData = await barsResponse.json();
 
         if (barsData.features) {
-          const newBars: AppBat[] = barsData.features.map(
-            (feature: MapboxFeature) => {
-              const [barLng, barLat] = feature.geometry.coordinates;
-              const [centerLng, centerLat] = centerCoords;
-              const distance = calculateDistance(centerLat, centerLng, barLat, barLng);
-              
-              return {
-                id: feature.properties.mapbox_id,
-                name: feature.properties.name || "Unknown Bar",
-                rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
-                distance: distance,
-                location: feature.geometry,
-              };
-            }
-          );
+          const newBars: AppBat[] = barsData.features.map((feature: MapboxFeature) => {
+            const [barLng, barLat] = feature.geometry.coordinates;
+            const [centerLng, centerLat] = centerCoords;
+            const distance = calculateDistance(centerLat, centerLng, barLat, barLng);
+            
+            return {
+              id: feature.properties.mapbox_id,
+              name: feature.properties.name || "Unknown Bar",
+              rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
+              distance: distance,
+              location: feature.geometry,
+            };
+          });
+          
           newBars.forEach((bar) => {
             if (!fetchedBarIds.has(bar.id)) {
               allBars.push(bar);

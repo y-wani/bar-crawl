@@ -5,15 +5,18 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    minify: 'terser',
+    minify: 'esbuild',
     sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
+          mapbox: ['mapbox-gl'],
+          three: ['three', '@react-three/fiber', '@react-three/drei'],
         },
       },
     },
+    chunkSizeWarningLimit: 1000,
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),

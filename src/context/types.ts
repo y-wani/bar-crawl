@@ -1,12 +1,9 @@
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // Extended user interface with additional properties
-export interface User extends FirebaseUser {
+export interface User extends Omit<FirebaseUser, 'displayName'> {
   // Add any additional user properties here
-  displayName?: string | null;
-  email?: string | null;
-  photoURL?: string | null;
-  uid: string;
+  displayName: string | null;
 }
 
 // Authentication context interface

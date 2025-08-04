@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { MapContainer } from "../components/MapContainer";
+import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
 import type { AppBat } from "./Home";
 import {
@@ -16,9 +16,25 @@ import {
   FiZap, 
   FiCompass,
   FiPlay,
-  FiFlag
+  FiFlag,
+  FiSave
 } from "react-icons/fi";
 import "../styles/Route.css";
+import { SaveCrawlModal } from "../components/SaveCrawlModal";
+
+// Mapbox API constants and types
+const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+interface MapboxFeature {
+  properties: {
+    mapbox_id: string;
+    name: string;
+  };
+  geometry: {
+    type: "Point";
+    coordinates: [number, number];
+  };
+}
 
 interface RoutePageState {
   selectedBars: AppBat[];
@@ -29,8 +45,6 @@ interface RoutePageState {
 interface DraggableBarItem extends AppBat {
   order: number;
 }
-
-const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 // Helper function to calculate distance between two coordinates
 const calculateDistance = (coord1: [number, number], coord2: [number, number]): number => {
@@ -107,6 +121,73 @@ const geocodeAddress = async (address: string): Promise<[number, number] | null>
   }
 };
 
+// Function to fetch bars within specific map bounds
+const fetchBarsInArea = async (bounds: MapBounds | [number, number]): Promise<AppBat[]> => {
+  console.log("Fetching bars for bounds:", bounds);
+  const categories = ["bar", "pub", "nightclub"];
+  const allBars: AppBat[] = [];
+  const fetchedBarIds = new Set<string>();
+
+  // Determine center coordinates for distance calculation
+  let centerCoords: [number, number];
+  if (Array.isArray(bounds) && bounds.length === 4) {
+    centerCoords = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
+  } else if (Array.isArray(bounds) && bounds.length === 2) {
+    centerCoords = bounds;
+  } else {
+    centerCoords = [-83.0007, 39.9612]; // Default Columbus coordinates
+  }
+
+  const searchParams = new URLSearchParams({
+    access_token: MAPBOX_ACCESS_TOKEN,
+    limit: "25",
+  });
+
+  if (Array.isArray(bounds) && bounds.length === 4) {
+    searchParams.set("bbox", bounds.join(","));
+  } else if (Array.isArray(bounds) && bounds.length === 2) {
+    searchParams.set("proximity", bounds.join(","));
+  }
+
+  for (const category of categories) {
+    const barsUrl = `https://api.mapbox.com/search/searchbox/v1/category/${category}?${searchParams.toString()}`;
+
+    try {
+      const barsResponse = await fetch(barsUrl);
+      if (!barsResponse.ok) continue;
+      const barsData = await barsResponse.json();
+
+      if (barsData.features) {
+        const newBars: AppBat[] = barsData.features.map((feature: MapboxFeature) => {
+          const [barLng, barLat] = feature.geometry.coordinates;
+          const [centerLng, centerLat] = centerCoords;
+          const distance = calculateDistance([centerLng, centerLat], [barLng, barLat]);
+          
+          return {
+            id: feature.properties.mapbox_id,
+            name: feature.properties.name || "Unknown Bar",
+            rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
+            distance: distance,
+            location: feature.geometry,
+          };
+        });
+        
+        newBars.forEach((bar) => {
+          if (!fetchedBarIds.has(bar.id)) {
+            allBars.push(bar);
+            fetchedBarIds.add(bar.id);
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`Error fetching category ${category}:`, error);
+    }
+  }
+
+  console.log(`🍺 Fetched ${allBars.length} bars from API for route area`);
+  return allBars;
+};
+
 const Route: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -139,6 +220,9 @@ const Route: React.FC = () => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [routeData, setRouteData] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [allBarsInArea, setAllBarsInArea] = useState<AppBat[]>([]);
   
   const isInitialLoad = useRef(true);
 
@@ -234,6 +318,22 @@ const Route: React.FC = () => {
         initialize();
     }
   }, [routeState, getCurrentLocation, handleGenerateRoute, throttledGenerateRoute]);
+
+  // Fetch bars in the area when the component mounts
+  useEffect(() => {
+    const fetchAreaBars = async () => {
+      if (mapCenter) {
+        try {
+          const barsInArea = await fetchBarsInArea(mapCenter);
+          setAllBarsInArea(barsInArea);
+        } catch (error) {
+          console.error("Error fetching bars in area:", error);
+        }
+      }
+    };
+
+    fetchAreaBars();
+  }, [mapCenter]);
   
   const handleOptimizeRoute = useCallback(async () => {
     if (!userCoordinates || draggableBars.length < 2) return;
@@ -297,14 +397,60 @@ const Route: React.FC = () => {
       throttledGenerateRoute(draggableBars, startCoordinates, endCoordinates);
   };
 
+  const handleSaveCrawl = () => {
+    setShowSaveModal(true);
+  };
+
+  const handleSaveSuccess = (crawlId: string) => {
+    setSaveSuccess(crawlId);
+    // Auto-hide success message after 5 seconds
+    setTimeout(() => setSaveSuccess(null), 5000);
+  };
+
+  const handleCloseSaveModal = () => {
+    setShowSaveModal(false);
+  };
+
+  // Handle toggling bars on the map
+  const handleToggleBar = useCallback((barId: string) => {
+    const isCurrentlySelected = draggableBars.some(bar => bar.id === barId);
+    
+    if (isCurrentlySelected) {
+      // Remove from selected bars
+      const newBars = draggableBars.filter(bar => bar.id !== barId);
+      const reorderedBars = newBars.map((bar, index) => ({ ...bar, order: index }));
+      setDraggableBars(reorderedBars);
+    } else {
+      // Add to selected bars
+      const barToAdd = allBarsInArea.find(bar => bar.id === barId);
+      if (barToAdd) {
+        const newBar: DraggableBarItem = { ...barToAdd, order: draggableBars.length };
+        setDraggableBars(prev => [...prev, newBar]);
+      }
+    }
+  }, [draggableBars, allBarsInArea]);
+
   // Memoize expensive computations to prevent unnecessary re-renders (must be before early return)
   const selectedBarIds = useMemo(() => 
     new Set(draggableBars.map((bar) => bar.id)), 
     [draggableBars]
   );
 
-  // Memoize the bars array to prevent MapContainer re-renders
-  const memoizedBars = useMemo(() => draggableBars, [draggableBars]);
+  // Memoize the bars array to include all bars in area plus selected bars
+  const memoizedBars = useMemo((): AppBat[] => {
+    // Combine all bars in area with selected bars, removing duplicates
+    const selectedBarIds = new Set(draggableBars.map(bar => bar.id));
+    const allBars: AppBat[] = [...draggableBars]; // draggableBars extends AppBat so this is safe
+    
+    // Add non-selected bars from the area
+    allBarsInArea.forEach(bar => {
+      if (!selectedBarIds.has(bar.id)) {
+        allBars.push(bar);
+      }
+    });
+    
+    return allBars;
+  }, [draggableBars, allBarsInArea]);
 
   // Memoize route data to prevent unnecessary map updates
   const memoizedRouteData = useMemo(() => routeData, [routeData]);
@@ -350,12 +496,13 @@ const Route: React.FC = () => {
             bars={memoizedBars}
             selectedBarIds={selectedBarIds}
             hoveredBarId={hoveredBarId}
-            onToggleBar={() => {}}
+            onToggleBar={handleToggleBar}
             onHoverBar={setHoveredBarId}
             onMapViewChange={() => {}}
             onDrawComplete={() => {}}
             route={memoizedRouteData}
             startCoordinates={startCoordinates}
+            endCoordinates={endCoordinates}
           />
         </div>
 
@@ -456,21 +603,56 @@ const Route: React.FC = () => {
               />
             </div>
             <div className="route-actions">
-              <button
-                className={`btn-generate-final-route ${isLoading.generating ? "loading" : ""}`}
-                onClick={handleFinalGenerateClick}
-                disabled={isBusy}
-              >
-                {isLoading.generating ? (
-                  <><div className="spinner"></div> Generating...</>
-                ) : (
-                  <><FiCompass size={18} /> Generate Final Route</>
-                )}
-              </button>
+              {saveSuccess && (
+                <div className="save-success-message">
+                  ✅ Crawl saved successfully! 
+                  <button 
+                    className="save-success-close"
+                    onClick={() => setSaveSuccess(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              
+              <div className="route-buttons">
+                <button
+                  className="btn-save-crawl"
+                  onClick={handleSaveCrawl}
+                  disabled={draggableBars.length < 2}
+                  title={draggableBars.length < 2 ? "Need at least 2 bars to save" : "Save this crawl"}
+                >
+                  <FiSave size={16} />
+                  Save Crawl
+                </button>
+                
+                <button
+                  className={`btn-generate-final-route ${isLoading.generating ? "loading" : ""}`}
+                  onClick={handleFinalGenerateClick}
+                  disabled={isBusy}
+                >
+                  {isLoading.generating ? (
+                    <><div className="spinner"></div> Generating...</>
+                  ) : (
+                    <><FiCompass size={18} /> Generate Route</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <SaveCrawlModal
+        isOpen={showSaveModal}
+        onClose={handleCloseSaveModal}
+        bars={draggableBars}
+        mapCenter={mapCenter}
+        searchRadius={routeState.searchRadius}
+        startCoordinates={startCoordinates}
+        endCoordinates={endCoordinates}
+        onSaveSuccess={handleSaveSuccess}
+      />
     </div>
   );
 };

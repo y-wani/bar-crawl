@@ -81,6 +81,38 @@
   box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
 }
 
+.user-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.btn-saved-crawls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  color: #ffcc00;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.btn-saved-crawls:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+  border-color: rgba(255, 215, 0, 0.5);
+  color: #ffd700;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+}
+
 .search-and-filters {
   display: flex;
   flex-direction: column;

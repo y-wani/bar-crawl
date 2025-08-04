@@ -4,11 +4,13 @@ import { useAuth } from '../context/useAuth';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 // Lazy load page components
 const Landing = React.lazy(() => import('../pages/Landing'));
 const Home = React.lazy(() => import('../pages/Home'));
 const Route = React.lazy(() => import('../pages/Route'));
+const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
 
@@ -38,6 +40,16 @@ const AppRouter: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Route />
+              </ProtectedRoute>
+            } 
+          />
+          <RouterRoute 
+            path="/saved-crawls" 
+            element={
+              <ProtectedRoute>
+                <ErrorBoundary>
+                  <SavedCrawls />
+                </ErrorBoundary>
               </ProtectedRoute>
             } 
           />
