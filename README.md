@@ -210,19 +210,6 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- **Mapbox** for the excellent mapping platform
-- **Firebase** for backend services
-- **React community** for the amazing ecosystem
-- **All contributors** who helped make this project better
-
-## 📞 Support
-
-- **Live Demo:** [https://bar-crawl.vercel.app/](https://bar-crawl.vercel.app/)
-- **Issues:** [GitHub Issues](https://github.com/yourusername/bar-crawl-route-app/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/bar-crawl-route-app/discussions)
-
 ---
 
 **Made with ❤️ for the bar crawl community**
