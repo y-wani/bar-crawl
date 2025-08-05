@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   type Timestamp,
 } from "firebase/firestore";
+import { FirebaseError } from "firebase/app";
 import { db } from "../firebase/config";
 import type { AppBat } from "../pages/Home";
 
@@ -97,9 +98,9 @@ export const saveCrawl = async (
     console.error("Error constructor:", error?.constructor?.name);
 
     // Check for specific Firebase errors
-    if ((error as any)?.code) {
-      console.error("🔥 Firebase error code:", (error as any).code);
-      console.error("🔥 Firebase error message:", (error as any).message);
+    if (error instanceof FirebaseError) {
+      console.error("🔥 Firebase error code:", error.code);
+      console.error("🔥 Firebase error message:", error.message);
     }
 
     throw new Error("Failed to save crawl. Please try again.");

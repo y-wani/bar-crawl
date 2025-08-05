@@ -11,6 +11,8 @@
   padding: 0.5rem 1.25rem;
   position: relative;
   z-index: 1;
+  min-height: 200px; /* Ensure minimum height for scrolling */
+  max-height: calc(100vh - 400px); /* Prevent overflow on small screens */
 }
 
 /* Premium Custom Scrollbar */

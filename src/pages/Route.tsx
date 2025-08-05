@@ -1,23 +1,24 @@
 // src/pages/Route.tsx
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
 import type { AppBat } from "./Home";
+import { FaBars, FaTimes, FaGripVertical, FaArrowLeft } from "react-icons/fa";
 import {
-  FaBars,
-  FaTimes,
-  FaGripVertical,
-  FaArrowLeft,
-} from "react-icons/fa";
-import { 
-  FiNavigation, 
-  FiZap, 
+  FiNavigation,
+  FiZap,
   FiCompass,
   FiPlay,
   FiFlag,
-  FiSave
+  FiSave,
 } from "react-icons/fi";
 import "../styles/Route.css";
 import { SaveCrawlModal } from "../components/SaveCrawlModal";
@@ -47,20 +48,28 @@ interface DraggableBarItem extends AppBat {
 }
 
 // Helper function to calculate distance between two coordinates
-const calculateDistance = (coord1: [number, number], coord2: [number, number]): number => {
+const calculateDistance = (
+  coord1: [number, number],
+  coord2: [number, number]
+): number => {
   const R = 3959; // Earth's radius in miles
-  const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
-  const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
-  const a = 
+  const dLat = ((coord2[1] - coord1[1]) * Math.PI) / 180;
+  const dLon = ((coord2[0] - coord1[0]) * Math.PI) / 180;
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.cos((coord1[1] * Math.PI) / 180) *
+      Math.cos((coord2[1] * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
 
 // Optimize bar order using nearest neighbor algorithm
-const optimizeBarOrder = (bars: AppBat[], startLocation: [number, number]): AppBat[] => {
+const optimizeBarOrder = (
+  bars: AppBat[],
+  startLocation: [number, number]
+): AppBat[] => {
   if (bars.length <= 2) return bars;
 
   const unvisited = [...bars];
@@ -72,7 +81,10 @@ const optimizeBarOrder = (bars: AppBat[], startLocation: [number, number]): AppB
     let shortestDistance = Infinity;
 
     unvisited.forEach((bar, index) => {
-      const distance = calculateDistance(currentLocation, bar.location.coordinates as [number, number]);
+      const distance = calculateDistance(
+        currentLocation,
+        bar.location.coordinates as [number, number]
+      );
       if (distance < shortestDistance) {
         shortestDistance = distance;
         nearestIndex = index;
@@ -88,7 +100,9 @@ const optimizeBarOrder = (bars: AppBat[], startLocation: [number, number]): AppB
 };
 
 // Geocode coordinates to address
-const reverseGeocode = async (coordinates: [number, number]): Promise<string> => {
+const reverseGeocode = async (
+  coordinates: [number, number]
+): Promise<string> => {
   try {
     const response = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${coordinates[0]},${coordinates[1]}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`
@@ -105,10 +119,14 @@ const reverseGeocode = async (coordinates: [number, number]): Promise<string> =>
 };
 
 // Geocode address to coordinates
-const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
+const geocodeAddress = async (
+  address: string
+): Promise<[number, number] | null> => {
   try {
     const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+        address
+      )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`
     );
     const data = await response.json();
     if (data.features && data.features.length > 0) {
@@ -122,7 +140,9 @@ const geocodeAddress = async (address: string): Promise<[number, number] | null>
 };
 
 // Function to fetch bars within specific map bounds
-const fetchBarsInArea = async (bounds: MapBounds | [number, number]): Promise<AppBat[]> => {
+const fetchBarsInArea = async (
+  bounds: MapBounds | [number, number]
+): Promise<AppBat[]> => {
   console.log("Fetching bars for bounds:", bounds);
   const categories = ["bar", "pub", "nightclub"];
   const allBars: AppBat[] = [];
@@ -158,20 +178,25 @@ const fetchBarsInArea = async (bounds: MapBounds | [number, number]): Promise<Ap
       const barsData = await barsResponse.json();
 
       if (barsData.features) {
-        const newBars: AppBat[] = barsData.features.map((feature: MapboxFeature) => {
-          const [barLng, barLat] = feature.geometry.coordinates;
-          const [centerLng, centerLat] = centerCoords;
-          const distance = calculateDistance([centerLng, centerLat], [barLng, barLat]);
-          
-          return {
-            id: feature.properties.mapbox_id,
-            name: feature.properties.name || "Unknown Bar",
-            rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
-            distance: distance,
-            location: feature.geometry,
-          };
-        });
-        
+        const newBars: AppBat[] = barsData.features.map(
+          (feature: MapboxFeature) => {
+            const [barLng, barLat] = feature.geometry.coordinates;
+            const [centerLng, centerLat] = centerCoords;
+            const distance = calculateDistance(
+              [centerLng, centerLat],
+              [barLng, barLat]
+            );
+
+            return {
+              id: feature.properties.mapbox_id,
+              name: feature.properties.name || "Unknown Bar",
+              rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
+              distance: distance,
+              location: feature.geometry,
+            };
+          }
+        );
+
         newBars.forEach((bar) => {
           if (!fetchedBarIds.has(bar.id)) {
             allBars.push(bar);
@@ -196,7 +221,11 @@ const Route: React.FC = () => {
   const routeState = location.state as RoutePageState | null;
 
   useEffect(() => {
-    if (!routeState || !routeState.selectedBars || routeState.selectedBars.length < 2) {
+    if (
+      !routeState ||
+      !routeState.selectedBars ||
+      routeState.selectedBars.length < 2
+    ) {
       navigate("/home");
     }
   }, [routeState, navigate]);
@@ -205,11 +234,19 @@ const Route: React.FC = () => {
   const [draggableBars, setDraggableBars] = useState<DraggableBarItem[]>([]);
   const [startLocation, setStartLocation] = useState("");
   const [endLocation, setEndLocation] = useState("");
-  const [startCoordinates, setStartCoordinates] = useState<[number, number] | null>(null);
-  const [endCoordinates, setEndCoordinates] = useState<[number, number] | null>(null);
-  const [userCoordinates, setUserCoordinates] = useState<[number, number] | null>(null);
-  const [mapCenter] = useState<[number, number]>(routeState?.mapCenter || [-83.0007, 39.9612]);
-  
+  const [startCoordinates, setStartCoordinates] = useState<
+    [number, number] | null
+  >(null);
+  const [endCoordinates, setEndCoordinates] = useState<[number, number] | null>(
+    null
+  );
+  const [userCoordinates, setUserCoordinates] = useState<
+    [number, number] | null
+  >(null);
+  const [mapCenter] = useState<[number, number]>(
+    routeState?.mapCenter || [-83.0007, 39.9612]
+  );
+
   // Consolidated loading state
   const [isLoading, setIsLoading] = useState({
     location: true,
@@ -218,25 +255,33 @@ const Route: React.FC = () => {
   });
 
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
-  const [routeData, setRouteData] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
+  const [routeData, setRouteData] =
+    useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [allBarsInArea, setAllBarsInArea] = useState<AppBat[]>([]);
-  
+
   const isInitialLoad = useRef(true);
 
-  const getCurrentLocation = useCallback(async (): Promise<[number, number]> => {
-    setIsLoading(prev => ({ ...prev, location: true }));
+  const getCurrentLocation = useCallback(async (): Promise<
+    [number, number]
+  > => {
+    setIsLoading((prev) => ({ ...prev, location: true }));
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000,
-        });
-      });
-      const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000,
+          });
+        }
+      );
+      const coords: [number, number] = [
+        position.coords.longitude,
+        position.coords.latitude,
+      ];
       setUserCoordinates(coords);
       setStartCoordinates(coords);
       setEndCoordinates(coords);
@@ -255,69 +300,100 @@ const Route: React.FC = () => {
       setEndLocation(address);
       return fallbackCoords;
     } finally {
-      setIsLoading(prev => ({ ...prev, location: false }));
+      setIsLoading((prev) => ({ ...prev, location: false }));
     }
   }, [mapCenter]);
 
-  const handleGenerateRoute = useCallback(async (barsToUse: DraggableBarItem[], start: [number, number] | null, end: [number, number] | null) => {
-    if (barsToUse.length < 2) return;
-    setIsLoading(prev => ({ ...prev, generating: true }));
+  const handleGenerateRoute = useCallback(
+    async (
+      barsToUse: DraggableBarItem[],
+      start: [number, number] | null,
+      end: [number, number] | null
+    ) => {
+      if (barsToUse.length < 2) return;
+      setIsLoading((prev) => ({ ...prev, generating: true }));
 
-    try {
-      const coordinatesArray: string[] = [];
-      if (start) {
-        coordinatesArray.push(start.join(","));
-      }
-      barsToUse.forEach((bar) => {
-        coordinatesArray.push(bar.location.coordinates.join(","));
-      });
-      if (end && (start?.[0] !== end?.[0] || start?.[1] !== end?.[1])) {
-        coordinatesArray.push(end.join(","));
-      }
+      try {
+        const coordinatesArray: string[] = [];
+        if (start) {
+          coordinatesArray.push(start.join(","));
+        }
+        barsToUse.forEach((bar) => {
+          coordinatesArray.push(bar.location.coordinates.join(","));
+        });
+        if (end && (start?.[0] !== end?.[0] || start?.[1] !== end?.[1])) {
+          coordinatesArray.push(end.join(","));
+        }
 
-      const coordinates = coordinatesArray.join(";");
-      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
-      const response = await fetch(url);
-      const data = await response.json();
+        const coordinates = coordinatesArray.join(";");
+        const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
+        const response = await fetch(url);
+        const data = await response.json();
 
-      if (data.routes && data.routes.length > 0) {
-        setRouteData(data.routes[0].geometry as GeoJSON.Feature<GeoJSON.LineString>);
+        if (data.routes && data.routes.length > 0) {
+          setRouteData(
+            data.routes[0].geometry as GeoJSON.Feature<GeoJSON.LineString>
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching route:", error);
+      } finally {
+        setIsLoading((prev) => ({ ...prev, generating: false }));
       }
-    } catch (error) {
-      console.error("Error fetching route:", error);
-    } finally {
-      setIsLoading(prev => ({ ...prev, generating: false }));
-    }
-  }, []);
+    },
+    []
+  );
 
   // Throttled route generation to prevent excessive API calls
   const throttledRouteGeneration = useRef<NodeJS.Timeout | null>(null);
-  
-  const throttledGenerateRoute = useCallback((barsToUse: DraggableBarItem[], start: [number, number] | null, end: [number, number] | null) => {
-    if (throttledRouteGeneration.current) {
-      clearTimeout(throttledRouteGeneration.current);
-    }
-    
-    throttledRouteGeneration.current = setTimeout(() => {
-      handleGenerateRoute(barsToUse, start, end);
-    }, 300); // 300ms throttle to batch rapid changes
-  }, [handleGenerateRoute]);
+
+  const throttledGenerateRoute = useCallback(
+    (
+      barsToUse: DraggableBarItem[],
+      start: [number, number] | null,
+      end: [number, number] | null
+    ) => {
+      if (throttledRouteGeneration.current) {
+        clearTimeout(throttledRouteGeneration.current);
+      }
+
+      throttledRouteGeneration.current = setTimeout(() => {
+        handleGenerateRoute(barsToUse, start, end);
+      }, 300); // 300ms throttle to batch rapid changes
+    },
+    [handleGenerateRoute]
+  );
 
   useEffect(() => {
-    if (routeState?.selectedBars && routeState.selectedBars.length >= 2 && isInitialLoad.current) {
-        isInitialLoad.current = false; // Ensure this runs only once
-        const initialize = async () => {
-            setIsLoading({ location: true, optimizing: true, generating: true });
+    if (
+      routeState?.selectedBars &&
+      routeState.selectedBars.length >= 2 &&
+      isInitialLoad.current
+    ) {
+      isInitialLoad.current = false; // Ensure this runs only once
+      const initialize = async () => {
+        setIsLoading({ location: true, optimizing: true, generating: true });
         const currentCoords = await getCurrentLocation();
-        const optimizedBars = optimizeBarOrder(routeState.selectedBars, currentCoords);
-            const initialBars = optimizedBars.map((bar, index) => ({ ...bar, order: index }));
+        const optimizedBars = optimizeBarOrder(
+          routeState.selectedBars,
+          currentCoords
+        );
+        const initialBars = optimizedBars.map((bar, index) => ({
+          ...bar,
+          order: index,
+        }));
         setDraggableBars(initialBars);
-            setIsLoading(prev => ({ ...prev, optimizing: false }));
-            await throttledGenerateRoute(initialBars, currentCoords, currentCoords);
-        };
-        initialize();
+        setIsLoading((prev) => ({ ...prev, optimizing: false }));
+        await throttledGenerateRoute(initialBars, currentCoords, currentCoords);
+      };
+      initialize();
     }
-  }, [routeState, getCurrentLocation, handleGenerateRoute, throttledGenerateRoute]);
+  }, [
+    routeState,
+    getCurrentLocation,
+    handleGenerateRoute,
+    throttledGenerateRoute,
+  ]);
 
   // Fetch bars in the area when the component mounts
   useEffect(() => {
@@ -334,23 +410,37 @@ const Route: React.FC = () => {
 
     fetchAreaBars();
   }, [mapCenter]);
-  
+
   const handleOptimizeRoute = useCallback(async () => {
     if (!userCoordinates || draggableBars.length < 2) return;
-    setIsLoading(prev => ({ ...prev, optimizing: true, generating: true }));
-    
+    setIsLoading((prev) => ({ ...prev, optimizing: true, generating: true }));
+
     // Use a short delay to allow the UI to update and show the loading state
-    await new Promise(res => setTimeout(res, 50));
-    
+    await new Promise((res) => setTimeout(res, 50));
+
     const optimized = optimizeBarOrder(draggableBars, userCoordinates);
-    const reorderedBars = optimized.map((bar, index) => ({ ...bar, order: index }));
+    const reorderedBars = optimized.map((bar, index) => ({
+      ...bar,
+      order: index,
+    }));
     setDraggableBars(reorderedBars);
-    
-    setIsLoading(prev => ({ ...prev, optimizing: false }));
-    
+
+    setIsLoading((prev) => ({ ...prev, optimizing: false }));
+
     // Generate route with the newly optimized bars
-    await throttledGenerateRoute(reorderedBars, startCoordinates, endCoordinates);
-  }, [userCoordinates, draggableBars, startCoordinates, endCoordinates, handleGenerateRoute, throttledGenerateRoute]);
+    await throttledGenerateRoute(
+      reorderedBars,
+      startCoordinates,
+      endCoordinates
+    );
+  }, [
+    userCoordinates,
+    draggableBars,
+    startCoordinates,
+    endCoordinates,
+    handleGenerateRoute,
+    throttledGenerateRoute,
+  ]);
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -370,10 +460,13 @@ const Route: React.FC = () => {
     const newBars = [...draggableBars];
     const [draggedBar] = newBars.splice(draggedItem, 1);
     newBars.splice(dropIndex, 0, draggedBar);
-    const reorderedBars = newBars.map((bar, index) => ({ ...bar, order: index }));
+    const reorderedBars = newBars.map((bar, index) => ({
+      ...bar,
+      order: index,
+    }));
     setDraggableBars(reorderedBars);
     setDraggedItem(null);
-    
+
     // Trigger route update after reordering
     if (reorderedBars.length >= 2 && startCoordinates && endCoordinates) {
       throttledGenerateRoute(reorderedBars, startCoordinates, endCoordinates);
@@ -386,15 +479,15 @@ const Route: React.FC = () => {
 
   const handleLocationSearch = async (query: string, isStart: boolean) => {
     if (!query.trim()) return;
-      const coordinates = await geocodeAddress(query);
-      if (coordinates) {
+    const coordinates = await geocodeAddress(query);
+    if (coordinates) {
       if (isStart) setStartCoordinates(coordinates);
       else setEndCoordinates(coordinates);
-        }
+    }
   };
-  
+
   const handleFinalGenerateClick = () => {
-      throttledGenerateRoute(draggableBars, startCoordinates, endCoordinates);
+    throttledGenerateRoute(draggableBars, startCoordinates, endCoordinates);
   };
 
   const handleSaveCrawl = () => {
@@ -412,43 +505,52 @@ const Route: React.FC = () => {
   };
 
   // Handle toggling bars on the map
-  const handleToggleBar = useCallback((barId: string) => {
-    const isCurrentlySelected = draggableBars.some(bar => bar.id === barId);
-    
-    if (isCurrentlySelected) {
-      // Remove from selected bars
-      const newBars = draggableBars.filter(bar => bar.id !== barId);
-      const reorderedBars = newBars.map((bar, index) => ({ ...bar, order: index }));
-      setDraggableBars(reorderedBars);
-    } else {
-      // Add to selected bars
-      const barToAdd = allBarsInArea.find(bar => bar.id === barId);
-      if (barToAdd) {
-        const newBar: DraggableBarItem = { ...barToAdd, order: draggableBars.length };
-        setDraggableBars(prev => [...prev, newBar]);
+  const handleToggleBar = useCallback(
+    (barId: string) => {
+      const isCurrentlySelected = draggableBars.some((bar) => bar.id === barId);
+
+      if (isCurrentlySelected) {
+        // Remove from selected bars
+        const newBars = draggableBars.filter((bar) => bar.id !== barId);
+        const reorderedBars = newBars.map((bar, index) => ({
+          ...bar,
+          order: index,
+        }));
+        setDraggableBars(reorderedBars);
+      } else {
+        // Add to selected bars
+        const barToAdd = allBarsInArea.find((bar) => bar.id === barId);
+        if (barToAdd) {
+          const newBar: DraggableBarItem = {
+            ...barToAdd,
+            order: draggableBars.length,
+          };
+          setDraggableBars((prev) => [...prev, newBar]);
+        }
       }
-    }
-  }, [draggableBars, allBarsInArea]);
+    },
+    [draggableBars, allBarsInArea]
+  );
 
   // Memoize expensive computations to prevent unnecessary re-renders (must be before early return)
-  const selectedBarIds = useMemo(() => 
-    new Set(draggableBars.map((bar) => bar.id)), 
+  const selectedBarIds = useMemo(
+    () => new Set(draggableBars.map((bar) => bar.id)),
     [draggableBars]
   );
 
   // Memoize the bars array to include all bars in area plus selected bars
   const memoizedBars = useMemo((): AppBat[] => {
     // Combine all bars in area with selected bars, removing duplicates
-    const selectedBarIds = new Set(draggableBars.map(bar => bar.id));
+    const selectedBarIds = new Set(draggableBars.map((bar) => bar.id));
     const allBars: AppBat[] = [...draggableBars]; // draggableBars extends AppBat so this is safe
-    
+
     // Add non-selected bars from the area
-    allBarsInArea.forEach(bar => {
+    allBarsInArea.forEach((bar) => {
       if (!selectedBarIds.has(bar.id)) {
         allBars.push(bar);
       }
     });
-    
+
     return allBars;
   }, [draggableBars, allBarsInArea]);
 
@@ -457,20 +559,35 @@ const Route: React.FC = () => {
 
   // Update route when bar order changes
   useEffect(() => {
-    if (draggableBars.length >= 2 && startCoordinates && endCoordinates && !isInitialLoad.current) {
+    if (
+      draggableBars.length >= 2 &&
+      startCoordinates &&
+      endCoordinates &&
+      !isInitialLoad.current
+    ) {
       // Small delay to batch rapid reorder changes
       const timeoutId = setTimeout(() => {
         if (!isLoading.optimizing) {
-          throttledGenerateRoute(draggableBars, startCoordinates, endCoordinates);
+          throttledGenerateRoute(
+            draggableBars,
+            startCoordinates,
+            endCoordinates
+          );
         }
       }, 100);
-      
+
       return () => clearTimeout(timeoutId);
     }
-  }, [draggableBars, startCoordinates, endCoordinates, throttledGenerateRoute, isLoading.optimizing]);
+  }, [
+    draggableBars,
+    startCoordinates,
+    endCoordinates,
+    throttledGenerateRoute,
+    isLoading.optimizing,
+  ]);
 
   if (!routeState) return null;
-  
+
   const isBusy = isLoading.generating || isLoading.optimizing;
 
   return (
@@ -482,7 +599,10 @@ const Route: React.FC = () => {
         <h1 className="route-title">Create Your Route</h1>
         <div className="route-header-actions">
           <span className="selected-count">{draggableBars.length} stops</span>
-          <button className="drawer-toggle" onClick={() => setIsDrawerOpen(!isDrawerOpen)}>
+          <button
+            className="drawer-toggle"
+            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+          >
             {isDrawerOpen ? <FaTimes /> : <FaBars />}
           </button>
         </div>
@@ -508,31 +628,39 @@ const Route: React.FC = () => {
 
         <div className={`route-drawer ${isDrawerOpen ? "open" : "closed"}`}>
           <div className="drawer-header">
-            <div className="user-info">
-              <span>Hi, {user?.displayName || user?.email}!</span>
-              <button onClick={signout} className="btn-signout-small">Sign Out</button>
-            </div>
             <div className="smart-controls">
               <button
-                className={`btn-optimize-route ${isLoading.optimizing ? "loading" : ""}`}
+                className={`btn-optimize-route ${
+                  isLoading.optimizing ? "loading" : ""
+                }`}
                 onClick={handleOptimizeRoute}
                 disabled={isBusy}
               >
                 {isLoading.optimizing ? (
-                  <><div className="spinner"></div> Optimizing...</>
+                  <>
+                    <div className="spinner"></div> Optimizing...
+                  </>
                 ) : (
-                  <><FiZap size={16} /> Optimize Route</>
+                  <>
+                    <FiZap size={16} /> Optimize Route
+                  </>
                 )}
               </button>
               <button
-                className={`btn-current-location ${isLoading.location ? "loading" : ""}`}
+                className={`btn-current-location ${
+                  isLoading.location ? "loading" : ""
+                }`}
                 onClick={getCurrentLocation}
                 disabled={isLoading.location}
               >
                 {isLoading.location ? (
-                  <><div className="spinner"></div> Finding...</>
+                  <>
+                    <div className="spinner"></div> Finding...
+                  </>
                 ) : (
-                  <><FiNavigation size={16} /> Use My Location</>
+                  <>
+                    <FiNavigation size={16} /> Use My Location
+                  </>
                 )}
               </button>
             </div>
@@ -562,7 +690,9 @@ const Route: React.FC = () => {
                 {draggableBars.map((bar, index) => (
                   <div
                     key={bar.id}
-                    className={`draggable-bar-item ${draggedItem === index ? "dragging" : ""} ${isLoading.optimizing ? "optimizing" : ""}`}
+                    className={`draggable-bar-item ${
+                      draggedItem === index ? "dragging" : ""
+                    } ${isLoading.optimizing ? "optimizing" : ""}`}
                     draggable={!isBusy}
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={handleDragOver}
@@ -605,8 +735,8 @@ const Route: React.FC = () => {
             <div className="route-actions">
               {saveSuccess && (
                 <div className="save-success-message">
-                  ✅ Crawl saved successfully! 
-                  <button 
+                  ✅ Crawl saved successfully!
+                  <button
                     className="save-success-close"
                     onClick={() => setSaveSuccess(null)}
                   >
@@ -614,27 +744,37 @@ const Route: React.FC = () => {
                   </button>
                 </div>
               )}
-              
+
               <div className="route-buttons">
                 <button
                   className="btn-save-crawl"
                   onClick={handleSaveCrawl}
                   disabled={draggableBars.length < 2}
-                  title={draggableBars.length < 2 ? "Need at least 2 bars to save" : "Save this crawl"}
+                  title={
+                    draggableBars.length < 2
+                      ? "Need at least 2 bars to save"
+                      : "Save this crawl"
+                  }
                 >
                   <FiSave size={16} />
                   Save Crawl
                 </button>
-                
+
                 <button
-                  className={`btn-generate-final-route ${isLoading.generating ? "loading" : ""}`}
+                  className={`btn-generate-final-route ${
+                    isLoading.generating ? "loading" : ""
+                  }`}
                   onClick={handleFinalGenerateClick}
                   disabled={isBusy}
                 >
                   {isLoading.generating ? (
-                    <><div className="spinner"></div> Generating...</>
+                    <>
+                      <div className="spinner"></div> Generating...
+                    </>
                   ) : (
-                    <><FiCompass size={18} /> Generate Route</>
+                    <>
+                      <FiCompass size={18} /> Generate Route
+                    </>
                   )}
                 </button>
               </div>

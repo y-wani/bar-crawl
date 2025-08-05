@@ -15,6 +15,8 @@
   box-shadow: var(--shadow-premium);
   position: relative;
   overflow: hidden;
+  min-width: 300px; /* Prevent extreme squishing */
+  max-width: 450px; /* Prevent excessive width */
 }
 
 .planner-sidebar::before {
