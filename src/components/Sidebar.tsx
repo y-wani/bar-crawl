@@ -71,8 +71,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // Sort bars
+    // Sort bars with selected bars at the top
     return filteredBars.sort((a, b) => {
+      // First, sort by selection status (selected bars first)
+      const aSelected = selectedBarIds.has(a.id);
+      const bSelected = selectedBarIds.has(b.id);
+      
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      
+      // If both have same selection status, sort by the active filter
       if (activeFilter === 'Popularity') {
         return (b.rating || 0) - (a.rating || 0);
       }
@@ -87,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
       return (a.distance || 0) - (b.distance || 0);
     });
-  }, [bars, searchTerm, activeFilter, showOnlyInRadius, mapCenter, radius]);
+  }, [bars, searchTerm, activeFilter, showOnlyInRadius, mapCenter, radius, selectedBarIds]);
 
   return (
     <div className="planner-sidebar">

@@ -62,25 +62,42 @@ export const BarList: React.FC<BarListProps> = ({
             }
           }
 
+          const isSelected = selectedBarIds.has(bar.id);
+          const isFirstUnselected = !isSelected && index > 0 && selectedBarIds.has(bars[index - 1].id);
+
           return (
-            <motion.div
-              key={bar.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <BarListItem
-                bar={bar}
-                isSelected={selectedBarIds.has(bar.id)}
-                isHovered={hoveredBarId === bar.id}
-                onToggle={onToggleBar}
-                onHover={onHoverBar}
-                actualDistance={actualDistance}
-                isWithinRadius={isWithinRadius}
-                radius={radius}
-              />
-            </motion.div>
+            <React.Fragment key={bar.id}>
+              {/* Add separator between selected and unselected bars */}
+              {isFirstUnselected && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="bar-list-separator"
+                >
+                  <div className="separator-line"></div>
+                  <span className="separator-text">Other Bars</span>
+                  <div className="separator-line"></div>
+                </motion.div>
+              )}
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <BarListItem
+                  bar={bar}
+                  isSelected={isSelected}
+                  isHovered={hoveredBarId === bar.id}
+                  onToggle={onToggleBar}
+                  onHover={onHoverBar}
+                  actualDistance={actualDistance}
+                  isWithinRadius={isWithinRadius}
+                  radius={radius}
+                />
+              </motion.div>
+            </React.Fragment>
           );
         })}
       </AnimatePresence>

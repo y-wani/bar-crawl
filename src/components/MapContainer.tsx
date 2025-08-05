@@ -30,11 +30,7 @@ const RADIUS_OUTLINE_LAYER = "radius-outline";
 // Props & types
 export type MapBounds = [number, number, number, number];
 
-// Type for Mapbox Point geometry
-interface MapboxPointGeometry {
-  type: "Point";
-  coordinates: [number, number];
-}
+
 
 interface MapContainerProps {
   center: [number, number];
@@ -256,110 +252,17 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         if (feat) {
           // Set cursor immediately for responsiveness
           m.getCanvas().style.cursor = "pointer";
-          
-          // Only debounce the hover state change, not the popup creation
+
+          // Only update hover state, popup creation handled in useEffect
           if (hoverTimeout.current) {
             clearTimeout(hoverTimeout.current);
           }
-          
+
           hoverTimeout.current = setTimeout(() => {
             if (feat.id) {
               onHoverBar(String(feat.id));
             }
           }, 30); // Minimal debounce for state
-
-          // Remove existing popup immediately for smoother transitions
-          if (popupRef.current) {
-            popupRef.current.remove();
-            popupRef.current = null;
-          }
-
-          // Create new popup immediately with stable positioning
-          const rating = feat.properties!.rating || 4.0;
-          const vibeData = {
-            vibe:
-              rating >= 4.5
-                ? "LEGENDARY"
-                : rating >= 4.0
-                ? "EPIC"
-                : rating >= 3.5
-                ? "GREAT"
-                : "DECENT",
-            vibeIcon:
-              rating >= 4.5
-                ? "🌟"
-                : rating >= 4.0
-                ? "🎉"
-                : rating >= 3.5
-                ? "✨"
-                : "👍",
-            vibeColor:
-              rating >= 4.5
-                ? "#ffff00"
-                : rating >= 4.0
-                ? "#ff00ff"
-                : rating >= 3.5
-                ? "#00ffff"
-                : "#ffffff",
-          };
-
-          // Create popup immediately for instant response
-          popupRef.current = new mapboxgl.Popup({
-            closeButton: false,
-            offset: [0, -50], // Reduced offset for better positioning
-            className: "neon-bar-popup",
-            maxWidth: "280px", // Slightly smaller
-            anchor: "bottom", // Stable anchor point
-            focusAfterOpen: false, // Prevent focus stealing
-          })
-            .setLngLat((feat.geometry as MapboxPointGeometry).coordinates)
-            .setHTML(
-              `
-            <div class="neon-popup-container">
-              <div class="neon-popup-header">
-                <div class="neon-bar-icon">🍸</div>
-                <h3 class="neon-bar-name">${
-                  feat.properties!.name || "Unknown Bar"
-                }</h3>
-              </div>
-              <div class="neon-popup-content">
-                <div class="neon-stat">
-                  <span class="neon-stat-icon">⭐</span>
-                  <span class="neon-stat-label">Rating:</span>
-                  <span class="neon-stat-value">${rating.toFixed(
-                    1
-                  )}/5</span>
-                </div>
-                <div class="neon-stat">
-                  <span class="neon-stat-icon">📍</span>
-                  <span class="neon-stat-label">Distance:</span>
-                  <span class="neon-stat-value">${
-                    feat.properties!.distance !== undefined &&
-                    feat.properties!.distance !== null
-                      ? feat.properties!.distance.toFixed(2)
-                      : "Calculating..."
-                  } mi</span>
-                </div>
-                <div class="neon-stat">
-                  <span class="neon-stat-icon">${vibeData.vibeIcon}</span>
-                  <span class="neon-stat-label">Vibe:</span>
-                  <span class="neon-stat-value" style="color: ${
-                    vibeData.vibeColor
-                  }">${vibeData.vibe}</span>
-                </div>
-                <div class="neon-action-hint">
-                  <span class="neon-click-hint">💫 Click to ${
-                    selectedBarIds.has(feat.properties!.id)
-                      ? "remove from"
-                      : "add to"
-                  } route</span>
-                </div>
-              </div>
-              <div class="neon-popup-glow"></div>
-            </div>
-            `
-            )
-            .addTo(m);
         }
       });
 
@@ -370,13 +273,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
 
         m.getCanvas().style.cursor = "";
+        // Clear hover state immediately - popup removal handled in useEffect
         onHoverBar(null);
-        
-        // Remove popup immediately for better responsiveness
-        if (popupRef.current) {
-          popupRef.current.remove();
-          popupRef.current = null;
-        }
       });
     });
 
@@ -552,15 +450,108 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     });
   }, [hoveredBarId, selectedBarIds, bars]);
 
+  // 6. Handle popup creation/removal based on hoveredBarId changes
+  useEffect(() => {
+    if (!map.current || !map.current.isStyleLoaded()) return;
+
+    // Remove existing popup
+    if (popupRef.current) {
+      popupRef.current.remove();
+      popupRef.current = null;
+    }
+
+    // Create popup if a bar is hovered
+    if (hoveredBarId) {
+      const hoveredBar = bars.find((bar) => bar.id === hoveredBarId);
+      if (hoveredBar) {
+        const rating = hoveredBar.rating || 4.0;
+        const vibeData = {
+          vibe:
+            rating >= 4.5
+              ? "LEGENDARY"
+              : rating >= 4.0
+              ? "EPIC"
+              : rating >= 3.5
+              ? "GREAT"
+              : "DECENT",
+          vibeIcon:
+            rating >= 4.5
+              ? "🌟"
+              : rating >= 4.0
+              ? "🎉"
+              : rating >= 3.5
+              ? "✨"
+              : "👍",
+          vibeColor:
+            rating >= 4.5
+              ? "#ffff00"
+              : rating >= 4.0
+              ? "#ff00ff"
+              : rating >= 3.5
+              ? "#00ffff"
+              : "#ffffff",
+        };
+
+        popupRef.current = new mapboxgl.Popup({
+          closeButton: false,
+          offset: [0, -50],
+          className: "neon-bar-popup",
+          maxWidth: "280px",
+          anchor: "bottom",
+          focusAfterOpen: false,
+        })
+          .setLngLat(hoveredBar.location.coordinates)
+          .setHTML(
+            `
+            <div class="neon-popup-container">
+              <div class="neon-popup-header">
+                <div class="neon-bar-icon">🍸</div>
+                <h3 class="neon-bar-name">${hoveredBar.name || "Unknown Bar"}</h3>
+              </div>
+              <div class="neon-popup-content">
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">⭐</span>
+                  <span class="neon-stat-label">Rating:</span>
+                  <span class="neon-stat-value">${rating.toFixed(1)}/5</span>
+                </div>
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">📍</span>
+                  <span class="neon-stat-label">Distance:</span>
+                  <span class="neon-stat-value">${
+                    hoveredBar.distance !== undefined && hoveredBar.distance !== null
+                      ? hoveredBar.distance.toFixed(2)
+                      : "Calculating..."
+                  } mi</span>
+                </div>
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">${vibeData.vibeIcon}</span>
+                  <span class="neon-stat-label">Vibe:</span>
+                  <span class="neon-stat-value" style="color: ${vibeData.vibeColor}">${vibeData.vibe}</span>
+                </div>
+                <div class="neon-action-hint">
+                  <span class="neon-click-hint">💫 Click to ${
+                    selectedBarIds.has(hoveredBar.id) ? "remove from" : "add to"
+                  } route</span>
+                </div>
+              </div>
+              <div class="neon-popup-glow"></div>
+            </div>
+            `
+          )
+          .addTo(map.current);
+      }
+    }
+  }, [hoveredBarId, bars, selectedBarIds]);
+
   return (
     <div className="map-container" style={{ position: "relative" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
       {(isLoadingBars || (bars.length === 0 && !isMapReady.current)) && (
-        <MapLoadingIndicator 
+        <MapLoadingIndicator
           message={
-            isLoadingBars 
-              ? "Finding the perfect bars..." 
-              : "Initializing the crawl map..."
+            isLoadingBars
+              ? "Finding the perfect bars..."
+              : "Initializing the crawlfamap..."
           }
         />
       )}
