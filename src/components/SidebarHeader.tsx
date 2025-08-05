@@ -18,21 +18,23 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ user, onSignOut })
 
   return (
     <div className="sidebar-header">
-      <h1 className="sidebar-title">Campus Crawl Planner</h1>
+      <div className="header-top">
+        <h1 className="sidebar-title">BarHop</h1>
+        {user && (
+          <button onClick={onSignOut} className="btn-signout">Sign Out</button>
+        )}
+      </div>
       {user && (
         <div className="user-info">
-          <div className="user-welcome">
-            <span>Welcome, {user.displayName || user.email}!</span>
-            <button 
-              onClick={handleSavedCrawlsClick}
-              className="btn-saved-crawls"
-              title="View your saved crawls"
-            >
-              <FiFolder size={16} />
-              Saved Crawls
-            </button>
-          </div>
-          <button onClick={onSignOut} className="btn-signout">Sign Out</button>
+          <span className="user-welcome">Welcome, {user.displayName || user.email}!</span>
+          <button 
+            onClick={handleSavedCrawlsClick}
+            className="btn-saved-crawls"
+            title="View your saved crawls"
+          >
+            <FiFolder size={14} />
+            Saved Crawls
+          </button>
         </div>
       )}
     </div>

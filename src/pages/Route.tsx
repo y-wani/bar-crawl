@@ -8,7 +8,7 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { MapContainer, type MapBounds } from "../components/MapContainer";
+import { MapContainer } from "../components/MapContainer";
 import type { AppBat } from "./Home";
 import { FaBars, FaTimes, FaGripVertical, FaArrowLeft } from "react-icons/fa";
 import {
@@ -24,17 +24,6 @@ import { SaveCrawlModal } from "../components/SaveCrawlModal";
 
 // Mapbox API constants and types
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-
-interface MapboxFeature {
-  properties: {
-    mapbox_id: string;
-    name: string;
-  };
-  geometry: {
-    type: "Point";
-    coordinates: [number, number];
-  };
-}
 
 interface RoutePageState {
   selectedBars: AppBat[];
@@ -138,84 +127,9 @@ const geocodeAddress = async (
   }
 };
 
-// Function to fetch bars within specific map bounds
-const fetchBarsInArea = async (
-  bounds: MapBounds | [number, number]
-): Promise<AppBat[]> => {
-  console.log("Fetching bars for bounds:", bounds);
-  const categories = ["bar", "pub", "nightclub"];
-  const allBars: AppBat[] = [];
-  const fetchedBarIds = new Set<string>();
-
-  // Determine center coordinates for distance calculation
-  let centerCoords: [number, number];
-  if (Array.isArray(bounds) && bounds.length === 4) {
-    centerCoords = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
-  } else if (Array.isArray(bounds) && bounds.length === 2) {
-    centerCoords = bounds;
-  } else {
-    centerCoords = [-83.0007, 39.9612]; // Default Columbus coordinates
-  }
-
-  const searchParams = new URLSearchParams({
-    access_token: MAPBOX_ACCESS_TOKEN,
-    limit: "25",
-  });
-
-  if (Array.isArray(bounds) && bounds.length === 4) {
-    searchParams.set("bbox", bounds.join(","));
-  } else if (Array.isArray(bounds) && bounds.length === 2) {
-    searchParams.set("proximity", bounds.join(","));
-  }
-
-  for (const category of categories) {
-    const barsUrl = `https://api.mapbox.com/search/searchbox/v1/category/${category}?${searchParams.toString()}`;
-
-    try {
-      const barsResponse = await fetch(barsUrl);
-      if (!barsResponse.ok) continue;
-      const barsData = await barsResponse.json();
-
-      if (barsData.features) {
-        const newBars: AppBat[] = barsData.features.map(
-          (feature: MapboxFeature) => {
-            const [barLng, barLat] = feature.geometry.coordinates;
-            const [centerLng, centerLat] = centerCoords;
-            const distance = calculateDistance(
-              [centerLng, centerLat],
-              [barLng, barLat]
-            );
-
-            return {
-              id: feature.properties.mapbox_id,
-              name: feature.properties.name || "Unknown Bar",
-              rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
-              distance: distance,
-              location: feature.geometry,
-            };
-          }
-        );
-
-        newBars.forEach((bar) => {
-          if (!fetchedBarIds.has(bar.id)) {
-            allBars.push(bar);
-            fetchedBarIds.add(bar.id);
-          }
-        });
-      }
-    } catch (error) {
-      console.error(`Error fetching category ${category}:`, error);
-    }
-  }
-
-  console.log(`🍺 Fetched ${allBars.length} bars from API for route area`);
-  return allBars;
-};
-
 const Route: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  // const { user, signout } = useAuth();
 
   const routeState = location.state as RoutePageState | null;
 
@@ -246,7 +160,6 @@ const Route: React.FC = () => {
     routeState?.mapCenter || [-83.0007, 39.9612]
   );
 
-  // Consolidated loading state
   const [isLoading, setIsLoading] = useState({
     location: true,
     optimizing: true,
@@ -259,7 +172,6 @@ const Route: React.FC = () => {
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const [allBarsInArea, setAllBarsInArea] = useState<AppBat[]>([]);
 
   const isInitialLoad = useRef(true);
 
@@ -343,7 +255,6 @@ const Route: React.FC = () => {
     []
   );
 
-  // Throttled route generation to prevent excessive API calls
   const throttledRouteGeneration = useRef<NodeJS.Timeout | null>(null);
 
   const throttledGenerateRoute = useCallback(
@@ -358,7 +269,7 @@ const Route: React.FC = () => {
 
       throttledRouteGeneration.current = setTimeout(() => {
         handleGenerateRoute(barsToUse, start, end);
-      }, 300); // 300ms throttle to batch rapid changes
+      }, 300);
     },
     [handleGenerateRoute]
   );
@@ -369,7 +280,7 @@ const Route: React.FC = () => {
       routeState.selectedBars.length >= 2 &&
       isInitialLoad.current
     ) {
-      isInitialLoad.current = false; // Ensure this runs only once
+      isInitialLoad.current = false;
       const initialize = async () => {
         setIsLoading({ location: true, optimizing: true, generating: true });
         const currentCoords = await getCurrentLocation();
@@ -387,34 +298,12 @@ const Route: React.FC = () => {
       };
       initialize();
     }
-  }, [
-    routeState,
-    getCurrentLocation,
-    handleGenerateRoute,
-    throttledGenerateRoute,
-  ]);
-
-  // Fetch bars in the area when the component mounts
-  useEffect(() => {
-    const fetchAreaBars = async () => {
-      if (mapCenter) {
-        try {
-          const barsInArea = await fetchBarsInArea(mapCenter);
-          setAllBarsInArea(barsInArea);
-        } catch (error) {
-          console.error("Error fetching bars in area:", error);
-        }
-      }
-    };
-
-    fetchAreaBars();
-  }, [mapCenter]);
+  }, [routeState, getCurrentLocation, throttledGenerateRoute]);
 
   const handleOptimizeRoute = useCallback(async () => {
     if (!userCoordinates || draggableBars.length < 2) return;
     setIsLoading((prev) => ({ ...prev, optimizing: true, generating: true }));
 
-    // Use a short delay to allow the UI to update and show the loading state
     await new Promise((res) => setTimeout(res, 50));
 
     const optimized = optimizeBarOrder(draggableBars, userCoordinates);
@@ -426,7 +315,6 @@ const Route: React.FC = () => {
 
     setIsLoading((prev) => ({ ...prev, optimizing: false }));
 
-    // Generate route with the newly optimized bars
     await throttledGenerateRoute(
       reorderedBars,
       startCoordinates,
@@ -437,7 +325,6 @@ const Route: React.FC = () => {
     draggableBars,
     startCoordinates,
     endCoordinates,
-    handleGenerateRoute,
     throttledGenerateRoute,
   ]);
 
@@ -466,7 +353,6 @@ const Route: React.FC = () => {
     setDraggableBars(reorderedBars);
     setDraggedItem(null);
 
-    // Trigger route update after reordering
     if (reorderedBars.length >= 2 && startCoordinates && endCoordinates) {
       throttledGenerateRoute(reorderedBars, startCoordinates, endCoordinates);
     }
@@ -495,7 +381,6 @@ const Route: React.FC = () => {
 
   const handleSaveSuccess = (crawlId: string) => {
     setSaveSuccess(crawlId);
-    // Auto-hide success message after 5 seconds
     setTimeout(() => setSaveSuccess(null), 5000);
   };
 
@@ -503,60 +388,24 @@ const Route: React.FC = () => {
     setShowSaveModal(false);
   };
 
-  // Handle toggling bars on the map
   const handleToggleBar = useCallback(
     (barId: string) => {
-      const isCurrentlySelected = draggableBars.some((bar) => bar.id === barId);
-
-      if (isCurrentlySelected) {
-        // Remove from selected bars
-        const newBars = draggableBars.filter((bar) => bar.id !== barId);
-        const reorderedBars = newBars.map((bar, index) => ({
-          ...bar,
-          order: index,
-        }));
-        setDraggableBars(reorderedBars);
-      } else {
-        // Add to selected bars
-        const barToAdd = allBarsInArea.find((bar) => bar.id === barId);
-        if (barToAdd) {
-          const newBar: DraggableBarItem = {
-            ...barToAdd,
-            order: draggableBars.length,
-          };
-          setDraggableBars((prev) => [...prev, newBar]);
-        }
-      }
+      // On the route page, clicking a bar on the map will remove it from the crawl
+      const newBars = draggableBars.filter((bar) => bar.id !== barId);
+      const reorderedBars = newBars.map((bar, index) => ({
+        ...bar,
+        order: index,
+      }));
+      setDraggableBars(reorderedBars);
     },
-    [draggableBars, allBarsInArea]
+    [draggableBars]
   );
 
-  // Memoize expensive computations to prevent unnecessary re-renders (must be before early return)
   const selectedBarIds = useMemo(
     () => new Set(draggableBars.map((bar) => bar.id)),
     [draggableBars]
   );
 
-  // Memoize the bars array to include all bars in area plus selected bars
-  const memoizedBars = useMemo((): AppBat[] => {
-    // Combine all bars in area with selected bars, removing duplicates
-    const selectedBarIds = new Set(draggableBars.map((bar) => bar.id));
-    const allBars: AppBat[] = [...draggableBars]; // draggableBars extends AppBat so this is safe
-
-    // Add non-selected bars from the area
-    allBarsInArea.forEach((bar) => {
-      if (!selectedBarIds.has(bar.id)) {
-        allBars.push(bar);
-      }
-    });
-
-    return allBars;
-  }, [draggableBars, allBarsInArea]);
-
-  // Memoize route data to prevent unnecessary map updates
-  const memoizedRouteData = useMemo(() => routeData, [routeData]);
-
-  // Update route when bar order changes
   useEffect(() => {
     if (
       draggableBars.length >= 2 &&
@@ -564,7 +413,6 @@ const Route: React.FC = () => {
       endCoordinates &&
       !isInitialLoad.current
     ) {
-      // Small delay to batch rapid reorder changes
       const timeoutId = setTimeout(() => {
         if (!isLoading.optimizing) {
           throttledGenerateRoute(
@@ -612,14 +460,14 @@ const Route: React.FC = () => {
           <MapContainer
             center={mapCenter}
             radius={routeState.searchRadius}
-            bars={memoizedBars}
+            bars={draggableBars}
             selectedBarIds={selectedBarIds}
             hoveredBarId={hoveredBarId}
             onToggleBar={handleToggleBar}
             onHoverBar={setHoveredBarId}
             onMapViewChange={() => {}}
             onDrawComplete={() => {}}
-            route={memoizedRouteData}
+            route={routeData}
             startCoordinates={startCoordinates}
             endCoordinates={endCoordinates}
           />

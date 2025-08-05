@@ -6,6 +6,7 @@
   padding: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+  z-index: 1000 !important;
 }
 
 .neon-bar-popup .mapboxgl-popup-tip {
@@ -249,15 +250,15 @@
 /* Ultra-Premium Generate Route Button */
 .btn-generate-route {
   width: 100%;
-  padding: 1rem 1.5rem;
-  font-size: 1.1rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   font-family: "Rajdhani", sans-serif;
   letter-spacing: 1px;
   background: var(--gradient-secondary);
   color: var(--text-inverse);
   border: none;
-  border-radius: 0.75rem;
+  border-radius: 0.6rem;
   transition: var(--transition-bounce);
   box-shadow: var(--shadow-premium);
   position: relative;
@@ -284,8 +285,8 @@
 }
 
 .btn-generate-route:hover:not(:disabled) {
-  transform: translateY(-3px) scale(1.01);
-  box-shadow: 0 6px 25px rgba(255, 107, 107, 0.4), var(--shadow-premium);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4), var(--shadow-premium);
 }
 
 .btn-generate-route:hover:not(:disabled)::before {

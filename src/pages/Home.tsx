@@ -22,6 +22,8 @@ import {
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useCacheManager } from "../hooks/useCacheManager";
 import LocationTutorial from "../components/LocationTutorial";
+import LocationPermission from "../components/LocationPermission";
+import { useLocationPermission } from "../hooks/useLocationPermission";
 
 export interface AppBat extends Bar {
   location: {
@@ -69,6 +71,16 @@ const Home: React.FC = () => {
 
   // Initialize cache management
   useCacheManager();
+  
+  // Location permission hook
+  const {
+    coords: userLocation,
+    permission: locationPermission,
+    hasUserConsent,
+    getUserLocation,
+    markUserConsent,
+  } = useLocationPermission();
+
   const [bars, setBars] = useState<AppBat[]>([]);
   const [selectedBarIds, setSelectedBarIds] = useState<Set<string>>(new Set());
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
@@ -81,6 +93,7 @@ const Home: React.FC = () => {
   const [showOnlyInRadius, setShowOnlyInRadius] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   const [hasInitialBars, setHasInitialBars] = useState(false);
+  const [showLocationPermission, setShowLocationPermission] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => {
     // Check if user has already seen the tutorial
     const hasSeenTutorial = localStorage.getItem("barCrawlTutorialSeen");
@@ -91,6 +104,8 @@ const Home: React.FC = () => {
   const lastFetchCenter = useRef<[number, number] | null>(null);
   const fetchedAreas = useRef<Set<string>>(new Set());
   const hasInitiallyFetched = useRef(false);
+
+
 
   // Calculate bars within radius
   const barsInRadius = useMemo(() => {
@@ -392,6 +407,90 @@ const Home: React.FC = () => {
     [debouncedFetchBars]
   );
 
+  // Handle location permission and user location
+  useEffect(() => {
+    const handleLocationPermission = async () => {
+      // If user has already granted permission and we have their location
+      if (locationPermission === "granted" && userLocation) {
+        console.log("📍 Using user location:", userLocation);
+        setMapCenter(userLocation);
+        setSearchedLocation("Your Location");
+        
+        // Clear cache and fetch bars for user location
+        clearFetchCache();
+        setBars([]);
+        await fetchBarsInArea(userLocation, true, true);
+        return;
+      }
+
+      // Only show location permission dialog if user hasn't made a choice yet
+      if (!hasUserConsent && (locationPermission === "denied" || locationPermission === "unknown" || locationPermission === "prompt")) {
+        setShowLocationPermission(true);
+      }
+    };
+
+    handleLocationPermission();
+  }, [locationPermission, userLocation, hasUserConsent, fetchBarsInArea, clearFetchCache]);
+
+  // Handle location permission callbacks
+  const handleLocationGranted = async (coords: [number, number]) => {
+    console.log("📍 Location granted:", coords);
+    markUserConsent("granted");
+    setMapCenter(coords);
+    setSearchedLocation("Your Location");
+    setShowLocationPermission(false);
+    
+    // Clear cache and fetch bars for user location
+    clearFetchCache();
+    setBars([]);
+    await fetchBarsInArea(coords, true, true);
+  };
+
+  const handleLocationDenied = () => {
+    console.log("📍 Location denied");
+    markUserConsent("denied");
+    setShowLocationPermission(false);
+    // Continue with default location
+  };
+
+  const handleLocationSkip = () => {
+    console.log("📍 Location permission skipped");
+    markUserConsent("denied"); // Treat skip as denial
+    setShowLocationPermission(false);
+    // Continue with default location
+  };
+
+  // Handle "Use My Location" button click from search control
+  const handleUseLocationClick = async () => {
+    // If user has already granted permission and we have their location, use it
+    if (locationPermission === "granted" && userLocation) {
+      console.log("📍 Using stored user location:", userLocation);
+      setMapCenter(userLocation);
+      setSearchedLocation("Your Location");
+      
+      // Clear cache and fetch bars for user location
+      clearFetchCache();
+      setBars([]);
+      await fetchBarsInArea(userLocation, true, true);
+      return;
+    }
+
+    // If user has denied permission before, show a message or ask again
+    if (locationPermission === "denied") {
+      // Reset user consent to allow them to try again
+      localStorage.removeItem("locationUserConsent");
+      localStorage.removeItem("locationPermission");
+      setShowLocationPermission(true);
+      return;
+    }
+
+    // If permission is unknown or prompt, show the permission dialog
+    if (locationPermission === "unknown" || locationPermission === "prompt") {
+      setShowLocationPermission(true);
+      return;
+    }
+  };
+
   // Load cached data immediately on component mount
   useEffect(() => {
     const loadInitialBars = async () => {
@@ -499,12 +598,14 @@ const Home: React.FC = () => {
           onSearch={handleLocationSearch}
           onRadiusChange={handleRadiusChange}
           onRadiusFilterToggle={handleRadiusFilterToggle}
+          onUseLocation={handleUseLocationClick}
           isLoading={isLoading}
           initialLocation={searchedLocation}
           initialRadius={searchRadius}
           showOnlyInRadius={showOnlyInRadius}
           barsInRadius={barsInRadius}
           totalBars={bars.length}
+          showLocationButton={true}
         />
 
         <MapContainer
@@ -528,6 +629,14 @@ const Home: React.FC = () => {
           // Mark tutorial as seen in localStorage so it never shows again
           localStorage.setItem("barCrawlTutorialSeen", "true");
         }}
+      />
+
+      <LocationPermission
+        isVisible={showLocationPermission}
+        onLocationGranted={handleLocationGranted}
+        onLocationDenied={handleLocationDenied}
+        onSkip={handleLocationSkip}
+        getUserLocation={getUserLocation}
       />
     </div>
   );

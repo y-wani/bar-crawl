@@ -6,13 +6,13 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin: 0 -1.25rem;
-  padding: 0.5rem 1.25rem;
+  gap: 0.6rem;
+  margin: 0 -1rem;
+  padding: 0.4rem 1rem;
   position: relative;
   z-index: 1;
   min-height: 200px; /* Ensure minimum height for scrolling */
-  max-height: calc(100vh - 400px); /* Prevent overflow on small screens */
+  max-height: calc(100vh - 300px); /* Prevent overflow on small screens */
 }
 
 /* Premium Custom Scrollbar */
@@ -84,10 +84,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
   background: var(--gradient-dark);
-  border-radius: 0.75rem;
+  border-radius: 0.6rem;
   border: var(--border-glow);
   cursor: pointer;
   position: relative;
@@ -95,7 +95,7 @@
   transition: var(--transition-smooth);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
 }
 
 .bar-list-item::before {
@@ -185,7 +185,7 @@
 .bar-item-details {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
   flex-grow: 1;
   min-width: 0;
   z-index: 1;
@@ -194,10 +194,10 @@
 
 .bar-item-name {
   font-family: "Rajdhani", sans-serif;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: 1.2;
   letter-spacing: 0.3px;
   display: flex;
   align-items: center;
@@ -209,8 +209,8 @@
 
 .bar-item-meta {
   display: flex;
-  gap: 1rem;
-  font-size: 0.85rem;
+  gap: 0.75rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   font-family: "Poppins", sans-serif;
   font-weight: 500;

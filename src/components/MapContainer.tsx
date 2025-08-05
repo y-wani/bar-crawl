@@ -167,23 +167,24 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         },
       });
 
-      // Create highlight layers
-      createHighlightLayers(m, BARS_LAYER_ID);
-
       // Create and load bar marker, then create bars layer
       createBarMarker(m)
         .then(() => {
           console.log("🏗️ Creating bars layer with neon-pin-marker");
           createBarLayers(m);
-          console.log("✅ Bars layer created successfully");
 
-          // Update isMapReady flag
+          // NOW that bars-layer exists, add highlights in relation to it:
+          createHighlightLayers(m, BARS_LAYER_ID);
+          console.log("✅ Bars layer + highlight layers created successfully");
+
+          // Finally, mark map as ready
           isMapReady.current = true;
         })
         .catch((error) => {
           console.error("❌ Failed to create bar marker:", error);
-          // Fallback: still create bars layer without custom icon
+          // Fallback: still create bars layer + highlights
           createBarLayers(m);
+          createHighlightLayers(m, BARS_LAYER_ID);
           isMapReady.current = true;
         });
 
@@ -263,7 +264,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           }, 30); // Minimal debounce for state
         }
       });
-
       m.on("mouseleave", BARS_LAYER_ID, () => {
         // Clear timeouts to prevent stale hover effects
         if (hoverTimeout.current) {

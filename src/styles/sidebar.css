@@ -32,17 +32,23 @@
 }
 
 .sidebar-header {
-  padding-bottom: 1rem;
+  padding-bottom: 0.75rem;
   border-bottom: 2px solid rgba(59, 178, 208, 0.2);
   position: relative;
   z-index: 1;
 }
 
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 .sidebar-title {
   font-family: "Rajdhani", sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
   color: var(--text-primary);
   letter-spacing: 1px;
   background: var(--gradient-primary);
@@ -50,13 +56,14 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 0 20px rgba(59, 178, 208, 0.3);
+  margin: 0;
 }
 
 .user-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   font-family: "Poppins", sans-serif;
   font-weight: 500;
@@ -68,12 +75,12 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.35rem 0.75rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 0.4rem;
   transition: var(--transition-bounce);
   font-family: "Rajdhani", sans-serif;
   letter-spacing: 0.5px;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
 
 .btn-signout:hover {
@@ -84,27 +91,24 @@
 }
 
 .user-welcome {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
   flex: 1;
+  margin-right: 0.5rem;
 }
 
 .btn-saved-crawls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 4px;
+  padding: 4px 8px;
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
   border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 6px;
+  border-radius: 4px;
   color: #ffcc00;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  align-self: flex-start;
-  margin-top: 4px;
+  white-space: nowrap;
 }
 
 .btn-saved-crawls:hover {

@@ -15,12 +15,14 @@ interface MapSearchControlProps {
   onSearch: (location: string) => void;
   onRadiusChange: (radius: number) => void;
   onRadiusFilterToggle: (showOnlyInRadius: boolean) => void;
+  onUseLocation?: () => void;
   isLoading: boolean;
   initialLocation?: string;
   initialRadius?: number;
   showOnlyInRadius?: boolean;
   barsInRadius?: number;
   totalBars?: number;
+  showLocationButton?: boolean;
 }
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -29,12 +31,14 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
   onSearch,
   onRadiusChange,
   onRadiusFilterToggle,
+  onUseLocation,
   isLoading,
   initialLocation = "Columbus, Ohio",
   initialRadius = 1,
   showOnlyInRadius = false,
   barsInRadius = 0,
   totalBars = 0,
+  showLocationButton = true,
 }) => {
   const [location, setLocation] = useState(initialLocation);
   const [radius, setRadius] = useState(initialRadius);
@@ -218,6 +222,19 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
             )}
           </button>
         </form>
+
+        {showLocationButton && onUseLocation && (
+          <button
+            type="button"
+            onClick={onUseLocation}
+            disabled={isLoading}
+            className="location-button"
+            title="Use my current location"
+          >
+            <FiCrosshair size={16} />
+            <span>Use My Location</span>
+          </button>
+        )}
 
         {showSuggestions && suggestions.length > 0 && (
           <div className="suggestions-dropdown">

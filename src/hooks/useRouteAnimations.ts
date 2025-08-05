@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type { AppBat } from "../pages/Home";
+import { createInRouteBarMarker } from "../utils/mapLayers"; // Import the new marker function
+
 
 interface MapboxPointGeometry {
   type: "Point";
@@ -36,6 +38,9 @@ export const useRouteAnimations = ({
 
     if (route) {
       console.log("🎬 Starting route animations");
+
+      // Load the custom in-route bar marker
+      createInRouteBarMarker(map);
 
       // Stop any existing animation
       if (animationFrame.current) {
@@ -322,24 +327,22 @@ export const useRouteAnimations = ({
       if (!map.getLayer("route-bars-highlight")) {
         map.addLayer({
           id: "route-bars-highlight",
-          type: "circle",
+          type: "symbol", // Changed to symbol
           source: "route-bars-highlight",
-          paint: {
-            "circle-radius": [
+          layout: {
+            "icon-image": "in-route-bar-marker", // Use the new custom marker
+            "icon-size": [
               "interpolate",
               ["linear"],
               ["zoom"],
               10,
-              8,
+              0.6,
               18,
-              16,
+              1.2,
             ],
-            "circle-color": "#ffff00",
-            "circle-opacity": 0.9,
-            "circle-stroke-width": 4,
-            "circle-stroke-color": "#ff00ff",
-            "circle-stroke-opacity": 1,
-            "circle-blur": 1,
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "icon-anchor": "bottom",
           },
         });
       }
