@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
-import { useAuth } from "../context/useAuth";
 import type { AppBat } from "./Home";
 import { FaBars, FaTimes, FaGripVertical, FaArrowLeft } from "react-icons/fa";
 import {
@@ -216,7 +215,7 @@ const fetchBarsInArea = async (
 const Route: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signout } = useAuth();
+  // const { user, signout } = useAuth();
 
   const routeState = location.state as RoutePageState | null;
 
