@@ -30,8 +30,6 @@ const RADIUS_OUTLINE_LAYER = "radius-outline";
 // Props & types
 export type MapBounds = [number, number, number, number];
 
-
-
 interface MapContainerProps {
   center: [number, number];
   radius: number; // in miles
@@ -454,10 +452,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
 
-    // Remove existing popup
+    // Remove existing popup with a fade-out effect
     if (popupRef.current) {
-      popupRef.current.remove();
-      popupRef.current = null;
+      const popupElement = popupRef.current.getElement();
+      if (popupElement) {
+        popupElement.classList.add("closing");
+        setTimeout(() => {
+          if (popupRef.current) {
+            popupRef.current.remove();
+            popupRef.current = null;
+          }
+        }, 300); // Match animation duration
+      }
     }
 
     // Create popup if a bar is hovered
@@ -506,7 +512,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             <div class="neon-popup-container">
               <div class="neon-popup-header">
                 <div class="neon-bar-icon">🍸</div>
-                <h3 class="neon-bar-name">${hoveredBar.name || "Unknown Bar"}</h3>
+                <h3 class="neon-bar-name">${
+                  hoveredBar.name || "Unknown Bar"
+                }</h3>
               </div>
               <div class="neon-popup-content">
                 <div class="neon-stat">
@@ -518,7 +526,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                   <span class="neon-stat-icon">📍</span>
                   <span class="neon-stat-label">Distance:</span>
                   <span class="neon-stat-value">${
-                    hoveredBar.distance !== undefined && hoveredBar.distance !== null
+                    hoveredBar.distance !== undefined &&
+                    hoveredBar.distance !== null
                       ? hoveredBar.distance.toFixed(2)
                       : "Calculating..."
                   } mi</span>
@@ -526,7 +535,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 <div class="neon-stat">
                   <span class="neon-stat-icon">${vibeData.vibeIcon}</span>
                   <span class="neon-stat-label">Vibe:</span>
-                  <span class="neon-stat-value" style="color: ${vibeData.vibeColor}">${vibeData.vibe}</span>
+                  <span class="neon-stat-value" style="color: ${
+                    vibeData.vibeColor
+                  }">${vibeData.vibe}</span>
                 </div>
                 <div class="neon-action-hint">
                   <span class="neon-click-hint">💫 Click to ${

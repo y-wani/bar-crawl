@@ -77,13 +77,13 @@ const Home: React.FC = () => {
   ]);
   const [searchRadius, setSearchRadius] = useState<number>(1);
   const [searchedLocation, setSearchedLocation] = useState("Columbus, Ohio");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showOnlyInRadius, setShowOnlyInRadius] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
   const [hasInitialBars, setHasInitialBars] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => {
     // Check if user has already seen the tutorial
-    const hasSeenTutorial = localStorage.getItem('barCrawlTutorialSeen');
+    const hasSeenTutorial = localStorage.getItem("barCrawlTutorialSeen");
     return !hasSeenTutorial; // Show tutorial only if user hasn't seen it
   });
 
@@ -108,7 +108,7 @@ const Home: React.FC = () => {
     if (!showOnlyInRadius) {
       return bars; // Show all bars when radius filter is off
     }
-    
+
     return bars.filter((bar) => {
       if (!bar.location?.coordinates) return false;
       const [barLng, barLat] = bar.location.coordinates;
@@ -411,8 +411,6 @@ const Home: React.FC = () => {
           setBars(defaultCache.bars);
           hasInitiallyFetched.current = true;
           setHasInitialBars(true);
-          setIsLoading(false);
-
           // Set timeout to show map after bars are loaded
           setTimeout(() => setIsMapReady(true), 500);
           return;
@@ -426,8 +424,9 @@ const Home: React.FC = () => {
         setTimeout(() => setIsMapReady(true), 1000);
       } catch (error) {
         console.error("Error loading initial bars:", error);
-        setIsLoading(false);
         setIsMapReady(true); // Show map even if bars fail to load
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -527,7 +526,7 @@ const Home: React.FC = () => {
         onClose={() => {
           setShowTutorial(false);
           // Mark tutorial as seen in localStorage so it never shows again
-          localStorage.setItem('barCrawlTutorialSeen', 'true');
+          localStorage.setItem("barCrawlTutorialSeen", "true");
         }}
       />
     </div>
