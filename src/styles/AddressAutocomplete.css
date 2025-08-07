@@ -1,0 +1,306 @@
+/* Address Autocomplete Styles */
+
+.address-autocomplete {
+  position: relative;
+  width: 100%;
+  font-family: "Poppins", sans-serif;
+}
+
+.address-autocomplete-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: "Rajdhani", sans-serif;
+  letter-spacing: 0.3px;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.address-autocomplete-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--gradient-dark);
+  border: var(--border-glow);
+  border-radius: 0.6rem;
+  transition: var(--transition-smooth);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.address-autocomplete-input-container:focus-within {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-glow), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.address-autocomplete-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  transition: var(--transition-smooth);
+}
+
+.address-autocomplete-input-container:focus-within .address-autocomplete-icon {
+  color: var(--primary);
+}
+
+.address-autocomplete-input {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: 0.8rem;
+  outline: none;
+  transition: var(--transition-smooth);
+}
+
+.address-autocomplete-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.address-autocomplete-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.address-autocomplete-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  margin-right: 0.5rem;
+}
+
+.address-autocomplete-clear:hover {
+  background: rgba(255, 107, 107, 0.2);
+  color: var(--secondary);
+  transform: scale(1.1);
+}
+
+.address-autocomplete-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--gradient-dark);
+  border: var(--border-glow);
+  box-shadow: var(--shadow-premium);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  z-index: 99999;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.address-autocomplete-dropdown.dropdown-down {
+  top: 100%;
+  border-top: none;
+  border-radius: 0 0 0.6rem 0.6rem;
+  animation: dropdownSlideIn 0.2s ease-out;
+}
+
+.address-autocomplete-dropdown.dropdown-up {
+  bottom: 100%;
+  border-bottom: none;
+  border-radius: 0.6rem 0.6rem 0 0;
+  animation: dropdownSlideInUp 0.2s ease-out;
+}
+
+.address-autocomplete-dropdown.dropdown-down {
+  top: 100%;
+  border-top: none;
+  border-radius: 0 0 0.6rem 0.6rem;
+}
+
+.address-autocomplete-dropdown.dropdown-up {
+  bottom: 100%;
+  border-bottom: none;
+  border-radius: 0.6rem 0.6rem 0 0;
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdownSlideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: var(--gradient-primary);
+  border-radius: 3px;
+}
+
+.address-autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+.address-autocomplete-error,
+.address-autocomplete-loading,
+.address-autocomplete-no-results {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.address-autocomplete-error {
+  color: var(--secondary);
+}
+
+.address-autocomplete-loading .spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.address-autocomplete-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.address-autocomplete-suggestion:last-child {
+  border-bottom: none;
+}
+
+.address-autocomplete-suggestion:hover,
+.address-autocomplete-suggestion.focused {
+  background: rgba(59, 178, 208, 0.1);
+  color: var(--primary);
+}
+
+.address-autocomplete-suggestion:active {
+  background: rgba(59, 178, 208, 0.2);
+  transform: scale(0.98);
+}
+
+.suggestion-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+
+.suggestion-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.suggestion-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.suggestion-details {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.address-autocomplete-suggestion:hover .suggestion-details,
+.address-autocomplete-suggestion.focused .suggestion-details {
+  color: var(--text-primary);
+  opacity: 0.8;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .address-autocomplete-dropdown {
+    max-height: 250px;
+  }
+  
+  .address-autocomplete-suggestion {
+    padding: 0.7rem 0.8rem;
+  }
+  
+  .suggestion-icon {
+    font-size: 1rem;
+    width: 20px;
+  }
+  
+  .suggestion-name {
+    font-size: 0.8rem;
+  }
+  
+  .suggestion-details {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .address-autocomplete-input-container {
+    border-radius: 0.5rem;
+  }
+  
+  .address-autocomplete-dropdown {
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+  
+  .address-autocomplete-suggestion {
+    padding: 0.6rem 0.7rem;
+  }
+} 

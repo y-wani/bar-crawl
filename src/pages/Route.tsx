@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapContainer } from "../components/MapContainer";
+import { AddressAutocomplete } from "../components/AddressAutocomplete";
 import type { AppBat } from "./Home";
 import { FaBars, FaTimes, FaGripVertical, FaArrowLeft } from "react-icons/fa";
 import {
@@ -33,6 +34,14 @@ interface RoutePageState {
 
 interface DraggableBarItem extends AppBat {
   order: number;
+}
+
+interface AddressSuggestion {
+  id: string;
+  place_name: string;
+  center: [number, number];
+  relevance: number;
+  type: string;
 }
 
 // Helper function to calculate distance between two coordinates
@@ -106,26 +115,7 @@ const reverseGeocode = async (
   }
 };
 
-// Geocode address to coordinates
-const geocodeAddress = async (
-  address: string
-): Promise<[number, number] | null> => {
-  try {
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-        address
-      )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`
-    );
-    const data = await response.json();
-    if (data.features && data.features.length > 0) {
-      return data.features[0].center;
-    }
-    return null;
-  } catch (error) {
-    console.error("Geocoding failed:", error);
-    return null;
-  }
-};
+
 
 const Route: React.FC = () => {
   const navigate = useNavigate();
@@ -362,13 +352,16 @@ const Route: React.FC = () => {
     setDraggedItem(null);
   };
 
-  const handleLocationSearch = async (query: string, isStart: boolean) => {
-    if (!query.trim()) return;
-    const coordinates = await geocodeAddress(query);
-    if (coordinates) {
-      if (isStart) setStartCoordinates(coordinates);
-      else setEndCoordinates(coordinates);
-    }
+  const handleStartLocationSelect = (suggestion: AddressSuggestion) => {
+    console.log('Start location selected:', suggestion.place_name);
+    setStartCoordinates(suggestion.center);
+    setStartLocation(suggestion.place_name);
+  };
+
+  const handleEndLocationSelect = (suggestion: AddressSuggestion) => {
+    console.log('End location selected:', suggestion.place_name);
+    setEndCoordinates(suggestion.center);
+    setEndLocation(suggestion.place_name);
   };
 
   const handleFinalGenerateClick = () => {
@@ -512,17 +505,13 @@ const Route: React.FC = () => {
               </button>
             </div>
             <div className="location-section">
-              <div className="location-label">
-                <FiPlay size={18} className="location-icon start" />
-                <span>Start Location</span>
-              </div>
-              <input
-                type="text"
-                placeholder="Enter starting point..."
+              <AddressAutocomplete
                 value={startLocation}
-                onChange={(e) => setStartLocation(e.target.value)}
-                onBlur={(e) => handleLocationSearch(e.target.value, true)}
-                className="location-input"
+                onChange={setStartLocation}
+                onSelect={handleStartLocationSelect}
+                placeholder="Enter starting point..."
+                label="Start Location"
+                icon={<FiPlay size={18} className="location-icon start" />}
               />
             </div>
           </div>
@@ -566,17 +555,14 @@ const Route: React.FC = () => {
 
           <div className="drawer-footer">
             <div className="location-section">
-              <div className="location-label">
-                <FiFlag size={18} className="location-icon end" />
-                <span>End Location</span>
-              </div>
-              <input
-                type="text"
-                placeholder="Enter ending point..."
+              <AddressAutocomplete
                 value={endLocation}
-                onChange={(e) => setEndLocation(e.target.value)}
-                onBlur={(e) => handleLocationSearch(e.target.value, false)}
-                className="location-input"
+                onChange={setEndLocation}
+                onSelect={handleEndLocationSelect}
+                placeholder="Enter ending point..."
+                label="End Location"
+                icon={<FiFlag size={18} className="location-icon end" />}
+                dropdownDirection="up"
               />
             </div>
             <div className="route-actions">
