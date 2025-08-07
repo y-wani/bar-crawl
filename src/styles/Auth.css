@@ -9,15 +9,20 @@
   padding: 2rem 1rem;
   position: relative;
   z-index: 1;
-  height: 100vh; /* Ensure container takes full height */
+  /* Use viewport-relative min-height that works well across browsers */
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  height: auto;
+  box-sizing: border-box;
 }
 
 .auth-card {
   background: linear-gradient(135deg, rgba(22, 21, 43, 0.7), rgba(12, 11, 22, 0.6));
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-lg);
-  padding: 2.5rem;
-  max-width: 420px;
+  padding: 2.25rem;
+  max-width: 400px;
   width: 100%;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -33,7 +38,7 @@
 
 .auth-title {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   font-weight: 700;
   color: #ffffff;
   margin-bottom: 0.5rem;
@@ -48,7 +53,7 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem; 
+  gap: 1rem; 
 }
 
 .form-group {
@@ -114,6 +119,36 @@
 
 .auth-button:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Social login separator and icon button */
+.social-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.google-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-secondary);
+  transition: var(--transition);
+}
+
+.google-icon-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+
+.google-icon-button:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -240,10 +275,10 @@
 @media (max-height: 800px) {
   /* More aggressive adjustments for shorter screens, especially for the signup form */
   .signup-card {
-    padding: 1.5rem;
+    padding: 1.25rem 1.5rem;
   }
   .signup-card .auth-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
   .signup-card .auth-form {
     gap: 0.75rem;
@@ -260,11 +295,11 @@
   }
   
   .auth-card {
-    padding: 1.5rem;
+    padding: 1.25rem;
   }
   
   .auth-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
   
   .password-requirements {
@@ -279,7 +314,9 @@
 */
 
 .signup-container {
-  height: 100%
+  /* Allow the container to inherit min-height from .auth-container to stay centered */
+  height: auto;
+  min-height: inherit;
 }
 
 /* This class will be used for the container on the sign-up page */

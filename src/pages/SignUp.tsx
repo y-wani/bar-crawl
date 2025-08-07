@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import '../styles/Auth.css';
+import { FcGoogle } from 'react-icons/fc';
 
 const SignUp: React.FC = () => {
-  const { signup } = useAuth();
+  const { signup, signinWithGoogle } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -119,11 +120,24 @@ const SignUp: React.FC = () => {
     }
   };
 
+  const handleGoogleSignup = async () => {
+    setErrors({});
+    setLoading(true);
+    try {
+      await signinWithGoogle();
+    } catch (error) {
+      setErrors({ general: 'Google sign-in failed. Please try again.' });
+      console.error('Google sign-in error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const { requirements } = getPasswordStrength();
 
   return (
-    <div className="signup-container">
-      <div className="auth-card">
+    <div className="auth-container signup-container">
+      <div className="auth-card signup-card">
         <div className="auth-header">
           <h1 className="auth-title">Create Account</h1>
           <p className="auth-subtitle">Join the ultimate bar crawl experience.</p>
@@ -227,6 +241,18 @@ const SignUp: React.FC = () => {
           >
             {loading ? '' : 'Create Account'}
           </button>
+
+          <div className="social-login" aria-label="Alternative sign-up options">
+            <button
+              type="button"
+              onClick={handleGoogleSignup}
+              className="google-icon-button"
+              disabled={loading}
+              aria-label="Sign up with Google"
+            >
+              <FcGoogle size={28} />
+            </button>
+          </div>
         </form>
         
         <div className="auth-footer">

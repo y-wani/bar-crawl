@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import '../styles/Auth.css';
+import { FcGoogle } from 'react-icons/fc';
 
 const SignIn: React.FC = () => {
-  const { signin } = useAuth();
+  const { signin, signinWithGoogle } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -58,6 +59,19 @@ const SignIn: React.FC = () => {
 
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setErrors({});
+    setLoading(true);
+    try {
+      await signinWithGoogle();
+    } catch (error) {
+      setErrors({ general: 'Google sign-in failed. Please try again.' });
+      console.error('Google sign-in error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,6 +141,17 @@ const SignIn: React.FC = () => {
           >
             {loading ? '' : 'Sign In'}
           </button>
+          <div className="social-login" aria-label="Alternative sign-in options">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="google-icon-button"
+              disabled={loading}
+              aria-label="Sign in with Google"
+            >
+              <FcGoogle size={28} />
+            </button>
+          </div>
         </form>
 
         <div className="auth-footer">
