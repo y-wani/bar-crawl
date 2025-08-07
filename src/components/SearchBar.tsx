@@ -5,7 +5,7 @@ import "../styles/Home.css";
 interface SearchBarProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  onLocationSelect: (location: { place_name: string }) => void;
+  onLocationSelect?: (location: { place_name: string }) => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -18,7 +18,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       <AddressAutocomplete
         value={searchTerm}
         onChange={onSearchChange}
-        onSelect={onLocationSelect}
+        onSelect={onLocationSelect || (() => {})}
         placeholder="🔍 Search bars..."
       />
     </div>
