@@ -20,7 +20,7 @@ interface AddressAutocompleteProps {
   icon?: React.ReactNode;
   className?: string;
   disabled?: boolean;
-  dropdownDirection?: 'up' | 'down';
+  dropdownDirection?: "up" | "down";
 }
 
 export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
@@ -32,25 +32,23 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   icon = <FiMapPin />,
   className = "",
   disabled = false,
-  dropdownDirection = 'down',
+  dropdownDirection = "down",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const {
-    suggestions,
-    isLoading,
-    error,
-    getSuggestions,
-    clearSuggestions,
-  } = useAddressAutocomplete();
+  // Set the proximity to Columbus, Ohio's coordinates.
+  const proximity: [number, number] = [-83.0007, 39.9612];
+
+  const { suggestions, isLoading, error, getSuggestions, clearSuggestions } =
+    useAddressAutocomplete({ proximity });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    
+
     if (newValue.trim().length >= 2) {
       getSuggestions(newValue);
       setIsOpen(true);
@@ -62,7 +60,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   };
 
   const handleSuggestionClick = (suggestion: AddressSuggestion) => {
-    console.log('Suggestion clicked:', suggestion.place_name);
+    console.log("Suggestion clicked:", suggestion.place_name);
     onChange(suggestion.place_name);
     onSelect(suggestion);
     setIsOpen(false);
@@ -151,15 +149,13 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   return (
     <div className={`address-autocomplete ${className}`}>
-      {label && (
-        <label className="address-autocomplete-label">{label}</label>
-      )}
-      
+      {label && <label className="address-autocomplete-label">{label}</label>}
+
       <div className="address-autocomplete-input-container">
         <div className="address-autocomplete-icon">
           {isLoading ? <FiLoader className="spinner" /> : icon}
         </div>
-        
+
         <input
           ref={inputRef}
           type="text"
@@ -173,7 +169,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           className="address-autocomplete-input"
           autoComplete="off"
         />
-        
+
         {value && (
           <button
             type="button"
@@ -192,10 +188,10 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       </div>
 
       {isOpen && (
-        <div 
-          ref={dropdownRef} 
+        <div
+          ref={dropdownRef}
           className={`address-autocomplete-dropdown ${
-            dropdownDirection === 'up' ? 'dropdown-up' : 'dropdown-down'
+            dropdownDirection === "up" ? "dropdown-up" : "dropdown-down"
           }`}
         >
           {error && (
@@ -204,21 +200,24 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
               <span>{error}</span>
             </div>
           )}
-          
+
           {isLoading && (
             <div className="address-autocomplete-loading">
               <FiLoader className="spinner" />
               <span>Searching...</span>
             </div>
           )}
-          
-          {!isLoading && !error && suggestions.length === 0 && value.trim().length >= 2 && (
-            <div className="address-autocomplete-no-results">
-              <FiSearch />
-              <span>No results found</span>
-            </div>
-          )}
-          
+
+          {!isLoading &&
+            !error &&
+            suggestions.length === 0 &&
+            value.trim().length >= 2 && (
+              <div className="address-autocomplete-no-results">
+                <FiSearch />
+                <span>No results found</span>
+              </div>
+            )}
+
           {suggestions.map((suggestion, index) => (
             <button
               key={suggestion.id}
@@ -247,4 +246,4 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       )}
     </div>
   );
-}; 
+};

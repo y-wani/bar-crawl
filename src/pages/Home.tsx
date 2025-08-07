@@ -71,7 +71,7 @@ const Home: React.FC = () => {
 
   // Initialize cache management
   useCacheManager();
-  
+
   // Location permission hook
   const {
     coords: userLocation,
@@ -99,13 +99,12 @@ const Home: React.FC = () => {
     const hasSeenTutorial = localStorage.getItem("barCrawlTutorialSeen");
     return !hasSeenTutorial; // Show tutorial only if user hasn't seen it
   });
+  const [hasManualSearch, setHasManualSearch] = useState(false);
 
   // Track last fetch location and cached areas to prevent unnecessary fetches
   const lastFetchCenter = useRef<[number, number] | null>(null);
   const fetchedAreas = useRef<Set<string>>(new Set());
   const hasInitiallyFetched = useRef(false);
-
-
 
   // Calculate bars within radius
   const barsInRadius = useMemo(() => {
@@ -351,6 +350,7 @@ const Home: React.FC = () => {
     setSearchedLocation(location);
     setSelectedBarIds(new Set());
     setHoveredBarId(null);
+    setHasManualSearch(true); // Mark that user has done a manual search
     try {
       const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         location
@@ -411,11 +411,16 @@ const Home: React.FC = () => {
   useEffect(() => {
     const handleLocationPermission = async () => {
       // If user has already granted permission and we have their location
-      if (locationPermission === "granted" && userLocation) {
+      // AND user hasn't done a manual search
+      if (
+        locationPermission === "granted" &&
+        userLocation &&
+        !hasManualSearch
+      ) {
         console.log("📍 Using user location:", userLocation);
         setMapCenter(userLocation);
         setSearchedLocation("Your Location");
-        
+
         // Clear cache and fetch bars for user location
         clearFetchCache();
         setBars([]);
@@ -424,13 +429,25 @@ const Home: React.FC = () => {
       }
 
       // Only show location permission dialog if user hasn't made a choice yet
-      if (!hasUserConsent && (locationPermission === "denied" || locationPermission === "unknown" || locationPermission === "prompt")) {
+      if (
+        !hasUserConsent &&
+        (locationPermission === "denied" ||
+          locationPermission === "unknown" ||
+          locationPermission === "prompt")
+      ) {
         setShowLocationPermission(true);
       }
     };
 
     handleLocationPermission();
-  }, [locationPermission, userLocation, hasUserConsent, fetchBarsInArea, clearFetchCache]);
+  }, [
+    locationPermission,
+    userLocation,
+    hasUserConsent,
+    hasManualSearch,
+    fetchBarsInArea,
+    clearFetchCache,
+  ]);
 
   // Handle location permission callbacks
   const handleLocationGranted = async (coords: [number, number]) => {
@@ -439,7 +456,8 @@ const Home: React.FC = () => {
     setMapCenter(coords);
     setSearchedLocation("Your Location");
     setShowLocationPermission(false);
-    
+    setHasManualSearch(false); // Reset manual search flag since user granted location
+
     // Clear cache and fetch bars for user location
     clearFetchCache();
     setBars([]);
@@ -467,7 +485,8 @@ const Home: React.FC = () => {
       console.log("📍 Using stored user location:", userLocation);
       setMapCenter(userLocation);
       setSearchedLocation("Your Location");
-      
+      setHasManualSearch(false); // Reset manual search flag since user chose to use location
+
       // Clear cache and fetch bars for user location
       clearFetchCache();
       setBars([]);

@@ -1,0 +1,176 @@
+/* Share Route Button Styles */
+
+.share-route-button-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.share-route-button-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--gradient-primary);
+  border: var(--border-glow);
+  border-radius: 12px;
+  color: var(--text-inverse);
+  font-weight: 600;
+  font-family: "Rajdhani", sans-serif;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-premium);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  min-width: 140px;
+  justify-content: center;
+  animation: slideInFromRight 0.5s ease-out;
+}
+
+.share-route-button-main:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(59, 178, 208, 0.4), var(--shadow-premium);
+  background: var(--gradient-accent);
+}
+
+.share-route-button-main:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+.share-route-button-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.share-route-button-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.share-route-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--gradient-dark);
+  border: var(--border-glow);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-family: "Poppins", sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-premium);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  min-width: 120px;
+  justify-content: flex-start;
+  border-left: 3px solid transparent;
+}
+
+.share-route-option:hover {
+  transform: translateX(-4px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(59, 178, 208, 0.3), var(--shadow-premium);
+  border-left-color: var(--primary);
+  background: rgba(59, 178, 208, 0.1);
+  color: var(--primary);
+}
+
+.share-route-option:active {
+  transform: translateX(-2px) scale(1.01);
+}
+
+.share-route-option span {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* Animations */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .share-route-button-container {
+    top: 15px;
+    right: 15px;
+  }
+  
+  .share-route-button-main {
+    padding: 10px 14px;
+    min-width: 120px;
+  }
+  
+  .share-route-button-label {
+    font-size: 0.8rem;
+  }
+  
+  .share-route-option {
+    padding: 8px 12px;
+    min-width: 100px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .share-route-button-container {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .share-route-button-main {
+    padding: 8px 12px;
+    min-width: 100px;
+  }
+  
+  .share-route-button-label {
+    font-size: 0.75rem;
+  }
+  
+  .share-route-option {
+    padding: 6px 10px;
+    min-width: 90px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Success state for copy button */
+.share-route-option.copied {
+  background: rgba(0, 255, 0, 0.1);
+  border-left-color: #00ff88;
+  color: #00ff88;
+}
+
+.share-route-option.copied:hover {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00ff88;
+} 

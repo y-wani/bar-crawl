@@ -10,6 +10,7 @@ import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import type { Feature, Geometry, GeoJsonProperties } from "geojson";
 import MapLoadingIndicator from "./MapLoadingIndicator";
+import { ShareRouteButton } from "./ShareRouteButton";
 
 // Import custom hooks and utilities
 import { useRouteAnimations } from "../hooks/useRouteAnimations";
@@ -566,6 +567,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           }
         />
       )}
+      
+      <ShareRouteButton
+        route={route}
+        bars={bars}
+        startCoordinates={startCoordinates}
+        endCoordinates={endCoordinates}
+        isVisible={!!route && bars.length > 0}
+      />
     </div>
   );
 };

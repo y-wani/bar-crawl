@@ -1,23 +1,25 @@
 import React from "react";
+import { AddressAutocomplete } from "./AddressAutocomplete";
 import "../styles/Home.css";
 
 interface SearchBarProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
+  onLocationSelect: (location: { place_name: string }) => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   searchTerm,
   onSearchChange,
+  onLocationSelect,
 }) => {
   return (
     <div className="search-bar-sidebar">
-      <input
-        type="text"
-        placeholder="🔍 Search bars..."
-        className="search-input"
+      <AddressAutocomplete
         value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
+        onChange={onSearchChange}
+        onSelect={onLocationSelect}
+        placeholder="🔍 Search bars..."
       />
     </div>
   );

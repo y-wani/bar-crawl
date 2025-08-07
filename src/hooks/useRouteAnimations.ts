@@ -11,6 +11,7 @@ interface MapboxPointGeometry {
 }
 
 interface UseRouteAnimationsProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   map: any | null; // mapboxgl.Map
   route: GeoJSON.Feature<GeoJSON.LineString> | null;
   bars: AppBat[];

@@ -13,11 +13,13 @@ interface AddressSuggestion {
 interface UseAddressAutocompleteProps {
   debounceMs?: number;
   maxResults?: number;
+  proximity?: [number, number] | null;
 }
 
 export const useAddressAutocomplete = ({
   debounceMs = 300,
   maxResults = 5,
+  proximity = null,
 }: UseAddressAutocompleteProps = {}) => {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,10 +33,21 @@ export const useAddressAutocomplete = ({
       }
 
       try {
+        const params = new URLSearchParams({
+          access_token: MAPBOX_ACCESS_TOKEN,
+          limit: maxResults.toString(),
+          types: "address,poi,place",
+          autocomplete: "true",
+        });
+
+        if (proximity) {
+          params.append("proximity", proximity.join(","));
+        }
+
         const response = await fetch(
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
             query
-          )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=${maxResults}&types=address,poi,place&autocomplete=true`
+          )}.json?${params.toString()}`
         );
 
         if (!response.ok) {
@@ -42,9 +55,15 @@ export const useAddressAutocomplete = ({
         }
 
         const data = await response.json();
-        
+
         if (data.features) {
-          return data.features.map((feature: any, index: number) => ({
+          return data.features.map((feature: {
+            id?: string;
+            place_name: string;
+            center: [number, number];
+            relevance: number;
+            place_type?: string[];
+          }, index: number) => ({
             id: feature.id || `suggestion-${index}`,
             place_name: feature.place_name,
             center: feature.center,
@@ -59,11 +78,11 @@ export const useAddressAutocomplete = ({
         throw err;
       }
     },
-    [maxResults]
+    [maxResults, proximity]
   );
 
   const getSuggestions = useCallback(
-    async (query: string) => {
+    (query: string) => {
       if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
       }
@@ -82,7 +101,7 @@ export const useAddressAutocomplete = ({
         try {
           const results = await searchAddresses(query);
           setSuggestions(results);
-        } catch (err) {
+        } catch {
           setError("Failed to load address suggestions");
           setSuggestions([]);
         } finally {
@@ -116,4 +135,4 @@ export const useAddressAutocomplete = ({
     getSuggestions,
     clearSuggestions,
   };
-}; 
+};
