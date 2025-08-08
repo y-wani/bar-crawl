@@ -7,7 +7,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { MapContainer } from "../components/MapContainer";
 import { AddressAutocomplete } from "../components/AddressAutocomplete";
 import type { AppBat } from "./Home";
@@ -19,9 +19,11 @@ import {
   FiPlay,
   FiFlag,
   FiSave,
+  FiFolder,
 } from "react-icons/fi";
 import "../styles/Route.css";
 import { SaveCrawlModal } from "../components/SaveCrawlModal";
+import { getCrawlById, convertSavedBarsToAppBars } from "../services/crawlService";
 
 // Mapbox API constants and types
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -120,18 +122,20 @@ const reverseGeocode = async (
 const Route: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const routeState = location.state as RoutePageState | null;
 
+  // Guard redirect only if no state and no crawlId param
   useEffect(() => {
+    const crawlId = searchParams.get("crawlId");
     if (
-      !routeState ||
-      !routeState.selectedBars ||
-      routeState.selectedBars.length < 2
+      (!routeState || !routeState.selectedBars || routeState.selectedBars.length < 2) &&
+      !crawlId
     ) {
       navigate("/home");
     }
-  }, [routeState, navigate]);
+  }, [routeState, navigate, searchParams]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [draggableBars, setDraggableBars] = useState<DraggableBarItem[]>([]);
@@ -149,6 +153,11 @@ const Route: React.FC = () => {
   const [mapCenter] = useState<[number, number]>(
     routeState?.mapCenter || [-83.0007, 39.9612]
   );
+  const [searchRadius] = useState<number>(routeState?.searchRadius ?? 1);
+
+  // Route metrics
+  const [totalDistanceMiles, setTotalDistanceMiles] = useState<number | null>(null);
+  const [estimatedDurationMin, setEstimatedDurationMin] = useState<number | null>(null);
 
   const [isLoading, setIsLoading] = useState({
     location: true,
@@ -235,6 +244,13 @@ const Route: React.FC = () => {
           setRouteData(
             data.routes[0].geometry as GeoJSON.Feature<GeoJSON.LineString>
           );
+          // Update metrics
+          if (typeof data.routes[0].distance === "number") {
+            setTotalDistanceMiles(data.routes[0].distance / 1609.344);
+          }
+          if (typeof data.routes[0].duration === "number") {
+            setEstimatedDurationMin(Math.round(data.routes[0].duration / 60));
+          }
         }
       } catch (error) {
         console.error("Error fetching route:", error);
@@ -265,13 +281,14 @@ const Route: React.FC = () => {
   );
 
   useEffect(() => {
-    if (
-      routeState?.selectedBars &&
-      routeState.selectedBars.length >= 2 &&
-      isInitialLoad.current
-    ) {
-      isInitialLoad.current = false;
-      const initialize = async () => {
+    const crawlId = searchParams.get("crawlId");
+    const initializeFromState = async () => {
+      if (
+        routeState?.selectedBars &&
+        routeState.selectedBars.length >= 2 &&
+        isInitialLoad.current
+      ) {
+        isInitialLoad.current = false;
         setIsLoading({ location: true, optimizing: true, generating: true });
         const currentCoords = await getCurrentLocation();
         const optimizedBars = optimizeBarOrder(
@@ -285,10 +302,46 @@ const Route: React.FC = () => {
         setDraggableBars(initialBars);
         setIsLoading((prev) => ({ ...prev, optimizing: false }));
         await throttledGenerateRoute(initialBars, currentCoords, currentCoords);
-      };
-      initialize();
+      }
+    };
+
+    const initializeFromCrawlId = async () => {
+      if (!crawlId || !isInitialLoad.current) return;
+      try {
+        isInitialLoad.current = false;
+        setIsLoading({ location: true, optimizing: true, generating: true });
+        const crawl = await getCrawlById(crawlId);
+        if (!crawl) {
+          navigate("/home");
+          return;
+        }
+        const bars = convertSavedBarsToAppBars(crawl.bars);
+        const currentCoords = [crawl.route.startLocation.lng, crawl.route.startLocation.lat] as [number, number];
+        setStartCoordinates(currentCoords);
+        setEndCoordinates([
+          crawl.route.endLocation?.lng ?? currentCoords[0],
+          crawl.route.endLocation?.lat ?? currentCoords[1],
+        ]);
+        const optimizedBars = optimizeBarOrder(bars, currentCoords);
+        const initialBars = optimizedBars.map((bar, index) => ({
+          ...bar,
+          order: index,
+        }));
+        setDraggableBars(initialBars);
+        setIsLoading((prev) => ({ ...prev, optimizing: false }));
+        await throttledGenerateRoute(initialBars, currentCoords, currentCoords);
+      } catch (e) {
+        console.error("Failed to load crawl by id", e);
+        navigate("/home");
+      }
+    };
+
+    if (routeState?.selectedBars?.length) {
+      initializeFromState();
+    } else if (crawlId) {
+      initializeFromCrawlId();
     }
-  }, [routeState, getCurrentLocation, throttledGenerateRoute]);
+  }, [routeState, getCurrentLocation, throttledGenerateRoute, navigate, searchParams]);
 
   const handleOptimizeRoute = useCallback(async () => {
     if (!userCoordinates || draggableBars.length < 2) return;
@@ -441,6 +494,13 @@ const Route: React.FC = () => {
           <span className="selected-count">{draggableBars.length} stops</span>
           <button
             className="drawer-toggle"
+            onClick={() => navigate("/saved-crawls")}
+            title="Open Saved Crawls"
+          >
+            <FiFolder />
+          </button>
+          <button
+            className="drawer-toggle"
             onClick={() => setIsDrawerOpen(!isDrawerOpen)}
           >
             {isDrawerOpen ? <FaTimes /> : <FaBars />}
@@ -452,7 +512,7 @@ const Route: React.FC = () => {
         <div className="route-map-container">
           <MapContainer
             center={mapCenter}
-            radius={routeState.searchRadius}
+            radius={searchRadius}
             bars={draggableBars}
             selectedBarIds={selectedBarIds}
             hoveredBarId={hoveredBarId}
@@ -464,6 +524,19 @@ const Route: React.FC = () => {
             startCoordinates={startCoordinates}
             endCoordinates={endCoordinates}
           />
+          {(totalDistanceMiles !== null || estimatedDurationMin !== null) && (
+            <div className="eta-summary-bar" role="status" aria-live="polite">
+              {totalDistanceMiles !== null && (
+                <span className="eta-segment">{totalDistanceMiles.toFixed(1)} mi</span>
+              )}
+              {estimatedDurationMin !== null && (
+                <span className="eta-separator">•</span>
+              )}
+              {estimatedDurationMin !== null && (
+                <span className="eta-segment">~{estimatedDurationMin} min</span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className={`route-drawer ${isDrawerOpen ? "open" : "closed"}`}>

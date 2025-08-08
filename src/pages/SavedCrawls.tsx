@@ -116,7 +116,10 @@ const SavedCrawls: React.FC = () => {
   const handleShareCrawl = async (crawl: SavedBarCrawl) => {
     if (!crawl.id) return;
 
-    const shareUrl = `${window.location.origin}/crawl/${crawl.id}`;
+    // Public link to open directly in Route page
+    const shareUrl = `${window.location.origin}/route?crawlId=${encodeURIComponent(
+      crawl.id
+    )}`;
 
     if (navigator.share) {
       try {

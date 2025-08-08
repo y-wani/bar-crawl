@@ -205,6 +205,18 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
               autoComplete="off"
             />
             <div className="search-input-icons">
+              {showLocationButton && onUseLocation && (
+                <button
+                  type="button"
+                  className="inline-location-btn"
+                  onClick={onUseLocation}
+                  disabled={isLoading}
+                  title="Use my current location"
+                  aria-label="Use my current location"
+                >
+                  <FiCrosshair size={14} />
+                </button>
+              )}
               {isLoadingSuggestions && (
                 <div className="loading-spinner">
                   <div className="spinner"></div>
@@ -222,19 +234,6 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
             )}
           </button>
         </form>
-
-        {showLocationButton && onUseLocation && (
-          <button
-            type="button"
-            onClick={onUseLocation}
-            disabled={isLoading}
-            className="location-button"
-            title="Use my current location"
-          >
-            <FiCrosshair size={16} />
-            <span>Use My Location</span>
-          </button>
-        )}
 
         {showSuggestions && suggestions.length > 0 && (
           <div className="suggestions-dropdown">

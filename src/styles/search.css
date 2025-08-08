@@ -90,7 +90,7 @@
 
 .search-input-icons {
   position: absolute;
-  right: 1rem;
+  right: 0.5rem;
   display: flex;
   align-items: center;
   z-index: 2;
@@ -167,6 +167,33 @@
   box-shadow: var(--shadow-premium);
   position: relative;
   overflow: hidden;
+}
+
+/* Inline location icon button inside input */
+.inline-location-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: var(--transition-smooth);
+}
+
+.inline-location-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.inline-location-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .location-button::before {

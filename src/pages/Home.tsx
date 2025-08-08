@@ -76,7 +76,6 @@ const Home: React.FC = () => {
   const {
     coords: userLocation,
     permission: locationPermission,
-    hasUserConsent,
     getUserLocation,
     markUserConsent,
   } = useLocationPermission();
@@ -95,9 +94,8 @@ const Home: React.FC = () => {
   const [hasInitialBars, setHasInitialBars] = useState(false);
   const [showLocationPermission, setShowLocationPermission] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => {
-    // Check if user has already seen the tutorial
-    const hasSeenTutorial = localStorage.getItem("barCrawlTutorialSeen");
-    return !hasSeenTutorial; // Show tutorial only if user hasn't seen it
+    const seen = localStorage.getItem("barCrawlTutorialSeen");
+    return !seen;
   });
   const [hasManualSearch, setHasManualSearch] = useState(false);
 
@@ -410,30 +408,21 @@ const Home: React.FC = () => {
   // Handle location permission and user location
   useEffect(() => {
     const handleLocationPermission = async () => {
-      // If user has already granted permission and we have their location
-      // AND user hasn't done a manual search
-      if (
-        locationPermission === "granted" &&
-        userLocation &&
-        !hasManualSearch
-      ) {
-        console.log("📍 Using user location:", userLocation);
+      // If already granted and we have coordinates
+      if (locationPermission === "granted" && userLocation && !hasManualSearch) {
         setMapCenter(userLocation);
         setSearchedLocation("Your Location");
-
-        // Clear cache and fetch bars for user location
         clearFetchCache();
         setBars([]);
         await fetchBarsInArea(userLocation, true, true);
         return;
       }
 
-      // Only show location permission dialog if user hasn't made a choice yet
+      // Show once: respect stored consent marker
+      const consentSet = localStorage.getItem("locationUserConsent") === "true";
       if (
-        !hasUserConsent &&
-        (locationPermission === "denied" ||
-          locationPermission === "unknown" ||
-          locationPermission === "prompt")
+        !consentSet &&
+        (locationPermission === "prompt" || locationPermission === "unknown")
       ) {
         setShowLocationPermission(true);
       }
@@ -443,7 +432,6 @@ const Home: React.FC = () => {
   }, [
     locationPermission,
     userLocation,
-    hasUserConsent,
     hasManualSearch,
     fetchBarsInArea,
     clearFetchCache,

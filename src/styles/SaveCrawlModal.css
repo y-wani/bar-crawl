@@ -25,7 +25,9 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   width: 90%;
   max-width: 500px;
-  max-height: 80vh;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: modalSlideIn 0.3s ease-out;
 }
@@ -74,7 +76,8 @@
 
 .save-modal-content {
   padding: 24px;
-  max-height: 60vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -267,6 +270,7 @@
   padding: 24px;
   background: rgba(255, 255, 255, 0.02);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .save-modal-cancel {
