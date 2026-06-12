@@ -1,15 +1,27 @@
 // src/components/SaveCrawlModal.tsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiSave, FiX, FiLock, FiUnlock, FiMapPin } from "react-icons/fi";
+import { AnimatePresence, motion } from "framer-motion";
+import { modalOverlay, modalPanel } from "./motion/variants";
 import type { AppBat } from "../pages/Home";
 import {
   saveCrawl,
+  updateCrawl,
   convertAppBarsToSavedBars,
   type SavedBarCrawl,
 } from "../services/crawlService";
 import { useAuth } from "../context/useAuth";
 import "../styles/SaveCrawlModal.css";
+
+// Present when re-saving a loaded crawl: updates it instead of duplicating
+export interface ExistingCrawlInfo {
+  id: string;
+  name: string;
+  description?: string;
+  tags?: string[];
+  isPublic?: boolean;
+}
 
 interface SaveCrawlModalProps {
   isOpen: boolean;
@@ -20,6 +32,7 @@ interface SaveCrawlModalProps {
   startCoordinates: [number, number] | null;
   endCoordinates: [number, number] | null;
   onSaveSuccess: (crawlId: string) => void;
+  existingCrawl?: ExistingCrawlInfo | null;
 }
 
 export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
@@ -31,8 +44,10 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
   startCoordinates,
   endCoordinates,
   onSaveSuccess,
+  existingCrawl,
 }) => {
   const { user } = useAuth();
+  const isEditing = Boolean(existingCrawl?.id);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -41,6 +56,18 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Prefill the form when editing a loaded crawl
+  useEffect(() => {
+    if (isOpen && existingCrawl) {
+      setFormData({
+        name: existingCrawl.name ?? "",
+        description: existingCrawl.description ?? "",
+        isPublic: existingCrawl.isPublic ?? false,
+        tags: (existingCrawl.tags ?? []).join(", "),
+      });
+    }
+  }, [isOpen, existingCrawl]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -179,7 +206,13 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
           : [],
       };
 
-      const crawlId = await saveCrawl(crawlData);
+      let crawlId: string;
+      if (isEditing && existingCrawl) {
+        await updateCrawl(existingCrawl.id, crawlData);
+        crawlId = existingCrawl.id;
+      } else {
+        crawlId = await saveCrawl(crawlData);
+      }
 
       onSaveSuccess(crawlId);
       onClose();
@@ -201,17 +234,35 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="save-modal-overlay" onClick={onClose}>
-      <div className="save-modal" onClick={(e) => e.stopPropagation()}>
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
+      className="modal-overlay"
+      variants={modalOverlay}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      onClick={onClose}
+    >
+      <motion.div
+        className="modal-panel save-modal"
+        variants={modalPanel}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="save-crawl-title"
+      >
         <div className="save-modal-header">
-          <h2 className="save-modal-title">
+          <h2 className="save-modal-title" id="save-crawl-title">
             <FiSave className="save-icon" />
-            Save Your Bar Crawl
+            {isEditing ? "Update Your Bar Crawl" : "Save Your Bar Crawl"}
           </h2>
-          <button className="save-modal-close" onClick={onClose}>
+          <button
+            className="btn btn--icon modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <FiX />
           </button>
         </div>
@@ -233,7 +284,15 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
             </div>
             <div className="save-stat">
               <span className="save-stat-label">
-                ~{Math.round((bars.length * 30) / 60)} hours
+                {(() => {
+                  // Same formula that gets stored: ~30 min per bar + walk time
+                  const mins =
+                    bars.length * 30 +
+                    Math.round((calculateTotalDistance() / 3) * 60);
+                  const h = Math.floor(mins / 60);
+                  const m = mins % 60;
+                  return `~${h > 0 ? `${h}h ` : ""}${m}m (walk + hangs)`;
+                })()}
               </span>
             </div>
           </div>
@@ -315,12 +374,12 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
           </div>
         </div>
 
-        <div className="save-modal-footer">
-          <button className="save-modal-cancel" onClick={onClose}>
+        <div className="modal-footer">
+          <button className="btn btn--ghost" onClick={onClose}>
             Cancel
           </button>
           <button
-            className={`save-modal-save ${isSaving ? "loading" : ""}`}
+            className="btn btn--primary"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -332,12 +391,14 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
             ) : (
               <>
                 <FiSave />
-                Save Crawl
+                {isEditing ? "Update Crawl" : "Save Crawl"}
               </>
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

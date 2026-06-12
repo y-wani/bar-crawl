@@ -1,0 +1,80 @@
+/*
+ * Glass surfaces — frosted panels that float over the map / swirl.
+ */
+
+.glass {
+  position: relative;
+  background: var(--glass-1);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(140%);
+  backdrop-filter: blur(var(--blur-md)) saturate(140%);
+  border: 1px solid var(--glass-border);
+}
+
+/* Top sheen */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glass-highlight);
+  pointer-events: none;
+}
+
+.glass-card {
+  position: relative;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(140%);
+  backdrop-filter: blur(var(--blur-md)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition:
+    background-color var(--duration-base) ease,
+    border-color var(--duration-base) ease,
+    transform var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.glass-card:hover {
+  background: var(--glass-3);
+  border-color: var(--glass-border-strong);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Opaque variant for over-map surfaces where blur is too expensive */
+.panel {
+  background: var(--bg-raised);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* Small tinted chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: var(--glass-2);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.chip--accent {
+  background: var(--accent-soft);
+  border-color: rgba(236, 178, 86, 0.3);
+  color: var(--accent);
+}
+
+/* Fallback when backdrop-filter is unsupported */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass,
+  .glass-card {
+    background: rgba(16, 14, 26, 0.94);
+  }
+}

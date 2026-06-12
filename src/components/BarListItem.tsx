@@ -7,13 +7,21 @@ import "../styles/Home.css";
 export interface Bar {
   id: string;
   name: string;
-  rating: number;
+  rating: number; // 0 = no rating data ("New")
   distance: number;
   location?: {
     type: "Point";
     coordinates: [number, number];
   };
+  userRatingCount?: number;
+  address?: string;
+  openNow?: boolean;
+  priceText?: string; // "$" - "$$$$"
 }
+
+// Compact review-count label, e.g. 1234 -> "1.2k"
+export const formatReviewCount = (count: number): string =>
+  count >= 1000 ? `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k` : `${count}`;
 
 interface BarListItemProps {
   bar: Bar;
@@ -56,28 +64,32 @@ export const BarListItem: React.FC<BarListItemProps> = ({
       onClick={() => onToggle(bar.id)} // The whole item is clickable
     >
       <div className="bar-item-details">
-        <h3 className="bar-item-name">
+        <h3
+          className="bar-item-name"
+          title={
+            isWithinRadius === false
+              ? `Outside ${radius?.toFixed(1)}mi radius`
+              : undefined
+          }
+        >
           {bar.name}
-          {isWithinRadius === false && (
-            <span
-              className="radius-indicator outside"
-              title={`Outside ${radius?.toFixed(1)}mi radius`}
-            >
-              🚫
-            </span>
-          )}
-          {isWithinRadius === true && (
-            <span
-              className="radius-indicator within"
-              title={`Within ${radius?.toFixed(1)}mi radius`}
-            >
-              ✅
-            </span>
-          )}
         </h3>
         <div className="bar-item-meta">
           <span>
-            <FaStar /> {bar.rating.toFixed(1)}
+            <FaStar />{" "}
+            {bar.rating > 0 ? (
+              <>
+                {bar.rating.toFixed(1)}
+                {bar.userRatingCount !== undefined && (
+                  <span className="review-count">
+                    {" "}
+                    ({formatReviewCount(bar.userRatingCount)})
+                  </span>
+                )}
+              </>
+            ) : (
+              "New"
+            )}
           </span>
           <span>
             <FaMapMarkerAlt /> {(actualDistance ?? bar.distance).toFixed(2)} mi
@@ -85,6 +97,11 @@ export const BarListItem: React.FC<BarListItemProps> = ({
               <span className="distance-warning"> (outside radius)</span>
             )}
           </span>
+          {bar.openNow !== undefined && (
+            <span className={bar.openNow ? "open-now" : "closed-now"}>
+              {bar.openNow ? "Open" : "Closed"}
+            </span>
+          )}
         </div>
       </div>
       <label

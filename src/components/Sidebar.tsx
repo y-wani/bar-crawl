@@ -123,7 +123,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         disabled={selectedBarIds.size < 2}
         onClick={() => {
           if (selectedBarIds.size >= 2) {
-            const selectedBars = bars.filter(bar => selectedBarIds.has(bar.id));
+            // Preserve the order the user clicked the bars in (Set keeps
+            // insertion order) — the Route page treats it as "my order"
+            const barById = new Map(bars.map((bar) => [bar.id, bar]));
+            const selectedBars = Array.from(selectedBarIds)
+              .map((id) => barById.get(id))
+              .filter((bar): bar is (typeof bars)[number] => Boolean(bar));
             navigate('/route', {
               state: {
                 selectedBars,

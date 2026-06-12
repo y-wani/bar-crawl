@@ -24,10 +24,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signup = async (email: string, password: string, displayName?: string): Promise<void> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
+
       // Update profile with display name if provided
       if (displayName && userCredential.user) {
         await updateFirebaseProfile(userCredential.user, { displayName });
+        // onAuthStateChanged fired before the profile update completed,
+        // so sync the display name into local state manually
+        setUser((prev) => (prev ? { ...prev, displayName } : prev));
       }
     } catch (error) {
       console.error('Sign up error:', error);

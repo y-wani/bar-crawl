@@ -1,8 +1,10 @@
 // src/components/LocationTutorial.tsx
 
-import React, { useState, useEffect } from "react";
-import { FiMapPin } from "react-icons/fi";
-import "../styles/LocationTutorial.css"; // Import the new stylesheet
+import React from "react";
+import { FiMapPin, FiX } from "react-icons/fi";
+import { AnimatePresence, motion } from "framer-motion";
+import { modalOverlay, modalPanel } from "./motion/variants";
+import "../styles/LocationTutorial.css";
 
 interface LocationTutorialProps {
   onClose: () => void;
@@ -13,77 +15,82 @@ const LocationTutorial: React.FC<LocationTutorialProps> = ({
   onClose,
   isVisible,
 }) => {
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
-
-  // This effect will trigger the fade-out animation
-  useEffect(() => {
-    if (!isVisible) {
-      setIsAnimatingOut(true);
-      const timer = setTimeout(() => {
-        setIsAnimatingOut(false);
-      }, 400); // Animation duration
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible]);
-
-  if (!isVisible && !isAnimatingOut) return null;
-
   return (
-    <div
-      className={`tutorial-overlay ${isAnimatingOut ? "closing" : ""}`}
-      onClick={onClose}
-    >
-      <div className="tutorial-card" onClick={(e) => e.stopPropagation()}>
-        <div className="tutorial-header">
-          <h2 className="tutorial-title">
-            <FiMapPin /> Welcome to Bar Crawl!
-          </h2>
-          <button className="close-button" onClick={onClose}>
-            &times;
-          </button>
-        </div>
-
-        <div className="tutorial-content">
-          <div className="tutorial-step">
-            <div className="step-number">1</div>
-            <div className="step-content">
-              <div className="step-title">Find Your Location</div>
-              <p className="step-description">
-                Click the <span className="search-highlight">search bar</span>{" "}
-                at the top to enter your city, neighborhood, or address.
-              </p>
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          className="modal-overlay"
+          variants={modalOverlay}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          onClick={onClose}
+        >
+          <motion.div
+            className="modal-panel tutorial-card"
+            variants={modalPanel}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tutorial-title"
+          >
+            <div className="tutorial-header">
+              <h2 className="tutorial-title" id="tutorial-title">
+                <FiMapPin /> Welcome to BarHop!
+              </h2>
+              <button
+                className="btn btn--icon modal-close"
+                onClick={onClose}
+                aria-label="Close tutorial"
+              >
+                <FiX />
+              </button>
             </div>
-          </div>
 
-          <div className="tutorial-step">
-            <div className="step-number">2</div>
-            <div className="step-content">
-              <div className="step-title">Discover Bars</div>
-              <p className="step-description">
-                The map will show you all the best bars in your area with
-                ratings, vibes, and distances.
-              </p>
+            <div className="tutorial-content">
+              <div className="tutorial-step">
+                <div className="step-number">1</div>
+                <div className="step-content">
+                  <div className="step-title">Find Your Location</div>
+                  <p className="step-description">
+                    Use the <span className="search-highlight">search bar</span>{" "}
+                    above the map to enter a city, or tap the location icon to use
+                    where you are now.
+                  </p>
+                </div>
+              </div>
+
+              <div className="tutorial-step">
+                <div className="step-number">2</div>
+                <div className="step-content">
+                  <div className="step-title">Discover Bars</div>
+                  <p className="step-description">
+                    Browse real bars nearby with Google ratings, reviews, and
+                    open-now status — on the map or in the side list.
+                  </p>
+                </div>
+              </div>
+
+              <div className="tutorial-step">
+                <div className="step-number">3</div>
+                <div className="step-content">
+                  <div className="step-title">Build Your Route</div>
+                  <p className="step-description">
+                    Select bars from the list or tap their pins, then hit
+                    "Generate My Route" for an optimized walking path.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="tutorial-step">
-            <div className="step-number">3</div>
-            <div className="step-content">
-              <div className="step-title">Build Your Route</div>
-              <p className="step-description">
-                Click on bars to add them to your crawl route, then plan the
-                perfect night out!
-              </p>
+            <div className="tutorial-footer">
+              💡 Pro tip: draw a shape on the map with the polygon tool to focus
+              on one neighborhood
             </div>
-          </div>
-        </div>
-
-        <div className="tutorial-footer">
-          💡 Pro tip: You can also use your current location or explore popular
-          cities
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

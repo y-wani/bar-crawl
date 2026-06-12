@@ -45,9 +45,9 @@ const MapLoadingIndicator: React.FC<MapLoadingIndicatorProps> = ({
           left: 0;
           right: 0;
           bottom: 0;
-          background: linear-gradient(135deg, 
-            rgba(22, 21, 43, 0.95) 0%, 
-            rgba(12, 11, 22, 0.9) 100%);
+          background: linear-gradient(135deg,
+            rgba(20, 18, 32, 0.95) 0%,
+            rgba(7, 6, 12, 0.9) 100%);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           display: flex;
@@ -86,12 +86,12 @@ const MapLoadingIndicator: React.FC<MapLoadingIndicatorProps> = ({
           position: absolute;
           width: 12px;
           height: 12px;
-          background: linear-gradient(135deg, #3bb2d0 0%, #00ffff 100%);
+          background: linear-gradient(135deg, #ecb256 0%, #f5c77e 100%);
           border-radius: 50%;
-          box-shadow: 
-            0 0 10px rgba(59, 178, 208, 0.8),
-            0 0 20px rgba(0, 255, 255, 0.6),
-            0 0 30px rgba(59, 178, 208, 0.4);
+          box-shadow:
+            0 0 10px rgba(236, 178, 86, 0.8),
+            0 0 20px rgba(245, 199, 126, 0.6),
+            0 0 30px rgba(236, 178, 86, 0.4);
           animation: neonPulseRotate 2s linear infinite;
           animation-delay: var(--delay);
         }
@@ -105,7 +105,7 @@ const MapLoadingIndicator: React.FC<MapLoadingIndicatorProps> = ({
 
         .neon-loading-icon {
           font-size: 3rem;
-          filter: drop-shadow(0 0 10px rgba(59, 178, 208, 0.8));
+          filter: drop-shadow(0 0 10px rgba(236, 178, 86, 0.8));
           animation: iconBounce 1.5s ease-in-out infinite;
         }
 
@@ -113,7 +113,7 @@ const MapLoadingIndicator: React.FC<MapLoadingIndicatorProps> = ({
           font-family: "Rajdhani", sans-serif;
           font-size: 1.5rem;
           font-weight: 700;
-          background: linear-gradient(135deg, #3bb2d0 0%, #00ffff 50%, #ff00ff 100%);
+          background: linear-gradient(135deg, #f5c77e 0%, #ecb256 50%, #ffffff 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -167,10 +167,10 @@ const MapLoadingIndicator: React.FC<MapLoadingIndicatorProps> = ({
 
         @keyframes textGlow {
           0% {
-            filter: drop-shadow(0 0 5px rgba(59, 178, 208, 0.5));
+            filter: drop-shadow(0 0 5px rgba(236, 178, 86, 0.5));
           }
           100% {
-            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.8));
+            filter: drop-shadow(0 0 15px rgba(245, 199, 126, 0.8));
           }
         }
 

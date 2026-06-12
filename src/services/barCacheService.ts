@@ -12,6 +12,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { AppBat } from '../pages/Home';
+import { isGooglePlacesEnabled } from './placesService';
+
+// Dev logging stub — swap for console.log when debugging
+const debug = (..._args: unknown[]) => {};
 
 interface CachedBarArea {
   id?: string;
@@ -29,7 +33,10 @@ interface CacheSearchResult {
   cacheAge?: number; // in hours
 }
 
-const COLLECTION_NAME = 'barCache';
+// V2 collection holds Google Places data (real ratings); the legacy
+// collection holds Mapbox results with generated ratings. Keeping them
+// separate means switching data sources never serves mismatched cache.
+const COLLECTION_NAME = isGooglePlacesEnabled ? 'barCacheV5' : 'barCache';
 const CACHE_EXPIRY_HOURS = 24; // Cache expires after 24 hours
 const SEARCH_RADIUS_MILES = 2; // Search within 2 miles for cached data
 
@@ -61,7 +68,7 @@ export const getCachedBars = async (
   searchRadius: number = SEARCH_RADIUS_MILES
 ): Promise<CacheSearchResult> => {
   try {
-    console.log(`🔍 Searching cache for bars near (${centerLat}, ${centerLng})`);
+    debug(`🔍 Searching cache for bars near (${centerLat}, ${centerLng})`);
     
     // Query Firestore for nearby cached areas
     const cacheQuery = query(
@@ -84,7 +91,7 @@ export const getCachedBars = async (
       );
       
       if (distance <= searchRadius && isCacheValid(cacheData.fetchedAt)) {
-        console.log(`✅ Found valid cache within ${distance.toFixed(2)} miles`);
+        debug(`✅ Found valid cache within ${distance.toFixed(2)} miles`);
         const cacheAge = (new Date().getTime() - cacheData.fetchedAt.toDate().getTime()) / (1000 * 60 * 60);
         
         return {
@@ -95,7 +102,7 @@ export const getCachedBars = async (
       }
     }
     
-    console.log("❌ No valid cache found");
+    debug("❌ No valid cache found");
     return {
       bars: [],
       isFromCache: false
@@ -119,7 +126,7 @@ export const cacheBars = async (
   radius: number = 2
 ): Promise<void> => {
   try {
-    console.log(`💾 Caching ${bars.length} bars for ${location}`);
+    debug(`💾 Caching ${bars.length} bars for ${location}`);
     
     const cacheData: CachedBarArea = {
       centerLat,
@@ -131,7 +138,7 @@ export const cacheBars = async (
     };
     
     await addDoc(collection(db, COLLECTION_NAME), cacheData);
-    console.log("✅ Bars cached successfully");
+    debug("✅ Bars cached successfully");
     
   } catch (error) {
     console.error("Error caching bars:", error);
@@ -156,9 +163,9 @@ export const initializeDefaultCache = async (bars: AppBat[]): Promise<void> => {
   
   if (!existingCache.isFromCache && bars.length > 0) {
     await cacheBars(defaultLat, defaultLng, bars, "Columbus, Ohio", 3);
-    console.log("🏠 Default location cache initialized");
+    debug("🏠 Default location cache initialized");
   } else {
-    console.log("🏠 Default location cache already exists");
+    debug("🏠 Default location cache already exists");
   }
 };
 
@@ -181,7 +188,7 @@ export const cleanupOldCache = async (): Promise<void> => {
     });
     
     // Note: In a real app, you'd batch delete these
-    console.log(`🧹 Found ${toDelete.length} expired cache entries`);
+    debug(`🧹 Found ${toDelete.length} expired cache entries`);
     
   } catch (error) {
     console.error("Error cleaning up cache:", error);

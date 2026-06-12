@@ -1,0 +1,56 @@
+/* Toaster — glass pills; enter/exit animation via Framer Motion. */
+
+.toaster-stack {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  z-index: 3000;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-pill);
+  background: var(--glass-2);
+  -webkit-backdrop-filter: blur(var(--blur-sm)) saturate(140%);
+  backdrop-filter: blur(var(--blur-sm)) saturate(140%);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  box-shadow: var(--shadow-md);
+}
+
+.toast-success {
+  border: 1px solid rgba(61, 220, 151, 0.45);
+}
+
+.toast-success .toast-icon {
+  color: var(--success);
+}
+
+.toast-error {
+  border: 1px solid rgba(255, 84, 112, 0.45);
+}
+
+.toast-error .toast-icon {
+  color: var(--danger);
+}
+
+.toast-icon {
+  font-weight: 700;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .toast {
+    background: rgba(16, 14, 26, 0.96);
+  }
+}

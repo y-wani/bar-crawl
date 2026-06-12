@@ -8,8 +8,11 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { motion, Reorder, useDragControls } from "framer-motion";
 import { MapContainer } from "../components/MapContainer";
 import { AddressAutocomplete } from "../components/AddressAutocomplete";
+import PageTransition from "../components/motion/PageTransition";
+import { springPanel } from "../components/motion/variants";
 import type { AppBat } from "./Home";
 import { FaBars, FaTimes, FaGripVertical, FaArrowLeft } from "react-icons/fa";
 import {
@@ -22,7 +25,11 @@ import {
   FiFolder,
 } from "react-icons/fi";
 import "../styles/Route.css";
-import { SaveCrawlModal } from "../components/SaveCrawlModal";
+import {
+  SaveCrawlModal,
+  type ExistingCrawlInfo,
+} from "../components/SaveCrawlModal";
+import { toast } from "../components/Toaster";
 import { getCrawlById, convertSavedBarsToAppBars } from "../services/crawlService";
 
 // Mapbox API constants and types
@@ -32,6 +39,11 @@ interface RoutePageState {
   selectedBars: AppBat[];
   mapCenter: [number, number];
   searchRadius: number;
+  loadedFromSaved?: boolean;
+  crawlName?: string;
+  startCoordinates?: [number, number];
+  endCoordinates?: [number, number];
+  existingCrawl?: ExistingCrawlInfo;
 }
 
 interface DraggableBarItem extends AppBat {
@@ -45,6 +57,59 @@ interface AddressSuggestion {
   relevance: number;
   type: string;
 }
+
+// A single draggable stop. Separate component so each item gets its own
+// drag controls — only the grip handle initiates dragging (keeps text
+// selection and touch scrolling working on the rest of the card).
+interface RouteStopItemProps {
+  bar: DraggableBarItem;
+  index: number;
+  disabled: boolean;
+  optimizing: boolean;
+}
+
+const RouteStopItem: React.FC<RouteStopItemProps> = ({
+  bar,
+  index,
+  disabled,
+  optimizing,
+}) => {
+  const controls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={bar}
+      as="div"
+      className={`draggable-bar-item ${optimizing ? "optimizing" : ""}`}
+      dragListener={false}
+      dragControls={controls}
+      layout
+      whileDrag={{
+        scale: 1.03,
+        boxShadow: "0 20px 48px rgba(0, 0, 0, 0.55)",
+        borderColor: "rgba(236, 178, 86, 0.5)",
+      }}
+    >
+      <div
+        className={`drag-handle ${disabled ? "disabled" : ""}`}
+        style={{ touchAction: "none" }}
+        onPointerDown={(e) => {
+          if (!disabled) controls.start(e);
+        }}
+      >
+        <FaGripVertical />
+      </div>
+      <div className="bar-order-number">{index + 1}</div>
+      <div className="bar-details">
+        <h4 className="bar-name">{bar.name}</h4>
+        <div className="bar-meta">
+          <span>⭐ {bar.rating.toFixed(1)}</span>
+          <span>📍 {bar.distance.toFixed(2)} mi</span>
+        </div>
+      </div>
+    </Reorder.Item>
+  );
+};
 
 // Helper function to calculate distance between two coordinates
 const calculateDistance = (
@@ -64,35 +129,120 @@ const calculateDistance = (
   return R * c;
 };
 
-// Optimize bar order using nearest neighbor algorithm
+// Optimize bar order for the full journey: start → bars → end.
+// Exact (branch-and-bound) for crawl-sized routes (≤ 8 stops), which is
+// the common case; nearest-neighbor + 2-opt + relocation for larger ones.
 const optimizeBarOrder = (
   bars: AppBat[],
-  startLocation: [number, number]
+  startLocation: [number, number],
+  endLocation?: [number, number] | null
 ): AppBat[] => {
-  if (bars.length <= 2) return bars;
+  if (bars.length <= 1) return bars;
 
+  const end = endLocation ?? startLocation;
+  const coord = (bar: AppBat) => bar.location.coordinates as [number, number];
+
+  const totalLength = (order: AppBat[]): number => {
+    let d = calculateDistance(startLocation, coord(order[0]));
+    for (let i = 0; i < order.length - 1; i++) {
+      d += calculateDistance(coord(order[i]), coord(order[i + 1]));
+    }
+    d += calculateDistance(coord(order[order.length - 1]), end);
+    return d;
+  };
+
+  // --- Exact search with pruning: guaranteed shortest for n ≤ 8 ---
+  if (bars.length <= 8) {
+    let bestOrder = bars;
+    let bestLen = totalLength(bars);
+
+    const search = (
+      remaining: AppBat[],
+      path: AppBat[],
+      from: [number, number],
+      lenSoFar: number
+    ) => {
+      if (lenSoFar >= bestLen) return; // prune
+      if (remaining.length === 0) {
+        const full = lenSoFar + calculateDistance(from, end);
+        if (full < bestLen) {
+          bestLen = full;
+          bestOrder = path;
+        }
+        return;
+      }
+      for (let i = 0; i < remaining.length; i++) {
+        const next = remaining[i];
+        search(
+          [...remaining.slice(0, i), ...remaining.slice(i + 1)],
+          [...path, next],
+          coord(next),
+          lenSoFar + calculateDistance(from, coord(next))
+        );
+      }
+    };
+
+    search(bars, [], startLocation, 0);
+    return bestOrder;
+  }
+
+  // --- Heuristic for larger routes: NN seed + 2-opt + single relocation ---
   const unvisited = [...bars];
-  const route: AppBat[] = [];
-  let currentLocation = startLocation;
-
+  let route: AppBat[] = [];
+  let current = startLocation;
   while (unvisited.length > 0) {
     let nearestIndex = 0;
-    let shortestDistance = Infinity;
-
+    let shortest = Infinity;
     unvisited.forEach((bar, index) => {
-      const distance = calculateDistance(
-        currentLocation,
-        bar.location.coordinates as [number, number]
-      );
-      if (distance < shortestDistance) {
-        shortestDistance = distance;
+      const d = calculateDistance(current, coord(bar));
+      if (d < shortest) {
+        shortest = d;
         nearestIndex = index;
       }
     });
+    const nearest = unvisited.splice(nearestIndex, 1)[0];
+    route.push(nearest);
+    current = coord(nearest);
+  }
 
-    const nearestBar = unvisited.splice(nearestIndex, 1)[0];
-    route.push(nearestBar);
-    currentLocation = nearestBar.location.coordinates as [number, number];
+  let best = totalLength(route);
+  let improved = true;
+  while (improved) {
+    improved = false;
+    // 2-opt: reverse segments
+    for (let i = 0; i < route.length - 1; i++) {
+      for (let j = i + 1; j < route.length; j++) {
+        const candidate = [
+          ...route.slice(0, i),
+          ...route.slice(i, j + 1).reverse(),
+          ...route.slice(j + 1),
+        ];
+        const length = totalLength(candidate);
+        if (length < best - 1e-9) {
+          route = candidate;
+          best = length;
+          improved = true;
+        }
+      }
+    }
+    // Or-opt: relocate single stops (escapes 2-opt local optima)
+    for (let i = 0; i < route.length; i++) {
+      for (let j = 0; j < route.length; j++) {
+        if (i === j) continue;
+        const without = [...route.slice(0, i), ...route.slice(i + 1)];
+        const candidate = [
+          ...without.slice(0, j),
+          route[i],
+          ...without.slice(j),
+        ];
+        const length = totalLength(candidate);
+        if (length < best - 1e-9) {
+          route = candidate;
+          best = length;
+          improved = true;
+        }
+      }
+    }
   }
 
   return route;
@@ -165,14 +315,15 @@ const Route: React.FC = () => {
     generating: true,
   });
 
-  const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [routeData, setRouteData] =
     useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   const isInitialLoad = useRef(true);
+  // The order the user originally picked their bars in (before any
+  // auto/manual optimization) — lets them restore it with one click
+  const originalOrderIds = useRef<string[] | null>(null);
 
   const getCurrentLocation = useCallback(async (): Promise<
     [number, number]
@@ -289,19 +440,54 @@ const Route: React.FC = () => {
         isInitialLoad.current
       ) {
         isInitialLoad.current = false;
+        originalOrderIds.current = routeState.selectedBars.map((b) => b.id);
         setIsLoading({ location: true, optimizing: true, generating: true });
-        const currentCoords = await getCurrentLocation();
-        const optimizedBars = optimizeBarOrder(
-          routeState.selectedBars,
-          currentCoords
-        );
-        const initialBars = optimizedBars.map((bar, index) => ({
+
+        let startCoords: [number, number];
+        let endCoords: [number, number];
+
+        if (routeState.startCoordinates) {
+          // Restoring a saved crawl: use its saved start/end, not geolocation
+          startCoords = routeState.startCoordinates;
+          endCoords = routeState.endCoordinates ?? startCoords;
+          setUserCoordinates(startCoords);
+          setStartCoordinates(startCoords);
+          setEndCoordinates(endCoords);
+          const [startAddr, endAddr] = await Promise.all([
+            reverseGeocode(startCoords),
+            reverseGeocode(endCoords),
+          ]);
+          setStartLocation(startAddr);
+          setEndLocation(endAddr);
+          setIsLoading((prev) => ({ ...prev, location: false }));
+        } else {
+          startCoords = await getCurrentLocation();
+          // If the user's real location is far from the searched area,
+          // anchor the route to the search center instead of routing
+          // across states (IP-based geolocation can be way off)
+          if (calculateDistance(startCoords, routeState.mapCenter) > 25) {
+            startCoords = routeState.mapCenter;
+            setUserCoordinates(startCoords);
+            setStartCoordinates(startCoords);
+            setEndCoordinates(startCoords);
+            const addr = await reverseGeocode(startCoords);
+            setStartLocation(addr);
+            setEndLocation(addr);
+          }
+          endCoords = startCoords;
+        }
+
+        // Saved crawls already carry their stop order; only optimize new routes
+        const orderedBars = routeState.loadedFromSaved
+          ? routeState.selectedBars
+          : optimizeBarOrder(routeState.selectedBars, startCoords, endCoords);
+        const initialBars = orderedBars.map((bar, index) => ({
           ...bar,
           order: index,
         }));
         setDraggableBars(initialBars);
         setIsLoading((prev) => ({ ...prev, optimizing: false }));
-        await throttledGenerateRoute(initialBars, currentCoords, currentCoords);
+        await throttledGenerateRoute(initialBars, startCoords, endCoords);
       }
     };
 
@@ -316,20 +502,30 @@ const Route: React.FC = () => {
           return;
         }
         const bars = convertSavedBarsToAppBars(crawl.bars);
+        originalOrderIds.current = bars.map((b) => b.id);
         const currentCoords = [crawl.route.startLocation.lng, crawl.route.startLocation.lat] as [number, number];
-        setStartCoordinates(currentCoords);
-        setEndCoordinates([
+        const endCoords: [number, number] = [
           crawl.route.endLocation?.lng ?? currentCoords[0],
           crawl.route.endLocation?.lat ?? currentCoords[1],
+        ];
+        setUserCoordinates(currentCoords);
+        setStartCoordinates(currentCoords);
+        setEndCoordinates(endCoords);
+        const [startAddr, endAddr] = await Promise.all([
+          reverseGeocode(currentCoords),
+          reverseGeocode(endCoords),
         ]);
-        const optimizedBars = optimizeBarOrder(bars, currentCoords);
-        const initialBars = optimizedBars.map((bar, index) => ({
+        setStartLocation(startAddr);
+        setEndLocation(endAddr);
+        setIsLoading((prev) => ({ ...prev, location: false }));
+        // Saved crawls already carry their stop order
+        const initialBars = bars.map((bar, index) => ({
           ...bar,
           order: index,
         }));
         setDraggableBars(initialBars);
         setIsLoading((prev) => ({ ...prev, optimizing: false }));
-        await throttledGenerateRoute(initialBars, currentCoords, currentCoords);
+        await throttledGenerateRoute(initialBars, currentCoords, endCoords);
       } catch (e) {
         console.error("Failed to load crawl by id", e);
         navigate("/home");
@@ -344,12 +540,18 @@ const Route: React.FC = () => {
   }, [routeState, getCurrentLocation, throttledGenerateRoute, navigate, searchParams]);
 
   const handleOptimizeRoute = useCallback(async () => {
-    if (!userCoordinates || draggableBars.length < 2) return;
+    const optimizeStart = startCoordinates ?? userCoordinates;
+    if (!optimizeStart || draggableBars.length < 2) return;
     setIsLoading((prev) => ({ ...prev, optimizing: true, generating: true }));
 
     await new Promise((res) => setTimeout(res, 50));
 
-    const optimized = optimizeBarOrder(draggableBars, userCoordinates);
+    // Optimize against the actual route anchors, not just the user position
+    const optimized = optimizeBarOrder(
+      draggableBars,
+      optimizeStart,
+      endCoordinates
+    );
     const reorderedBars = optimized.map((bar, index) => ({
       ...bar,
       order: index,
@@ -357,6 +559,16 @@ const Route: React.FC = () => {
     setDraggableBars(reorderedBars);
 
     setIsLoading((prev) => ({ ...prev, optimizing: false }));
+
+    // Make the reorder explicit — and the restore button offers the way back
+    const orderChanged = reorderedBars.some(
+      (bar, i) => bar.id !== draggableBars[i]?.id
+    );
+    toast.success(
+      orderChanged
+        ? "Stops reordered for the shortest walk"
+        : "Your order is already the shortest walk"
+    );
 
     await throttledGenerateRoute(
       reorderedBars,
@@ -371,38 +583,36 @@ const Route: React.FC = () => {
     throttledGenerateRoute,
   ]);
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedItem(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
+  // True when the current stop order differs from the user's original pick
+  const orderDiffersFromOriginal = useMemo(() => {
+    const original = originalOrderIds.current;
+    if (!original || draggableBars.length === 0) return false;
+    const presentOriginal = original.filter((id) =>
+      draggableBars.some((bar) => bar.id === id)
+    );
+    if (presentOriginal.length !== draggableBars.length) return true;
+    return draggableBars.some((bar, i) => bar.id !== presentOriginal[i]);
+  }, [draggableBars]);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  // Put the stops back in the order the user originally selected them
+  const handleRestoreOriginalOrder = useCallback(() => {
+    const original = originalOrderIds.current;
+    if (!original) return;
+    const byId = new Map(draggableBars.map((bar) => [bar.id, bar]));
+    const restored = original
+      .map((id) => byId.get(id))
+      .filter((bar): bar is DraggableBarItem => Boolean(bar))
+      .map((bar, index) => ({ ...bar, order: index }));
+    if (restored.length < 2) return;
+    setDraggableBars(restored);
+    toast.success("Restored your original order");
+    throttledGenerateRoute(restored, startCoordinates, endCoordinates);
+  }, [draggableBars, startCoordinates, endCoordinates, throttledGenerateRoute]);
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedItem === null || draggedItem === dropIndex) {
-      setDraggedItem(null);
-      return;
-    }
-    const newBars = [...draggableBars];
-    const [draggedBar] = newBars.splice(draggedItem, 1);
-    newBars.splice(dropIndex, 0, draggedBar);
-    const reorderedBars = newBars.map((bar, index) => ({
-      ...bar,
-      order: index,
-    }));
-    setDraggableBars(reorderedBars);
-    setDraggedItem(null);
-
-    if (reorderedBars.length >= 2 && startCoordinates && endCoordinates) {
-      throttledGenerateRoute(reorderedBars, startCoordinates, endCoordinates);
-    }
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
+  // Framer Motion Reorder gives us the new order directly; the debounced
+  // effect watching `draggableBars` regenerates the route.
+  const handleReorder = (newOrder: DraggableBarItem[]) => {
+    setDraggableBars(newOrder.map((bar, index) => ({ ...bar, order: index })));
   };
 
   const handleStartLocationSelect = (suggestion: AddressSuggestion) => {
@@ -425,9 +635,8 @@ const Route: React.FC = () => {
     setShowSaveModal(true);
   };
 
-  const handleSaveSuccess = (crawlId: string) => {
-    setSaveSuccess(crawlId);
-    setTimeout(() => setSaveSuccess(null), 5000);
+  const handleSaveSuccess = () => {
+    toast.success("Crawl saved successfully!");
   };
 
   const handleCloseSaveModal = () => {
@@ -479,11 +688,12 @@ const Route: React.FC = () => {
     isLoading.optimizing,
   ]);
 
-  if (!routeState) return null;
+  if (!routeState && !searchParams.get("crawlId")) return null;
 
   const isBusy = isLoading.generating || isLoading.optimizing;
 
   return (
+    <PageTransition>
     <div className="route-page">
       <div className="route-header">
         <button className="back-button" onClick={() => navigate("/home")}>
@@ -525,7 +735,14 @@ const Route: React.FC = () => {
             endCoordinates={endCoordinates}
           />
           {(totalDistanceMiles !== null || estimatedDurationMin !== null) && (
-            <div className="eta-summary-bar" role="status" aria-live="polite">
+            <motion.div
+              className="eta-summary-bar"
+              role="status"
+              aria-live="polite"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={springPanel}
+            >
               {totalDistanceMiles !== null && (
                 <span className="eta-segment">{totalDistanceMiles.toFixed(1)} mi</span>
               )}
@@ -533,13 +750,19 @@ const Route: React.FC = () => {
                 <span className="eta-separator">•</span>
               )}
               {estimatedDurationMin !== null && (
-                <span className="eta-segment">~{estimatedDurationMin} min</span>
+                <span className="eta-segment">
+                  ~{estimatedDurationMin} min walk
+                </span>
               )}
-            </div>
+            </motion.div>
           )}
         </div>
 
-        <div className={`route-drawer ${isDrawerOpen ? "open" : "closed"}`}>
+        <motion.div
+          className={`route-drawer ${isDrawerOpen ? "open" : "closed"}`}
+          animate={{ x: isDrawerOpen ? 0 : "calc(100% + 32px)" }}
+          transition={springPanel}
+        >
           <div className="drawer-header">
             <div className="smart-controls">
               <button
@@ -592,37 +815,37 @@ const Route: React.FC = () => {
           <div className="drawer-content">
             <div className="bars-section">
               <h3 className="section-title">Your Bar Crawl Route</h3>
-              <p className="section-subtitle">
-                {isBusy ? "Updating route..." : "Drag to reorder stops"}
-              </p>
-              <div className="draggable-bars-list">
-                {draggableBars.map((bar, index) => (
-                  <div
-                    key={bar.id}
-                    className={`draggable-bar-item ${
-                      draggedItem === index ? "dragging" : ""
-                    } ${isLoading.optimizing ? "optimizing" : ""}`}
-                    draggable={!isBusy}
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragEnd={handleDragEnd}
-                    style={{ animationDelay: `${index * 50}ms` }}
+              <div className="section-subtitle-row">
+                <p className="section-subtitle">
+                  {isBusy ? "Updating route..." : "Drag to reorder stops"}
+                </p>
+                {orderDiffersFromOriginal && !isBusy && (
+                  <button
+                    className="btn-restore-order"
+                    onClick={handleRestoreOriginalOrder}
+                    title="Put the stops back in the order you selected them"
                   >
-                    <div className={`drag-handle ${isBusy ? "disabled" : ""}`}>
-                      <FaGripVertical />
-                    </div>
-                    <div className="bar-order-number">{index + 1}</div>
-                    <div className="bar-details">
-                      <h4 className="bar-name">{bar.name}</h4>
-                      <div className="bar-meta">
-                        <span>⭐ {bar.rating.toFixed(1)}</span>
-                        <span>📍 {bar.distance.toFixed(2)} mi</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    ↩ Restore my order
+                  </button>
+                )}
               </div>
+              <Reorder.Group
+                axis="y"
+                values={draggableBars}
+                onReorder={handleReorder}
+                as="div"
+                className="draggable-bars-list"
+              >
+                {draggableBars.map((bar, index) => (
+                  <RouteStopItem
+                    key={bar.id}
+                    bar={bar}
+                    index={index}
+                    disabled={isBusy}
+                    optimizing={isLoading.optimizing}
+                  />
+                ))}
+              </Reorder.Group>
             </div>
           </div>
 
@@ -639,18 +862,6 @@ const Route: React.FC = () => {
               />
             </div>
             <div className="route-actions">
-              {saveSuccess && (
-                <div className="save-success-message">
-                  ✅ Crawl saved successfully!
-                  <button
-                    className="save-success-close"
-                    onClick={() => setSaveSuccess(null)}
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-
               <div className="route-buttons">
                 <button
                   className="btn-save-crawl"
@@ -686,7 +897,7 @@ const Route: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <SaveCrawlModal
@@ -694,12 +905,14 @@ const Route: React.FC = () => {
         onClose={handleCloseSaveModal}
         bars={draggableBars}
         mapCenter={mapCenter}
-        searchRadius={routeState.searchRadius}
+        searchRadius={searchRadius}
         startCoordinates={startCoordinates}
         endCoordinates={endCoordinates}
         onSaveSuccess={handleSaveSuccess}
+        existingCrawl={routeState?.existingCrawl ?? null}
       />
     </div>
+    </PageTransition>
   );
 };
 

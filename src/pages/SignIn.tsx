@@ -2,7 +2,11 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
+import SwirlBackground from '../components/SwirlBackground';
+import PageTransition from '../components/motion/PageTransition';
+import { springPanel } from '../components/motion/variants';
 import '../styles/Auth.css';
 import { FcGoogle } from 'react-icons/fc';
 
@@ -76,8 +80,15 @@ const SignIn: React.FC = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
+    <PageTransition>
+      <div className="auth-container">
+        <SwirlBackground />
+        <motion.div
+          className="auth-card"
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={springPanel}
+        >
         <div className="auth-header">
           <h1 className="auth-title">Welcome Back</h1>
           <p className="auth-subtitle">Sign in to continue your adventure.</p>
@@ -129,9 +140,14 @@ const SignIn: React.FC = () => {
           </div>
 
           {errors.general && (
-            <div className="error-message" style={{ textAlign: 'center' }}>
+            <motion.div
+              className="error-message"
+              style={{ textAlign: 'center' }}
+              animate={{ x: [0, -6, 6, -3, 0] }}
+              transition={{ duration: 0.35 }}
+            >
               {errors.general}
-            </div>
+            </motion.div>
           )}
 
           <button
@@ -165,8 +181,9 @@ const SignIn: React.FC = () => {
             &larr; Back to Landing
           </Link>
         </div>
+        </motion.div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

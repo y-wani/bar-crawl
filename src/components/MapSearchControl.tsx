@@ -298,7 +298,7 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
               disabled={isLoading}
               className="radius-slider"
               style={{
-                background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${progressPercentage}%, rgba(255, 255, 255, 0.1) ${progressPercentage}%, rgba(255, 255, 255, 0.1) 100%)`,
+                background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${progressPercentage}%, rgba(255, 255, 255, 0.1) ${progressPercentage}%, rgba(255, 255, 255, 0.1) 100%)`,
               }}
             />
           </div>

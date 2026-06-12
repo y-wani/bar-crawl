@@ -1,6 +1,6 @@
 // src/components/MapContainer.tsx
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { AppBat } from "../pages/Home";
 import { circle as turfCircle } from "@turf/turf";
 import mapboxgl from "mapbox-gl";
@@ -16,11 +16,28 @@ import { ShareRouteButton } from "./ShareRouteButton";
 import { useRouteAnimations } from "../hooks/useRouteAnimations";
 import {
   createBarLayers,
-  createHighlightLayers,
   BARS_SOURCE_ID,
   BARS_LAYER_ID,
+  BARS_SELECTED_CIRCLE_ID,
   createBarMarker,
 } from "../utils/mapLayers";
+
+// Build GeoJSON features for the bars source. Selection is data-driven:
+// `selectedOrder` is the 0-based stop number, or -1 when not selected.
+const buildBarFeatures = (bars: AppBat[], selectedBarIds: Set<string>) => {
+  const selectionOrder = Array.from(selectedBarIds);
+  return bars.map((bar) => ({
+    type: "Feature" as const,
+    geometry: bar.location,
+    properties: {
+      id: bar.id,
+      name: bar.name,
+      rating: bar.rating,
+      distance: bar.distance,
+      selectedOrder: selectionOrder.indexOf(bar.id),
+    },
+  }));
+};
 
 // Constants
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -62,25 +79,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   endCoordinates,
   isLoadingBars = false,
 }) => {
-  // Debug props on component load
-  console.log("🗺️ MapContainer received props:", {
-    center,
-    radius,
-    barsCount: bars.length,
-    selectedBarIds: Array.from(selectedBarIds),
-    hoveredBarId,
-    hasRoute: !!route,
-    startCoordinates,
-  });
-
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const hoveredStateId = useRef<string | null>(null);
   const isInitialLoad = useRef(true);
   const isMapReady = useRef(false);
-  const popupTimeout = useRef<NodeJS.Timeout | null>(null);
-  const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  // Latest bars/selection for use inside the one-time load handler closure
+  const barsRef = useRef(bars);
+  barsRef.current = bars;
+  const selectedIdsRef = useRef(selectedBarIds);
+  selectedIdsRef.current = selectedBarIds;
 
   // Custom hooks for animations
   useRouteAnimations({
@@ -153,8 +163,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         type: "fill",
         source: RADIUS_SOURCE_ID,
         paint: {
-          "fill-color": "#3bb2d0",
-          "fill-opacity": 0.1,
+          "fill-color": "#ecb256",
+          "fill-opacity": 0.08,
         },
       });
       m.addLayer({
@@ -162,60 +172,39 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         type: "line",
         source: RADIUS_SOURCE_ID,
         paint: {
-          "line-color": "#3bb2d0",
+          "line-color": "#ecb256",
           "line-width": 2,
-          "line-opacity": 0.7,
+          "line-opacity": 0.6,
         },
       });
 
-      // Create and load bar marker, then create bars layer
+      // Create and load bar marker, then create bars layers.
+      // The bars source/layers only exist after this resolves, so initial
+      // data is set here and `mapReady` unblocks the bars-update effect.
+      const finishSetup = () => {
+        createBarLayers(m);
+
+        const initialBars = barsRef.current;
+        if (initialBars.length > 0) {
+          const src = m.getSource(BARS_SOURCE_ID) as mapboxgl.GeoJSONSource;
+          if (src) {
+            src.setData({
+              type: "FeatureCollection",
+              features: buildBarFeatures(initialBars, selectedIdsRef.current),
+            });
+          }
+        }
+
+        isMapReady.current = true;
+        setMapReady(true);
+      };
+
       createBarMarker(m)
-        .then(() => {
-          console.log("🏗️ Creating bars layer with neon-pin-marker");
-          createBarLayers(m);
-
-          // NOW that bars-layer exists, add highlights in relation to it:
-          createHighlightLayers(m, BARS_LAYER_ID);
-          console.log("✅ Bars layer + highlight layers created successfully");
-
-          // Finally, mark map as ready
-          isMapReady.current = true;
-        })
+        .then(finishSetup)
         .catch((error) => {
           console.error("❌ Failed to create bar marker:", error);
-          // Fallback: still create bars layer + highlights
-          createBarLayers(m);
-          createHighlightLayers(m, BARS_LAYER_ID);
-          isMapReady.current = true;
+          finishSetup();
         });
-
-      // Initialize with current data if available
-      if (bars.length > 0) {
-        console.log(`🎯 Initializing map with ${bars.length} bars on map load`);
-        console.log(
-          "📍 First bar location:",
-          bars[0]?.location,
-          "Name:",
-          bars[0]?.name
-        );
-        const features = bars.map((bar) => ({
-          type: "Feature" as const,
-          geometry: bar.location,
-          properties: {
-            id: bar.id,
-            name: bar.name,
-            rating: bar.rating,
-            distance: bar.distance,
-          },
-        }));
-        const src = m.getSource(BARS_SOURCE_ID) as mapboxgl.GeoJSONSource;
-        if (src) {
-          src.setData({ type: "FeatureCollection", features });
-          console.log("✅ Initial bars data set on map");
-        }
-      } else {
-        console.log("📍 No bars to initialize on map load");
-      }
 
       // Initialize radius circle
       const circleGeojson = turfCircle(center, radius, { units: "miles" });
@@ -239,60 +228,47 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
       });
 
-      // -- Click & Hover on Bars --
-      m.on("click", BARS_LAYER_ID, (e) => {
-        const feat = e.features?.[0];
-        if (feat?.properties?.id) {
-          onToggleBar(String(feat.properties.id));
-        }
-      });
-
-      m.on("mousemove", BARS_LAYER_ID, (e) => {
-        const feat = e.features?.[0];
-        if (feat) {
-          // Set cursor immediately for responsiveness
-          m.getCanvas().style.cursor = "pointer";
-
-          // Only update hover state, popup creation handled in useEffect
-          if (hoverTimeout.current) {
-            clearTimeout(hoverTimeout.current);
+      // -- Click & Hover on Bars (pins + selected stop circles) --
+      [BARS_LAYER_ID, BARS_SELECTED_CIRCLE_ID].forEach((layerId) => {
+        m.on("click", layerId, (e) => {
+          const feat = e.features?.[0];
+          if (feat?.properties?.id) {
+            onToggleBar(String(feat.properties.id));
           }
+        });
 
-          hoverTimeout.current = setTimeout(() => {
-            if (feat.id) {
-              onHoverBar(String(feat.id));
-            }
-          }, 30); // Minimal debounce for state
-        }
-      });
-      m.on("mouseleave", BARS_LAYER_ID, () => {
-        // Clear timeouts to prevent stale hover effects
-        if (hoverTimeout.current) {
-          clearTimeout(hoverTimeout.current);
-        }
+        m.on("mousemove", layerId, (e) => {
+          const feat = e.features?.[0];
+          if (feat?.id != null) {
+            m.getCanvas().style.cursor = "pointer";
+            onHoverBar(String(feat.id));
+          }
+        });
 
-        m.getCanvas().style.cursor = "";
-        // Clear hover state immediately - popup removal handled in useEffect
-        onHoverBar(null);
+        m.on("mouseleave", layerId, () => {
+          m.getCanvas().style.cursor = "";
+          onHoverBar(null);
+        });
       });
     });
 
     return () => {
-      // Cleanup timeouts
-      if (hoverTimeout.current) {
-        clearTimeout(hoverTimeout.current);
-      }
-      if (popupTimeout.current) {
-        clearTimeout(popupTimeout.current);
-      }
+      popupRef.current?.remove();
+      popupRef.current = null;
       map.current?.remove();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 2. Fly to new center when it changes
+  // 2. Fly to new center when it changes (skip no-op flights)
   useEffect(() => {
     if (!map.current) return;
-    map.current.flyTo({ center, zoom: 13, speed: 1.2 });
+    const current = map.current.getCenter();
+    const moved =
+      Math.abs(current.lng - center[0]) > 1e-5 ||
+      Math.abs(current.lat - center[1]) > 1e-5;
+    if (moved) {
+      map.current.flyTo({ center, zoom: 13, speed: 1.2 });
+    }
     isInitialLoad.current = false;
   }, [center]);
 
@@ -318,113 +294,26 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   }, [center, radius]);
 
-  // 4. Update bar markers when bars changes
+  // 4. Update bar data when bars or selection change (waits for mapReady).
+  // Selection order rides along as the `selectedOrder` property, which
+  // drives the numbered stop circles via layer filters.
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) {
-      if (map.current) {
-        map.current.once("styledata", () => {
-          // Re-run this effect once the style is loaded
-        });
-      }
-      return;
-    }
-
-    console.log(
-      `🗺️ Updating map with ${bars.length} bars:`,
-      bars.map((bar) => ({
-        name: bar.name,
-        id: bar.id,
-        distance: bar.distance,
-      }))
-    );
+    if (!map.current || !mapReady) return;
 
     const src = map.current.getSource(BARS_SOURCE_ID) as mapboxgl.GeoJSONSource;
-    if (!src) {
-      console.warn("❌ Bars source not found, cannot update");
-      return;
-    }
+    if (!src) return;
 
-    const features = bars.map((bar) => ({
-      type: "Feature" as const,
-      geometry: bar.location,
-      properties: {
-        id: bar.id,
-        name: bar.name,
-        rating: bar.rating,
-        distance: bar.distance,
-      },
-    }));
+    src.setData({
+      type: "FeatureCollection",
+      features: buildBarFeatures(bars, selectedBarIds),
+    });
+  }, [bars, selectedBarIds, mapReady]);
 
-    console.log(`✅ Setting ${features.length} bar features on map`);
-    console.log("📊 Bars data:", features.slice(0, 2));
-    src.setData({ type: "FeatureCollection", features });
-  }, [bars]);
-
-  // 5. Sync hover/selected feature states and update highlight sources
+  // 5. Sync hover feature-state — only touch the two affected features
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return;
+    if (!map.current || !mapReady) return;
 
-    // Update enhanced hover highlight layers
-    const hoverSource = map.current.getSource(
-      "hover-highlight"
-    ) as mapboxgl.GeoJSONSource;
-    if (hoverSource) {
-      if (hoveredBarId) {
-        const hoveredBar = bars.find((bar) => bar.id === hoveredBarId);
-        if (hoveredBar) {
-          const hoverFeature = {
-            type: "FeatureCollection" as const,
-            features: [
-              {
-                type: "Feature" as const,
-                geometry: hoveredBar.location,
-                properties: { id: hoveredBar.id },
-              },
-            ],
-          };
-          hoverSource.setData(hoverFeature);
-        }
-      } else {
-        hoverSource.setData({ type: "FeatureCollection", features: [] });
-      }
-    }
-
-    // Update selected highlights
-    const selectedSource = map.current.getSource(
-      "selected-highlight"
-    ) as mapboxgl.GeoJSONSource;
-    if (selectedSource) {
-      const selectedBars = bars.filter((bar) => selectedBarIds.has(bar.id));
-      selectedSource.setData({
-        type: "FeatureCollection",
-        features: selectedBars.map((bar) => ({
-          type: "Feature" as const,
-          geometry: bar.location,
-          properties: { id: bar.id },
-        })),
-      });
-    }
-
-    // Update non-selected ambient highlights
-    const nonSelectedSource = map.current.getSource(
-      "nonselected-highlight"
-    ) as mapboxgl.GeoJSONSource;
-    if (nonSelectedSource) {
-      const nonSelectedBars = bars.filter(
-        (bar) => !selectedBarIds.has(bar.id) && bar.id !== hoveredBarId
-      );
-      nonSelectedSource.setData({
-        type: "FeatureCollection",
-        features: nonSelectedBars.map((bar) => ({
-          type: "Feature" as const,
-          geometry: bar.location,
-          properties: { id: bar.id },
-        })),
-      });
-    }
-
-    // Update feature states for icon sizing
-    if (hoveredStateId.current) {
+    if (hoveredStateId.current && hoveredStateId.current !== hoveredBarId) {
       map.current.removeFeatureState({
         source: BARS_SOURCE_ID,
         id: hoveredStateId.current,
@@ -438,75 +327,63 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       );
     }
     hoveredStateId.current = hoveredBarId;
+  }, [hoveredBarId, mapReady]);
 
-    bars.forEach((bar) => {
-      if (map.current) {
-        map.current.setFeatureState(
-          { source: BARS_SOURCE_ID, id: bar.id },
-          { selected: selectedBarIds.has(bar.id) }
-        );
-      }
-    });
-  }, [hoveredBarId, selectedBarIds, bars]);
-
-  // 6. Handle popup creation/removal based on hoveredBarId changes
+  // 6. Show/hide the single persistent hover popup
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return;
+    if (!map.current || !mapReady) return;
 
-    // Remove existing popup with a fade-out effect
-    if (popupRef.current) {
-      const popupElement = popupRef.current.getElement();
-      if (popupElement) {
-        popupElement.classList.add("closing");
-        setTimeout(() => {
-          if (popupRef.current) {
-            popupRef.current.remove();
-            popupRef.current = null;
-          }
-        }, 300); // Match animation duration
-      }
+    if (!hoveredBarId) {
+      popupRef.current?.remove();
+      return;
     }
 
-    // Create popup if a bar is hovered
-    if (hoveredBarId) {
+    {
       const hoveredBar = bars.find((bar) => bar.id === hoveredBarId);
       if (hoveredBar) {
-        const rating = hoveredBar.rating || 4.0;
-        const vibeData = {
-          vibe:
-            rating >= 4.5
-              ? "LEGENDARY"
-              : rating >= 4.0
-              ? "EPIC"
-              : rating >= 3.5
-              ? "GREAT"
-              : "DECENT",
-          vibeIcon:
-            rating >= 4.5
-              ? "🌟"
-              : rating >= 4.0
-              ? "🎉"
-              : rating >= 3.5
-              ? "✨"
-              : "👍",
-          vibeColor:
-            rating >= 4.5
-              ? "#ffff00"
-              : rating >= 4.0
-              ? "#ff00ff"
-              : rating >= 3.5
-              ? "#00ffff"
-              : "#ffffff",
-        };
+        // Reuse one popup instance — create lazily, then just move/refill it
+        if (!popupRef.current) {
+          popupRef.current = new mapboxgl.Popup({
+            closeButton: false,
+            className: "neon-bar-popup",
+            maxWidth: "280px",
+            anchor: "bottom",
+            focusAfterOpen: false,
+          });
+        }
+        const isSelected = selectedBarIds.has(hoveredBar.id);
 
-        popupRef.current = new mapboxgl.Popup({
-          closeButton: false,
-          offset: [0, -50],
-          className: "neon-bar-popup",
-          maxWidth: "280px",
-          anchor: "bottom",
-          focusAfterOpen: false,
-        })
+        const ratingHtml =
+          hoveredBar.rating > 0
+            ? `${hoveredBar.rating.toFixed(1)}/5${
+                hoveredBar.userRatingCount !== undefined
+                  ? ` <span class="review-count">(${hoveredBar.userRatingCount.toLocaleString()})</span>`
+                  : ""
+              }`
+            : "New";
+
+        const openRow =
+          hoveredBar.openNow !== undefined
+            ? `
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">🕒</span>
+                  <span class="neon-stat-label">Status:</span>
+                  <span class="neon-stat-value ${
+                    hoveredBar.openNow ? "open-now" : "closed-now"
+                  }">${hoveredBar.openNow ? "Open now" : "Closed"}</span>
+                </div>`
+            : "";
+
+        const addressRow = hoveredBar.address
+          ? `
+                <div class="neon-stat">
+                  <span class="neon-stat-icon">🏠</span>
+                  <span class="popup-address">${hoveredBar.address}</span>
+                </div>`
+          : "";
+
+        popupRef.current
+          .setOffset([0, isSelected ? -20 : -38])
           .setLngLat(hoveredBar.location.coordinates)
           .setHTML(
             `
@@ -515,13 +392,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 <div class="neon-bar-icon">🍸</div>
                 <h3 class="neon-bar-name">${
                   hoveredBar.name || "Unknown Bar"
-                }</h3>
+                }${hoveredBar.priceText ? ` <span class="review-count">${hoveredBar.priceText}</span>` : ""}</h3>
               </div>
               <div class="neon-popup-content">
                 <div class="neon-stat">
                   <span class="neon-stat-icon">⭐</span>
                   <span class="neon-stat-label">Rating:</span>
-                  <span class="neon-stat-value">${rating.toFixed(1)}/5</span>
+                  <span class="neon-stat-value">${ratingHtml}</span>
                 </div>
                 <div class="neon-stat">
                   <span class="neon-stat-icon">📍</span>
@@ -530,23 +407,15 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                     hoveredBar.distance !== undefined &&
                     hoveredBar.distance !== null
                       ? hoveredBar.distance.toFixed(2)
-                      : "Calculating..."
+                      : "—"
                   } mi</span>
-                </div>
-                <div class="neon-stat">
-                  <span class="neon-stat-icon">${vibeData.vibeIcon}</span>
-                  <span class="neon-stat-label">Vibe:</span>
-                  <span class="neon-stat-value" style="color: ${
-                    vibeData.vibeColor
-                  }">${vibeData.vibe}</span>
-                </div>
+                </div>${openRow}${addressRow}
                 <div class="neon-action-hint">
-                  <span class="neon-click-hint">💫 Click to ${
-                    selectedBarIds.has(hoveredBar.id) ? "remove from" : "add to"
+                  <span class="neon-click-hint">Click to ${
+                    isSelected ? "remove from" : "add to"
                   } route</span>
                 </div>
               </div>
-              <div class="neon-popup-glow"></div>
             </div>
             `
           )
@@ -558,12 +427,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   return (
     <div className="map-container" style={{ position: "relative" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
-      {(isLoadingBars || (bars.length === 0 && !isMapReady.current)) && (
+      {(isLoadingBars || (bars.length === 0 && !mapReady)) && (
         <MapLoadingIndicator
           message={
             isLoadingBars
               ? "Finding the perfect bars..."
-              : "Initializing the crawlfamap..."
+              : "Initializing the map..."
           }
         />
       )}

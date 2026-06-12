@@ -1,7 +1,9 @@
 // src/components/LocationPermission.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FiMapPin, FiNavigation, FiX } from "react-icons/fi";
+import { AnimatePresence, motion } from "framer-motion";
+import { modalOverlay, modalPanel } from "./motion/variants";
 import "../styles/LocationPermission.css";
 
 interface LocationPermissionProps {
@@ -21,18 +23,6 @@ const LocationPermission: React.FC<LocationPermissionProps> = ({
 }) => {
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
-
-  // Handle animation when component is hidden
-  useEffect(() => {
-    if (!isVisible) {
-      setIsAnimatingOut(true);
-      const timer = setTimeout(() => {
-        setIsAnimatingOut(false);
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible]);
 
   const handleRequestLocation = async () => {
     setIsRequesting(true);
@@ -96,17 +86,32 @@ const LocationPermission: React.FC<LocationPermissionProps> = ({
     onSkip();
   };
 
-  if (!isVisible && !isAnimatingOut) return null;
-
   return (
-    <div className={`location-permission-overlay ${isAnimatingOut ? "closing" : ""}`}>
-      <div className="location-permission-card" onClick={(e) => e.stopPropagation()}>
+    <AnimatePresence>
+      {isVisible && (
+    <motion.div
+      className="modal-overlay"
+      variants={modalOverlay}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
+      <motion.div
+        className="modal-panel location-permission-card"
+        variants={modalPanel}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="location-permission-title"
+      >
         <div className="location-permission-header">
           <div className="location-icon">
             <FiMapPin />
           </div>
-          <h2 className="location-title">Enable Location Access</h2>
-          <button className="close-button" onClick={handleSkip}>
+          <h2 className="location-title" id="location-permission-title">
+            Enable Location Access
+          </h2>
+          <button className="btn btn--icon modal-close" onClick={handleSkip} aria-label="Close">
             <FiX />
           </button>
         </div>
@@ -140,7 +145,7 @@ const LocationPermission: React.FC<LocationPermissionProps> = ({
 
         <div className="location-permission-footer">
           <button
-            className="location-button primary"
+            className="btn btn--primary btn--full"
             onClick={handleRequestLocation}
             disabled={isRequesting}
           >
@@ -156,9 +161,9 @@ const LocationPermission: React.FC<LocationPermissionProps> = ({
               </>
             )}
           </button>
-          
+
           <button
-            className="location-button secondary"
+            className="btn btn--secondary btn--full"
             onClick={handleSkip}
             disabled={isRequesting}
           >
@@ -169,8 +174,10 @@ const LocationPermission: React.FC<LocationPermissionProps> = ({
         <div className="location-privacy-note">
           🔒 Your location is only used to find nearby bars and is never shared with third parties
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

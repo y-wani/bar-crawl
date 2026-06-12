@@ -13,17 +13,24 @@ import { useAuth } from "../context/useAuth";
 import type { Bar } from "../components/BarListItem";
 import { MapSearchControl } from "../components/MapSearchControl";
 import { debounce } from "lodash";
-import type { Feature } from "geojson";
+import type { Feature, Polygon } from "geojson";
+import { booleanPointInPolygon } from "@turf/turf";
+import { toast } from "../components/Toaster";
 import {
   getCachedBars,
   cacheBars,
   getDefaultLocationCache,
 } from "../services/barCacheService";
-import LoadingSpinner from "../components/LoadingSpinner";
+
 import { useCacheManager } from "../hooks/useCacheManager";
+import PageTransition from "../components/motion/PageTransition";
 import LocationTutorial from "../components/LocationTutorial";
 import LocationPermission from "../components/LocationPermission";
 import { useLocationPermission } from "../hooks/useLocationPermission";
+import {
+  fetchNearbyBars,
+  isGooglePlacesEnabled,
+} from "../services/placesService";
 
 export interface AppBat extends Bar {
   location: {
@@ -45,6 +52,9 @@ interface MapboxFeature {
 }
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+// Dev logging stub — swap for console.log when debugging
+const debug = (..._args: unknown[]) => {};
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (
@@ -90,51 +100,65 @@ const Home: React.FC = () => {
   const [searchedLocation, setSearchedLocation] = useState("Columbus, Ohio");
   const [isLoading, setIsLoading] = useState(true);
   const [showOnlyInRadius, setShowOnlyInRadius] = useState(false);
-  const [isMapReady, setIsMapReady] = useState(false);
-  const [hasInitialBars, setHasInitialBars] = useState(false);
+
+
   const [showLocationPermission, setShowLocationPermission] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => {
     const seen = localStorage.getItem("barCrawlTutorialSeen");
     return !seen;
   });
   const [hasManualSearch, setHasManualSearch] = useState(false);
+  const [drawnPolygon, setDrawnPolygon] = useState<Feature | null>(null);
 
   // Track last fetch location and cached areas to prevent unnecessary fetches
   const lastFetchCenter = useRef<[number, number] | null>(null);
   const fetchedAreas = useRef<Set<string>>(new Set());
   const hasInitiallyFetched = useRef(false);
 
+  // Bars inside the user-drawn polygon (all bars when nothing is drawn)
+  const polygonFilteredBars = useMemo(() => {
+    if (!drawnPolygon || drawnPolygon.geometry.type !== "Polygon") {
+      return bars;
+    }
+    const polygon = drawnPolygon as Feature<Polygon>;
+    return bars.filter(
+      (bar) =>
+        bar.location?.coordinates &&
+        booleanPointInPolygon(bar.location.coordinates, polygon)
+    );
+  }, [bars, drawnPolygon]);
+
   // Calculate bars within radius
   const barsInRadius = useMemo(() => {
-    return bars.filter((bar) => {
+    return polygonFilteredBars.filter((bar) => {
       if (!bar.location?.coordinates) return false;
       const [barLng, barLat] = bar.location.coordinates;
       const [centerLng, centerLat] = mapCenter;
       const distance = calculateDistance(centerLat, centerLng, barLat, barLng);
       return distance <= searchRadius;
     }).length;
-  }, [bars, mapCenter, searchRadius]);
+  }, [polygonFilteredBars, mapCenter, searchRadius]);
 
   // Filter bars based on radius setting for map display
   const barsForMap = useMemo(() => {
     if (!showOnlyInRadius) {
-      return bars; // Show all bars when radius filter is off
+      return polygonFilteredBars; // Show all bars when radius filter is off
     }
 
-    return bars.filter((bar) => {
+    return polygonFilteredBars.filter((bar) => {
       if (!bar.location?.coordinates) return false;
       const [barLng, barLat] = bar.location.coordinates;
       const [centerLng, centerLat] = mapCenter;
       const distance = calculateDistance(centerLat, centerLng, barLat, barLng);
       return distance <= searchRadius;
     });
-  }, [bars, showOnlyInRadius, mapCenter, searchRadius]);
+  }, [polygonFilteredBars, showOnlyInRadius, mapCenter, searchRadius]);
 
   // Function to clear cache when needed (for new searches)
   const clearFetchCache = useCallback(() => {
     fetchedAreas.current.clear();
     lastFetchCenter.current = null;
-    console.log("🧹 Fetch cache cleared");
+    debug("🧹 Fetch cache cleared");
   }, []);
 
   // Helper function to generate cache key for an area
@@ -155,7 +179,7 @@ const Home: React.FC = () => {
 
     // Only fetch if moved more than 0.5 miles
     const threshold = 1;
-    console.log(
+    debug(
       `🚀 Distance moved: ${distance.toFixed(
         2
       )} miles (threshold: ${threshold})`
@@ -191,13 +215,13 @@ const Home: React.FC = () => {
         forceRefetch || !hasBeenFetched || shouldFetchBars(centerCoords);
 
       if (!shouldFetch) {
-        console.log(
+        debug(
           "⏭️ Skipping fetch - area already fetched or distance too small"
         );
         return;
       }
 
-      console.log("🔍 Fetching bars for area:", centerCoords, "Key:", areaKey);
+      debug("🔍 Fetching bars for area:", centerCoords, "Key:", areaKey);
       setIsLoading(true);
 
       // Try cache first if enabled
@@ -208,7 +232,7 @@ const Home: React.FC = () => {
             centerCoords[0]
           );
           if (cacheResult.isFromCache && cacheResult.bars.length > 0) {
-            console.log(
+            debug(
               `🎯 Loaded ${
                 cacheResult.bars.length
               } bars from cache (${cacheResult.cacheAge?.toFixed(1)}h old)`
@@ -226,78 +250,100 @@ const Home: React.FC = () => {
                 (bar) => !existingBarIds.has(bar.id)
               );
               const mergedBars = [...prevBars, ...newBars];
-              console.log(
+              debug(
                 `📊 Total bars: ${mergedBars.length} (${newBars.length} new from cache, ${prevBars.length} existing)`
               );
               return mergedBars;
             });
 
             setIsLoading(false);
-            setHasInitialBars(true);
+            
             return;
           }
         } catch (error) {
           console.error("Error loading from cache:", error);
         }
       }
-      const categories = ["bar", "pub", "nightclub"];
       const allBars: AppBat[] = [];
-      const fetchedBarIds = new Set<string>();
 
-      const searchParams = new URLSearchParams({
-        access_token: MAPBOX_ACCESS_TOKEN,
-        limit: "25",
-      });
-
-      if (Array.isArray(bounds) && bounds.length === 4) {
-        searchParams.set("bbox", bounds.join(","));
-      } else if (Array.isArray(bounds) && bounds.length === 2) {
-        searchParams.set("proximity", bounds.join(","));
-      }
-
-      for (const category of categories) {
-        const barsUrl = `https://api.mapbox.com/search/searchbox/v1/category/${category}?${searchParams.toString()}`;
-
+      if (isGooglePlacesEnabled) {
+        // Google Places (New): real ratings, review counts, open-now status.
+        // Radius scales with the search radius so the "outside radius" list
+        // stays meaningful without pulling in another county.
         try {
-          const barsResponse = await fetch(barsUrl);
-          if (!barsResponse.ok) continue;
-          const barsData = await barsResponse.json();
-
-          if (barsData.features) {
-            const newBars: AppBat[] = barsData.features.map(
-              (feature: MapboxFeature) => {
-                const [barLng, barLat] = feature.geometry.coordinates;
-                const [centerLng, centerLat] = centerCoords;
-                const distance = calculateDistance(
-                  centerLat,
-                  centerLng,
-                  barLat,
-                  barLng
-                );
-
-                return {
-                  id: feature.properties.mapbox_id,
-                  name: feature.properties.name || "Unknown Bar",
-                  rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
-                  distance: distance,
-                  location: feature.geometry,
-                };
-              }
-            );
-
-            newBars.forEach((bar) => {
-              if (!fetchedBarIds.has(bar.id)) {
-                allBars.push(bar);
-                fetchedBarIds.add(bar.id);
-              }
-            });
-          }
+          const radiusMeters = Math.min(
+            50000,
+            Math.max(3000, searchRadius * 1609 * 4)
+          );
+          const placesBars = await fetchNearbyBars(
+            centerCoords[1],
+            centerCoords[0],
+            radiusMeters
+          );
+          allBars.push(...placesBars);
         } catch (error) {
-          console.error(`Error fetching category ${category}:`, error);
+          console.error("Error fetching bars from Google Places:", error);
+        }
+      } else {
+        // Legacy fallback: Mapbox category search (no real ratings)
+        const categories = ["bar", "pub", "nightclub"];
+        const fetchedBarIds = new Set<string>();
+
+        const searchParams = new URLSearchParams({
+          access_token: MAPBOX_ACCESS_TOKEN,
+          limit: "25",
+        });
+
+        if (Array.isArray(bounds) && bounds.length === 4) {
+          searchParams.set("bbox", bounds.join(","));
+        } else if (Array.isArray(bounds) && bounds.length === 2) {
+          searchParams.set("proximity", bounds.join(","));
+        }
+
+        for (const category of categories) {
+          const barsUrl = `https://api.mapbox.com/search/searchbox/v1/category/${category}?${searchParams.toString()}`;
+
+          try {
+            const barsResponse = await fetch(barsUrl);
+            if (!barsResponse.ok) continue;
+            const barsData = await barsResponse.json();
+
+            if (barsData.features) {
+              const newBars: AppBat[] = barsData.features.map(
+                (feature: MapboxFeature) => {
+                  const [barLng, barLat] = feature.geometry.coordinates;
+                  const [centerLng, centerLat] = centerCoords;
+                  const distance = calculateDistance(
+                    centerLat,
+                    centerLng,
+                    barLat,
+                    barLng
+                  );
+
+                  return {
+                    id: feature.properties.mapbox_id,
+                    name: feature.properties.name || "Unknown Bar",
+                    rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)),
+                    distance: distance,
+                    location: feature.geometry,
+                  };
+                }
+              );
+
+              newBars.forEach((bar) => {
+                if (!fetchedBarIds.has(bar.id)) {
+                  allBars.push(bar);
+                  fetchedBarIds.add(bar.id);
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching category ${category}:`, error);
+          }
         }
       }
 
-      console.log(
+      debug(
         `🍺 Fetched ${allBars.length} bars from API:`,
         allBars.map((bar) => ({
           name: bar.name,
@@ -330,16 +376,16 @@ const Home: React.FC = () => {
         const existingBarIds = new Set(prevBars.map((bar) => bar.id));
         const newBars = allBars.filter((bar) => !existingBarIds.has(bar.id));
         const mergedBars = [...prevBars, ...newBars];
-        console.log(
+        debug(
           `📊 Total bars: ${mergedBars.length} (${newBars.length} new, ${prevBars.length} existing)`
         );
         return mergedBars;
       });
 
       setIsLoading(false);
-      setHasInitialBars(true);
+
     },
-    [mapCenter]
+    [mapCenter, searchRadius] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // --- UPDATED: Geocode search to use the new fetch function ---
@@ -385,11 +431,11 @@ const Home: React.FC = () => {
         ];
 
         if (shouldFetchBars(centerCoords)) {
-          console.log("🗺️ Map moved significantly, fetching new bars");
+          debug("🗺️ Map moved significantly, fetching new bars");
           fetchBarsInArea(bounds);
           setSearchedLocation("Current map area");
         } else {
-          console.log("🗺️ Map movement too small, skipping fetch");
+          debug("🗺️ Map movement too small, skipping fetch");
         }
       }, 1200), // Increased debounce time to reduce unnecessary calls
     [fetchBarsInArea]
@@ -439,7 +485,7 @@ const Home: React.FC = () => {
 
   // Handle location permission callbacks
   const handleLocationGranted = async (coords: [number, number]) => {
-    console.log("📍 Location granted:", coords);
+    debug("📍 Location granted:", coords);
     markUserConsent("granted");
     setMapCenter(coords);
     setSearchedLocation("Your Location");
@@ -453,14 +499,14 @@ const Home: React.FC = () => {
   };
 
   const handleLocationDenied = () => {
-    console.log("📍 Location denied");
+    debug("📍 Location denied");
     markUserConsent("denied");
     setShowLocationPermission(false);
     // Continue with default location
   };
 
   const handleLocationSkip = () => {
-    console.log("📍 Location permission skipped");
+    debug("📍 Location permission skipped");
     markUserConsent("denied"); // Treat skip as denial
     setShowLocationPermission(false);
     // Continue with default location
@@ -470,7 +516,7 @@ const Home: React.FC = () => {
   const handleUseLocationClick = async () => {
     // If user has already granted permission and we have their location, use it
     if (locationPermission === "granted" && userLocation) {
-      console.log("📍 Using stored user location:", userLocation);
+      debug("📍 Using stored user location:", userLocation);
       setMapCenter(userLocation);
       setSearchedLocation("Your Location");
       setHasManualSearch(false); // Reset manual search flag since user chose to use location
@@ -503,7 +549,7 @@ const Home: React.FC = () => {
     const loadInitialBars = async () => {
       if (hasInitiallyFetched.current) return;
 
-      console.log("🚀 Loading initial bars...");
+      debug("🚀 Loading initial bars...");
       setIsLoading(true);
 
       try {
@@ -511,26 +557,26 @@ const Home: React.FC = () => {
         const defaultCache = await getDefaultLocationCache();
 
         if (defaultCache.isFromCache && defaultCache.bars.length > 0) {
-          console.log(
+          debug(
             `🎯 Loaded ${defaultCache.bars.length} bars from default cache`
           );
           setBars(defaultCache.bars);
           hasInitiallyFetched.current = true;
-          setHasInitialBars(true);
+          
           // Set timeout to show map after bars are loaded
-          setTimeout(() => setIsMapReady(true), 500);
+          
           return;
         }
 
         // If no cache, fetch fresh data
-        console.log("📡 No cache found, fetching fresh data...");
+        debug("📡 No cache found, fetching fresh data...");
         await fetchBarsInArea(mapCenter, true, false); // Force fresh fetch, no cache
 
         // Set timeout to show map after bars are loaded
-        setTimeout(() => setIsMapReady(true), 1000);
+        
       } catch (error) {
         console.error("Error loading initial bars:", error);
-        setIsMapReady(true); // Show map even if bars fail to load
+        
       } finally {
         setIsLoading(false);
       }
@@ -565,31 +611,26 @@ const Home: React.FC = () => {
     setShowOnlyInRadius(showOnlyInRadius);
   };
 
-  // Handler for draw complete events
+  // Handler for draw complete events — filters bars to the drawn polygon
   const handleDrawComplete = (feature: Feature | null) => {
-    // TODO: Implement filtering bars within drawn polygon
-    console.log("Draw complete:", feature);
+    if (feature && feature.geometry.type === "Polygon") {
+      setDrawnPolygon(feature);
+      toast.success("Showing bars inside your drawn area");
+    } else {
+      setDrawnPolygon((prev) => {
+        if (prev) toast.success("Area filter cleared");
+        return null;
+      });
+    }
   };
 
-  // Show loading screen until we have initial bars and map is ready
-  if (!hasInitialBars || !isMapReady) {
-    return (
-      <LoadingSpinner
-        message={
-          !hasInitialBars
-            ? "Loading your local bar scene..."
-            : "Preparing the ultimate crawl map..."
-        }
-      />
-    );
-  }
-
   return (
+    <PageTransition>
     <div className="planner-page">
       <Sidebar
         user={user}
         onSignOut={signout}
-        bars={bars}
+        bars={polygonFilteredBars}
         selectedBarIds={selectedBarIds}
         hoveredBarId={hoveredBarId}
         onToggleBar={handleToggleBar}
@@ -611,7 +652,7 @@ const Home: React.FC = () => {
           initialRadius={searchRadius}
           showOnlyInRadius={showOnlyInRadius}
           barsInRadius={barsInRadius}
-          totalBars={bars.length}
+          totalBars={polygonFilteredBars.length}
           showLocationButton={true}
         />
 
@@ -630,7 +671,7 @@ const Home: React.FC = () => {
       </div>
 
       <LocationTutorial
-        isVisible={showTutorial}
+        isVisible={showTutorial && !showLocationPermission}
         onClose={() => {
           setShowTutorial(false);
           // Mark tutorial as seen in localStorage so it never shows again
@@ -646,6 +687,7 @@ const Home: React.FC = () => {
         getUserLocation={getUserLocation}
       />
     </div>
+    </PageTransition>
   );
 };
 

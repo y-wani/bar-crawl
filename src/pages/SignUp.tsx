@@ -2,7 +2,11 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
+import SwirlBackground from '../components/SwirlBackground';
+import PageTransition from '../components/motion/PageTransition';
+import { springPanel } from '../components/motion/variants';
 import '../styles/Auth.css';
 import { FcGoogle } from 'react-icons/fc';
 
@@ -136,8 +140,15 @@ const SignUp: React.FC = () => {
   const { requirements } = getPasswordStrength();
 
   return (
-    <div className="auth-container signup-container">
-      <div className="auth-card signup-card">
+    <PageTransition>
+      <div className="auth-container signup-container">
+        <SwirlBackground />
+        <motion.div
+          className="auth-card signup-card"
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={springPanel}
+        >
         <div className="auth-header">
           <h1 className="auth-title">Create Account</h1>
           <p className="auth-subtitle">Join the ultimate bar crawl experience.</p>
@@ -231,7 +242,13 @@ const SignUp: React.FC = () => {
           </div>
           
           {errors.general && (
-            <div className="error-message">{errors.general}</div>
+            <motion.div
+              className="error-message"
+              animate={{ x: [0, -6, 6, -3, 0] }}
+              transition={{ duration: 0.35 }}
+            >
+              {errors.general}
+            </motion.div>
           )}
           
           <button 
@@ -266,8 +283,9 @@ const SignUp: React.FC = () => {
             &larr; Back to Landing
           </Link>
         </div>
+        </motion.div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

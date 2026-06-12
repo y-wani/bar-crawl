@@ -146,10 +146,10 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
           .qr-code img { border-radius: 5px; }
           .bar-stop { margin-bottom: 20px; }
           .stop-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
-          .stop-number { font-size: 1.5em; font-weight: bold; color: #fff; background-color: #8A2BE2; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+          .stop-number { font-size: 1.5em; font-weight: bold; color: #1a1208; background-color: #ecb256; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
           .stop-info h2 { margin: 0; font-size: 1.4em; color: #1a1a2e; }
           .address { margin: 2px 0 0 0; color: #555; font-size: 0.9em; }
-          .stop-content { border-left: 3px solid #8A2BE2; padding-left: 20px; margin-left: 20px; }
+          .stop-content { border-left: 3px solid #ecb256; padding-left: 20px; margin-left: 20px; }
           .challenge, .ratings, .notes { margin-bottom: 10px; }
           .stars { letter-spacing: 3px; cursor: pointer; color: #ddd; font-size: 1.5em; }
           .notes-box { border: 1px solid #ddd; border-radius: 5px; height: 60px; margin-top: 5px; }

@@ -81,10 +81,11 @@ export const BarList: React.FC<BarListProps> = ({
               )}
               
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                layout
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: Math.min(index * 0.04, 0.6), duration: 0.3 }}
               >
                 <BarListItem
                   bar={bar}

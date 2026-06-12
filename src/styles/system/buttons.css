@@ -1,0 +1,135 @@
+/*
+ * Button system — all pill-shaped, echoing the Landing page CTAs.
+ * One .btn--primary per screen; everything else stays quiet.
+ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.65rem 1.4rem;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Primary — amber fill, the loudest element on any screen */
+.btn--primary {
+  background-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background-color: var(--accent-bright);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.btn--primary:active:not(:disabled) {
+  background-color: var(--accent-deep);
+  transform: translateY(0);
+}
+
+/* Secondary — transparent + light border (port of .btn-secondary-landing) */
+.btn--secondary {
+  background-color: transparent;
+  color: var(--text-primary);
+  border-color: var(--glass-border-strong);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Ghost — text-only, for tertiary actions */
+.btn--ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background-color: var(--glass-3);
+  color: var(--text-primary);
+}
+
+/* Icon — circular glass button for compact actions */
+.btn--icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: var(--glass-2);
+  border-color: var(--glass-border);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.btn--icon:hover:not(:disabled) {
+  background-color: var(--glass-3);
+  border-color: var(--glass-border-strong);
+  color: var(--text-primary);
+}
+
+/* Danger — destructive actions */
+.btn--danger {
+  background-color: var(--danger-soft);
+  color: var(--danger);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background-color: var(--danger);
+  color: #fff;
+}
+
+/* Sizes */
+.btn--sm {
+  font-size: var(--text-xs);
+  padding: 0.4rem 0.95rem;
+}
+
+.btn--lg {
+  font-size: var(--text-base);
+  padding: 0.85rem 1.8rem;
+}
+
+.btn--full {
+  width: 100%;
+}
+
+/* -------------------------------------------------------------------------
+ * Landing page compat: Landing CTAs carry `.btn` + `.btn-*-landing`.
+ * Landing.css (untouched) overrides colors/padding/radius; these rules keep
+ * the original font + display so the hero looks exactly as before.
+ * ------------------------------------------------------------------------- */
+.btn-primary-landing,
+.btn-secondary-landing {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  border: none;
+}
+
+.btn-secondary-landing {
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}

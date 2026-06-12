@@ -7,8 +7,12 @@ import {
   cleanupOldCache 
 } from '../services/barCacheService';
 import type { AppBat } from '../pages/Home';
+import { fetchNearbyBars, isGooglePlacesEnabled } from '../services/placesService';
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+// Dev logging stub — swap for console.log when debugging
+const debug = (..._args: unknown[]) => {};
 
 // Popular locations to pre-cache
 const POPULAR_LOCATIONS = [
@@ -37,6 +41,17 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 // Fetch bars for a specific location
 const fetchBarsForLocation = async (lat: number, lng: number, locationName: string): Promise<AppBat[]> => {
+  if (isGooglePlacesEnabled) {
+    try {
+      const bars = await fetchNearbyBars(lat, lng, 8000);
+      debug(`🎯 Fetched ${bars.length} bars for ${locationName} (Places)`);
+      return bars;
+    } catch (error) {
+      console.error(`Error fetching Places bars for ${locationName}:`, error);
+      return [];
+    }
+  }
+
   const categories = ["bar", "pub", "nightclub"];
   const allBars: AppBat[] = [];
   const fetchedBarIds = new Set<string>();
@@ -83,7 +98,7 @@ const fetchBarsForLocation = async (lat: number, lng: number, locationName: stri
     }
   }
 
-  console.log(`🎯 Fetched ${allBars.length} bars for ${locationName}`);
+  debug(`🎯 Fetched ${allBars.length} bars for ${locationName}`);
   return allBars;
 };
 
@@ -94,19 +109,19 @@ export const useCacheManager = () => {
   // Initialize cache with popular locations on app start
   const initializeCache = async () => {
     try {
-      console.log("🔄 Initializing popular location cache...");
+      debug("🔄 Initializing popular location cache...");
       
       // Check if default location needs caching
       const defaultCache = await getDefaultLocationCache();
       
       if (!defaultCache.isFromCache) {
-        console.log("📍 Caching default location (Columbus, Ohio)...");
+        debug("📍 Caching default location (Columbus, Ohio)...");
         const defaultLocation = POPULAR_LOCATIONS[0];
         const bars = await fetchBarsForLocation(defaultLocation.lat, defaultLocation.lng, defaultLocation.name);
         
         if (bars.length > 0) {
           await cacheBars(defaultLocation.lat, defaultLocation.lng, bars, defaultLocation.name);
-          console.log("✅ Default location cached successfully");
+          debug("✅ Default location cached successfully");
         }
       }
       
@@ -116,12 +131,12 @@ export const useCacheManager = () => {
           const location = POPULAR_LOCATIONS[i];
           
           try {
-            console.log(`🌍 Background caching ${location.name}...`);
+            debug(`🌍 Background caching ${location.name}...`);
             const bars = await fetchBarsForLocation(location.lat, location.lng, location.name);
             
             if (bars.length > 0) {
               await cacheBars(location.lat, location.lng, bars, location.name);
-              console.log(`✅ ${location.name} cached successfully`);
+              debug(`✅ ${location.name} cached successfully`);
             }
             
             // Wait between requests to avoid rate limiting
@@ -142,7 +157,7 @@ export const useCacheManager = () => {
   const startBackgroundRefresh = () => {
     // Refresh cache every 6 hours
     backgroundCacheInterval.current = setInterval(async () => {
-      console.log("🔄 Background cache refresh started...");
+      debug("🔄 Background cache refresh started...");
       
       try {
         // Refresh default location
@@ -151,7 +166,7 @@ export const useCacheManager = () => {
         
         if (bars.length > 0) {
           await cacheBars(defaultLocation.lat, defaultLocation.lng, bars, defaultLocation.name);
-          console.log("✅ Default location cache refreshed");
+          debug("✅ Default location cache refreshed");
         }
       } catch (error) {
         console.error("Error refreshing cache:", error);
@@ -160,7 +175,7 @@ export const useCacheManager = () => {
 
     // Clean up old cache entries every 12 hours
     cleanupInterval.current = setInterval(async () => {
-      console.log("🧹 Cleaning up old cache entries...");
+      debug("🧹 Cleaning up old cache entries...");
       await cleanupOldCache();
     }, 12 * 60 * 60 * 1000); // 12 hours
   };
@@ -178,12 +193,20 @@ export const useCacheManager = () => {
     }
   };
 
-  // Initialize on mount
+  // Initialize after the visible page has settled — popular-city caching is
+  // a background optimization and must not compete with the initial load
   useEffect(() => {
-    initializeCache();
-    startBackgroundRefresh();
+    const idleTimeout = setTimeout(() => {
+      initializeCache();
+      startBackgroundRefresh();
+      // Purge expired cache entries once per session (was never called before)
+      cleanupOldCache().catch((e) =>
+        console.error("Cache cleanup failed:", e)
+      );
+    }, 8000);
 
     return () => {
+      clearTimeout(idleTimeout);
       stopBackgroundProcesses();
     };
   }, []);

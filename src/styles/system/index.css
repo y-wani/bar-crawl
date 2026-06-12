@@ -1,0 +1,11 @@
+/*
+ * BarHop design system — import once in main.tsx.
+ * Order matters: tokens first, then base, then shared components.
+ */
+
+@import '../tokens.css';
+@import './base.css';
+@import './surfaces.css';
+@import './buttons.css';
+@import './forms.css';
+@import './modal.css';

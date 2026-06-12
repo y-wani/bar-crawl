@@ -18,6 +18,9 @@ import { FirebaseError } from "firebase/app";
 import { db } from "../firebase/config";
 import type { AppBat } from "../pages/Home";
 
+// Dev logging stub — swap for console.log when debugging
+const debug = (..._args: unknown[]) => {};
+
 // Enhanced bar crawl interface for Firestore
 export interface SavedBarCrawl {
   id?: string;
@@ -70,9 +73,9 @@ export const saveCrawl = async (
   crawlData: Omit<SavedBarCrawl, "id" | "createdAt" | "updatedAt">
 ): Promise<string> => {
   try {
-    console.log("🗄️ CrawlService: Starting save to Firestore...");
-    console.log("📊 Collection:", CRAWLS_COLLECTION);
-    console.log("🔍 Data validation:", {
+    debug("🗄️ CrawlService: Starting save to Firestore...");
+    debug("📊 Collection:", CRAWLS_COLLECTION);
+    debug("🔍 Data validation:", {
       hasName: !!crawlData.name,
       hasCreatedBy: !!crawlData.createdBy,
       barsCount: crawlData.bars?.length || 0,
@@ -85,12 +88,12 @@ export const saveCrawl = async (
       updatedAt: serverTimestamp(),
     };
 
-    console.log("⏰ Adding timestamps and saving to Firestore...");
+    debug("⏰ Adding timestamps and saving to Firestore...");
     const docRef = await addDoc(
       collection(db, CRAWLS_COLLECTION),
       crawlWithTimestamps
     );
-    console.log("✅ Crawl saved successfully with ID:", docRef.id);
+    debug("✅ Crawl saved successfully with ID:", docRef.id);
     return docRef.id;
   } catch (error) {
     console.error("❌ Error saving crawl:", error);
@@ -145,7 +148,7 @@ export const getUserCrawls = async (
       return bDate.getTime() - aDate.getTime();
     });
 
-    console.log(`📋 Retrieved ${crawls.length} crawls for user ${userId}`);
+    debug(`📋 Retrieved ${crawls.length} crawls for user ${userId}`);
     return crawls;
   } catch (error) {
     console.error("❌ Error fetching user crawls:", error);
@@ -169,7 +172,7 @@ export const getCrawlById = async (
         ...docSnap.data(),
       } as SavedBarCrawl;
     } else {
-      console.log("📭 No crawl found with ID:", crawlId);
+      debug("📭 No crawl found with ID:", crawlId);
       return null;
     }
   } catch (error) {
@@ -191,7 +194,7 @@ export const updateCrawl = async (
       ...updates,
       updatedAt: serverTimestamp(),
     });
-    console.log("✅ Crawl updated successfully");
+    debug("✅ Crawl updated successfully");
   } catch (error) {
     console.error("❌ Error updating crawl:", error);
     throw new Error("Failed to update crawl. Please try again.");
@@ -204,7 +207,7 @@ export const updateCrawl = async (
 export const deleteCrawl = async (crawlId: string): Promise<void> => {
   try {
     await deleteDoc(doc(db, CRAWLS_COLLECTION, crawlId));
-    console.log("✅ Crawl deleted successfully");
+    debug("✅ Crawl deleted successfully");
   } catch (error) {
     console.error("❌ Error deleting crawl:", error);
     throw new Error("Failed to delete crawl. Please try again.");
@@ -234,7 +237,7 @@ export const getPublicCrawls = async (
       } as SavedBarCrawl);
     });
 
-    console.log(`🌐 Retrieved ${crawls.length} public crawls`);
+    debug(`🌐 Retrieved ${crawls.length} public crawls`);
     return crawls.slice(0, limit);
   } catch (error) {
     console.error("❌ Error fetching public crawls:", error);

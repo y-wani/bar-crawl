@@ -1,168 +1,9 @@
-/* Reusable Premium Components */
+/* Shared planner widgets + all Mapbox UI overrides. */
 
-/* Enhanced Neon Bar Popup Styles */
-.neon-bar-popup .mapboxgl-popup-content {
-  background: transparent !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  z-index: 1000 !important;
-}
-
-.neon-bar-popup .mapboxgl-popup-tip {
-  border-top-color: rgba(59, 178, 208, 0.8) !important;
-  border-bottom-color: rgba(59, 178, 208, 0.8) !important;
-  filter: drop-shadow(0 0 5px rgba(59, 178, 208, 0.6));
-}
-
-.neon-popup-container {
-  background: linear-gradient(135deg, 
-    rgba(22, 21, 43, 0.98) 0%, 
-    rgba(12, 11, 22, 0.95) 100%);
-  border: 2px solid;
-  border-image: linear-gradient(135deg, #3bb2d0, #00ffff, #ff00ff) 1;
-  border-radius: 12px;
-  padding: 1rem;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  position: relative;
-  overflow: hidden;
-  min-width: 250px;
-  box-shadow: 
-    0 0 30px rgba(59, 178, 208, 0.4),
-    0 0 60px rgba(255, 0, 255, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  animation: popupAppear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.neon-popup-glow {
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(135deg, #3bb2d0, #00ffff, #ff00ff, #3bb2d0);
-  border-radius: 12px;
-  z-index: -1;
-  animation: borderGlow 3s linear infinite;
-  opacity: 0.6;
-}
-
-.neon-popup-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(59, 178, 208, 0.3);
-}
-
-.neon-bar-icon {
-  font-size: 1.5rem;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
-  animation: iconPulse 2s ease-in-out infinite;
-}
-
-.neon-bar-name {
-  font-family: "Rajdhani", sans-serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin: 0;
-  color: #ffffff;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-  letter-spacing: 0.5px;
-}
-
-.neon-popup-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.neon-stat {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: "Poppins", sans-serif;
-  font-size: 0.9rem;
-}
-
-.neon-stat-icon {
-  font-size: 1rem;
-  width: 20px;
-  text-align: center;
-  filter: drop-shadow(0 0 5px rgba(59, 178, 208, 0.6));
-}
-
-.neon-stat-label {
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
-  min-width: 60px;
-}
-
-.neon-stat-value {
-  color: #00ffff;
-  font-weight: 600;
-  text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
-}
-
-.neon-action-hint {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 0, 255, 0.2);
-  text-align: center;
-}
-
-.neon-click-hint {
-  font-family: "Poppins", sans-serif;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
-  animation: hintPulse 2s ease-in-out infinite;
-}
-
-@keyframes popupAppear {
-  0% {
-    opacity: 0;
-    transform: scale(0.9) translateY(5px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes borderGlow {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes iconPulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-@keyframes hintPulse {
-  0%, 100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* --- Ultra-Premium Custom Checkbox Styling --- */
+/* ===== Custom checkbox (bar rows) ===== */
 .custom-checkbox-container {
   position: relative;
   cursor: pointer;
-  font-size: 20px;
   user-select: none;
   display: flex;
   align-items: center;
@@ -183,224 +24,117 @@
 
 .checkmark {
   position: absolute;
-  top: 0;
-  left: 0;
-  height: 24px;
-  width: 24px;
-  background: var(--gradient-dark);
-  border: var(--border-glow);
-  border-radius: 0.4rem;
-  transition: var(--transition-bounce);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  top: 2px;
+  left: 2px;
+  height: 22px;
+  width: 22px;
+  background: var(--glass-2);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .custom-checkbox-container:hover input ~ .checkmark {
-  border-color: var(--primary);
-  box-shadow: var(--shadow-glow);
-  transform: scale(1.05);
+  border-color: var(--accent-deep);
 }
 
 .custom-checkbox-container input:checked ~ .checkmark {
-  background: var(--gradient-secondary);
-  border-color: var(--secondary);
-  box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
-  transform: scale(1.05) rotate(5deg);
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .checkmark:after {
   content: "";
   position: absolute;
   display: none;
-  transition: var(--transition-bounce);
 }
 
 .custom-checkbox-container input:checked ~ .checkmark:after {
   display: block;
-  animation: checkmark-bounce 0.3s ease-out;
-}
-
-@keyframes checkmark-bounce {
-  0% {
-    opacity: 0;
-    transform: scale(0) rotate(45deg);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2) rotate(45deg);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(45deg);
-  }
 }
 
 .custom-checkbox-container .checkmark:after {
-  left: 8px;
-  top: 4px;
+  left: 7px;
+  top: 3px;
   width: 5px;
   height: 10px;
-  border: solid var(--text-inverse);
+  border: solid var(--text-on-accent);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
-/* Ultra-Premium Generate Route Button */
+/* ===== Generate route CTA ===== */
 .btn-generate-route {
   width: 100%;
-  padding: 0.75rem 1.25rem;
-  font-size: 1rem;
-  font-weight: 700;
-  font-family: "Rajdhani", sans-serif;
-  letter-spacing: 1px;
-  background: var(--gradient-secondary);
-  color: var(--text-inverse);
+  padding: 0.85rem 1.25rem;
+  font-size: var(--text-base);
+  font-weight: 600;
+  font-family: var(--font-body);
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
-  border-radius: 0.6rem;
-  transition: var(--transition-bounce);
-  box-shadow: var(--shadow-premium);
-  position: relative;
-  overflow: hidden;
-  z-index: 1;
-  text-transform: uppercase;
+  border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-}
-
-.btn-generate-route::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--gradient-accent);
-  opacity: 0;
-  transition: var(--transition-smooth);
-  border-radius: 0.75rem;
+  gap: var(--space-2);
+  position: relative;
+  z-index: 1;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    background-color var(--duration-fast) ease;
 }
 
 .btn-generate-route:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4), var(--shadow-premium);
+  background: var(--accent-bright);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-accent);
 }
 
-.btn-generate-route:hover:not(:disabled)::before {
-  opacity: 1;
-}
-
-.btn-generate-route:active {
-  transform: translateY(-1px) scale(1.01);
+.btn-generate-route:active:not(:disabled) {
+  background: var(--accent-deep);
+  transform: translateY(0);
 }
 
 .btn-generate-route:disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: not-allowed;
   transform: none;
 }
 
-/* --- Custom Popup Styling --- */
-.mapboxgl-popup.bar-popup .mapboxgl-popup-content {
-  background: linear-gradient(
-    135deg,
-    rgba(22, 21, 43, 0.9),
-    rgba(12, 11, 22, 0.8)
-  );
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.75rem 1rem;
-  color: var(--text-primary);
-  font-family: "Poppins", sans-serif;
-  box-shadow: 0 8px 32px var(--shadow-elevated);
-  backdrop-filter: blur(10px);
+/* Soft pulse when ready to go */
+.btn-generate-route:not(:disabled) {
+  animation: generate-pulse 2.4s ease-in-out infinite;
 }
 
-.mapboxgl-popup.bar-popup h5 {
-  font-family: "Rajdhani", sans-serif;
-  font-size: 1.1rem;
-  margin: 0;
-  font-weight: 700;
+@keyframes generate-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(236, 178, 86, 0.0);
+  }
+  50% {
+    box-shadow: 0 0 18px 0 rgba(236, 178, 86, 0.35);
+  }
 }
 
-.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-  border-top-color: var(--border) !important;
-}
-.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
-  border-bottom-color: var(--border) !important;
-}
-.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
-  border-right-color: var(--border) !important;
-}
-.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
-  border-left-color: var(--border) !important;
-}
+/* =========================================================================
+ * MAPBOX OVERRIDES — everything below styles Mapbox GL UI to match the
+ * design system. Keep in one place.
+ * ========================================================================= */
 
-/* --- Directions Control Styling --- */
-.mapboxgl-ctrl-directions {
-  background-color: rgba(33, 33, 33, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #fff !important;
-}
-
-.mapboxgl-ctrl-directions .directions-input-group input {
-  background-color: rgba(0, 0, 0, 0.3) !important;
-  color: #fff !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-
-.mapboxgl-ctrl-directions .mapbox-directions-route-summary h1,
-.mapboxgl-ctrl-directions .mapbox-directions-route-summary span {
-  color: #fff !important;
-}
-
-.mapbox-directions-steps {
-  background-color: rgba(0, 0, 0, 0.2) !important;
-}
-
-.mapbox-directions-step .mapbox-directions-step-maneuver {
-  color: #fff !important;
-}
-
-/* --- Geocoder Control Styling --- */
-.mapboxgl-ctrl-geocoder {
-  background-color: rgba(33, 33, 33, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #fff !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
-  border-radius: var(--radius) !important;
-}
-
-.mapboxgl-ctrl-geocoder--input {
-  background-color: transparent !important;
-  color: #fff !important;
-}
-
-.mapboxgl-ctrl-geocoder--suggestion {
-  background-color: rgba(33, 33, 33, 0.9) !important;
-  color: #fff !important;
-}
-
-.mapboxgl-ctrl-geocoder--suggestion-active {
-  background-color: rgba(0, 0, 0, 0.3) !important;
-}
-
-.mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--pin-right > * {
-  background-color: transparent;
-  fill: #fff;
-}
-
-/* === ENHANCED NEON BAR POPUP STYLES === */
+/* --- Bar popup (.neon-* class names kept; restyled to glass + amber) --- */
+/* IMPORTANT: never animate `transform` on the popup root — Mapbox
+   positions popups via an inline transform, and an animation overrides it,
+   making the popup flash at the top-left before snapping into place. */
 .neon-bar-popup {
-  transform-origin: center bottom;
-  animation: popupFadeInScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.neon-bar-popup.closing {
-  animation: popupFadeOutScale 0.3s ease-in forwards;
+  /* Above the map search/radius overlay (z-index 20), below its
+     suggestions dropdown (30) */
+  z-index: 25;
 }
 
 .neon-bar-popup .mapboxgl-popup-content {
@@ -409,350 +143,259 @@
   box-shadow: none !important;
   padding: 0 !important;
   border-radius: 0 !important;
-  max-width: 340px !important;
-  min-width: 300px !important;
+  max-width: 280px !important;
+  min-width: 230px !important;
 }
 
 .neon-bar-popup .mapboxgl-popup-tip {
-  border-top-color: rgba(255, 0, 255, 0.9) !important;
-  border-bottom-color: rgba(255, 0, 255, 0.9) !important;
-  filter: drop-shadow(0 0 12px rgba(255, 0, 255, 0.8)) drop-shadow(0 0 24px rgba(0, 255, 255, 0.4));
-  transform-origin: center;
-  animation: tipPulse 2s ease-in-out infinite;
+  border-top-color: rgba(24, 21, 38, 0.97) !important;
+  border-bottom-color: rgba(24, 21, 38, 0.97) !important;
 }
 
 .neon-popup-container {
   position: relative;
-  background: linear-gradient(145deg, 
-    rgba(0, 0, 0, 0.96) 0%, 
-    rgba(25, 0, 45, 0.95) 30%, 
-    rgba(15, 0, 35, 0.96) 70%, 
-    rgba(0, 0, 0, 0.96) 100%
-  );
-  border: 2px solid transparent;
-  border-radius: 20px;
-  padding: 24px;
-  backdrop-filter: blur(25px) saturate(180%);
-  -webkit-backdrop-filter: blur(25px) saturate(180%);
-  box-shadow: 
-    0 0 40px rgba(255, 0, 255, 0.5),
-    0 0 80px rgba(0, 255, 255, 0.25),
-    0 0 120px rgba(255, 255, 0, 0.1),
-    inset 0 2px 25px rgba(255, 255, 255, 0.12);
-  animation: neonPopupPulse 3s ease-in-out infinite;
-  overflow: hidden;
-  transform-origin: center;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.neon-popup-container:hover {
-  transform: scale(1.02);
-  box-shadow: 
-    0 0 50px rgba(255, 0, 255, 0.7),
-    0 0 100px rgba(0, 255, 255, 0.35),
-    0 0 150px rgba(255, 255, 0, 0.15),
-    inset 0 2px 30px rgba(255, 255, 255, 0.15);
-}
-
-.neon-popup-container::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(45deg, 
-    #ff00ff 0%, 
-    #00ffff 25%, 
-    #ffff00 50%, 
-    #ff00ff 75%, 
-    #00ffff 100%
-  );
-  border-radius: 16px;
-  z-index: -1;
-  animation: neonBorderRotate 3s linear infinite;
+  background: rgba(24, 21, 38, 0.97);
+  border: 1px solid rgba(236, 178, 86, 0.35);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-md);
+  /* Entrance animation lives on the inner card, where transform is safe */
+  animation: popupFadeIn 0.18s ease-out;
 }
 
 .neon-popup-glow {
-  position: absolute;
-  top: -10px;
-  left: -10px;
-  right: -10px;
-  bottom: -10px;
-  background: radial-gradient(ellipse at center, 
-    rgba(255, 0, 255, 0.3) 0%, 
-    rgba(0, 255, 255, 0.2) 50%, 
-    transparent 100%
-  );
-  border-radius: 24px;
-  z-index: -2;
-  animation: neonGlowPulse 1.5s ease-in-out infinite alternate;
+  display: none;
 }
 
 .neon-popup-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 0, 255, 0.3);
-  padding-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 10px;
 }
 
 .neon-bar-icon {
-  font-size: 24px;
-  animation: neonIconSpin 4s linear infinite;
-  text-shadow: 
-    0 0 10px rgba(255, 255, 0, 0.8),
-    0 0 20px rgba(255, 255, 0, 0.6);
+  font-size: 18px;
 }
 
 .neon-bar-name {
-  font-family: "Rajdhani", sans-serif;
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
-  text-shadow: 
-    0 0 10px rgba(0, 255, 255, 0.8),
-    0 0 20px rgba(0, 255, 255, 0.4);
+  color: var(--text-primary);
   margin: 0;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .neon-popup-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .neon-stat {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, 
-    rgba(255, 0, 255, 0.12) 0%, 
-    rgba(0, 255, 255, 0.08) 100%
-  );
-  border: 1px solid rgba(255, 0, 255, 0.3);
-  border-radius: 12px;
-  backdrop-filter: blur(15px);
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.neon-stat::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, 
-    transparent, 
-    rgba(255, 255, 255, 0.1), 
-    transparent
-  );
-  transition: left 0.6s ease;
-}
-
-.neon-stat:hover::before {
-  left: 100%;
-}
-
-.neon-stat:hover {
-  background: linear-gradient(135deg, 
-    rgba(255, 0, 255, 0.25) 0%, 
-    rgba(0, 255, 255, 0.15) 100%
-  );
-  border-color: rgba(255, 0, 255, 0.7);
-  transform: translateX(8px) scale(1.02);
-  box-shadow: 
-    0 0 20px rgba(255, 0, 255, 0.4),
-    0 0 40px rgba(0, 255, 255, 0.2);
+  gap: 8px;
+  padding: 2px 0;
 }
 
 .neon-stat-icon {
-  font-size: 16px;
-  min-width: 20px;
+  font-size: 13px;
+  min-width: 18px;
   text-align: center;
-  animation: neonStatBounce 2s ease-in-out infinite;
 }
 
 .neon-stat-label {
-  font-family: "Poppins", sans-serif;
-  font-size: 13px;
+  font-family: var(--font-body);
+  font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-tertiary);
   min-width: 60px;
 }
 
 .neon-stat-value {
-  font-family: "Rajdhani", sans-serif;
-  font-size: 14px;
+  font-family: var(--font-display);
+  font-size: 13px;
   font-weight: 700;
-  color: #00ffff;
-  text-shadow: 
-    0 0 8px rgba(0, 255, 255, 0.8),
-    0 0 16px rgba(0, 255, 255, 0.4);
+  color: var(--accent);
   margin-left: auto;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
 
 .neon-action-hint {
   margin-top: 8px;
-  padding: 10px;
-  background: linear-gradient(90deg, 
-    rgba(255, 255, 0, 0.1) 0%, 
-    rgba(255, 0, 255, 0.1) 100%
-  );
-  border: 1px dashed rgba(255, 255, 0, 0.5);
-  border-radius: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--glass-border);
   text-align: center;
 }
 
 .neon-click-hint {
-  font-family: "Poppins", sans-serif;
-  font-size: 12px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Real bar data badges --- */
+.review-count {
+  color: var(--text-tertiary);
+  font-size: 0.85em;
+}
+
+.open-now,
+.closed-now {
+  font-size: 0.78em;
   font-weight: 600;
-  color: #ffff00;
-  text-shadow: 
-    0 0 8px rgba(255, 255, 0, 0.8),
-    0 0 16px rgba(255, 255, 0, 0.4);
-  animation: neonClickPulse 1s ease-in-out infinite alternate;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.3px;
 }
 
-/* === EPIC NEON ANIMATIONS === */
-@keyframes neonPopupPulse {
-  0%, 100% {
-    box-shadow: 
-      0 0 30px rgba(255, 0, 255, 0.4),
-      0 0 60px rgba(0, 255, 255, 0.2),
-      inset 0 1px 20px rgba(255, 255, 255, 0.1);
-  }
-  50% {
-    box-shadow: 
-      0 0 40px rgba(255, 0, 255, 0.6),
-      0 0 80px rgba(0, 255, 255, 0.3),
-      inset 0 1px 20px rgba(255, 255, 255, 0.15);
-  }
+.open-now {
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid rgba(61, 220, 151, 0.35);
 }
 
-@keyframes neonBorderRotate {
-  0% {
-    background: linear-gradient(45deg, 
-      #ff00ff 0%, #00ffff 25%, #ffff00 50%, #ff00ff 75%, #00ffff 100%);
-  }
-  25% {
-    background: linear-gradient(45deg, 
-      #00ffff 0%, #ffff00 25%, #ff00ff 50%, #00ffff 75%, #ffff00 100%);
-  }
-  50% {
-    background: linear-gradient(45deg, 
-      #ffff00 0%, #ff00ff 25%, #00ffff 50%, #ffff00 75%, #ff00ff 100%);
-  }
-  75% {
-    background: linear-gradient(45deg, 
-      #ff00ff 0%, #00ffff 25%, #ffff00 50%, #ff00ff 75%, #00ffff 100%);
-  }
-  100% {
-    background: linear-gradient(45deg, 
-      #ff00ff 0%, #00ffff 25%, #ffff00 50%, #ff00ff 75%, #00ffff 100%);
-  }
+.closed-now {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 84, 112, 0.3);
 }
 
-@keyframes neonGlowPulse {
-  0% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0.6;
-    transform: scale(1.05);
-  }
+.popup-address {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
 }
 
-@keyframes neonIconSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.neon-stat-value.open-now,
+.neon-stat-value.closed-now {
+  margin-left: auto;
 }
 
-@keyframes neonStatBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
+/* --- Generic bar popup variant --- */
+.mapboxgl-popup.bar-popup .mapboxgl-popup-content {
+  background: rgba(24, 21, 38, 0.97);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  box-shadow: var(--shadow-md);
 }
 
-@keyframes neonClickPulse {
-  0% { 
-    opacity: 0.8; 
-    transform: scale(1);
-    text-shadow: 
-      0 0 8px rgba(255, 255, 0, 0.8),
-      0 0 16px rgba(255, 255, 0, 0.4);
-  }
-  100% { 
-    opacity: 1; 
-    transform: scale(1.05);
-    text-shadow: 
-      0 0 12px rgba(255, 255, 0, 1),
-      0 0 24px rgba(255, 255, 0, 0.6);
-  }
+.mapboxgl-popup.bar-popup h5 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 700;
 }
 
-/* === NEW ENHANCED ANIMATIONS === */
-@keyframes popupFadeInScale {
-  0% {
-    opacity: 0;
-    transform: scale(0.8) translateY(10px);
-  }
-  60% {
-    opacity: 0.8;
-    transform: scale(1.05) translateY(-2px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  border-top-color: rgba(24, 21, 38, 0.97) !important;
+}
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+  border-bottom-color: rgba(24, 21, 38, 0.97) !important;
+}
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: rgba(24, 21, 38, 0.97) !important;
+}
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: rgba(24, 21, 38, 0.97) !important;
 }
 
-@keyframes popupFadeOutScale {
-  0% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.85) translateY(5px);
-  }
+/* --- Map control buttons (zoom, draw, etc.) --- */
+.mapboxgl-ctrl-group {
+  background: rgba(24, 21, 38, 0.92) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
+  overflow: hidden;
 }
 
-@keyframes tipPulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 12px rgba(255, 0, 255, 0.8)) drop-shadow(0 0 24px rgba(0, 255, 255, 0.4));
-  }
-  50% {
-    filter: drop-shadow(0 0 16px rgba(255, 0, 255, 1)) drop-shadow(0 0 32px rgba(0, 255, 255, 0.6));
-  }
+.mapboxgl-ctrl-group button {
+  background-color: transparent !important;
 }
 
-@keyframes holoShimmer {
-  0%, 100% {
-    background-position: -200% center;
-  }
-  50% {
-    background-position: 200% center;
-  }
+.mapboxgl-ctrl-group button + button {
+  border-top: 1px solid var(--glass-border) !important;
 }
 
-@keyframes floatingGlow {
-  0%, 100% {
-    transform: translateY(0px) scale(1);
-    opacity: 0.8;
-  }
-  50% {
-    transform: translateY(-3px) scale(1.02);
-    opacity: 1;
-  }
+.mapboxgl-ctrl-group button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Invert the dark default icons for the dark theme */
+.mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+/* --- Directions control --- */
+.mapboxgl-ctrl-directions {
+  background-color: rgba(24, 21, 38, 0.95) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-primary) !important;
+}
+
+.mapboxgl-ctrl-directions .directions-input-group input {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--glass-border-strong) !important;
+}
+
+.mapboxgl-ctrl-directions .mapbox-directions-route-summary h1,
+.mapboxgl-ctrl-directions .mapbox-directions-route-summary span {
+  color: var(--text-primary) !important;
+}
+
+.mapbox-directions-steps {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.mapbox-directions-step .mapbox-directions-step-maneuver {
+  color: var(--text-primary) !important;
+}
+
+/* --- Geocoder control --- */
+.mapboxgl-ctrl-geocoder {
+  background-color: rgba(24, 21, 38, 0.95) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.mapboxgl-ctrl-geocoder--input {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.mapboxgl-ctrl-geocoder--suggestion {
+  background-color: rgba(24, 21, 38, 0.95) !important;
+  color: var(--text-primary) !important;
+}
+
+.mapboxgl-ctrl-geocoder--suggestion-active {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--pin-right > * {
+  background-color: transparent;
+  fill: var(--text-primary);
 }

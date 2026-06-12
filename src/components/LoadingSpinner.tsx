@@ -17,12 +17,12 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
       <div style={{
         width: '40px',
         height: '40px',
-        border: '4px solid var(--border)',
-        borderTop: '4px solid var(--primary)',
+        border: '4px solid var(--glass-border-strong)',
+        borderTop: '4px solid var(--accent)',
         borderRadius: '50%',
         animation: 'spin 1s linear infinite'
       }} />
-      <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
+      <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
         {message}
       </div>
       <style>{`

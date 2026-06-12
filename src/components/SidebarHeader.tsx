@@ -26,7 +26,9 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ user, onSignOut })
       </div>
       {user && (
         <div className="user-info">
-          <span className="user-welcome">Welcome, {user.displayName || user.email}!</span>
+          <span className="user-welcome">
+            Welcome, {user.displayName || user.email?.split("@")[0] || "crawler"}!
+          </span>
           <button 
             onClick={handleSavedCrawlsClick}
             className="btn-saved-crawls"

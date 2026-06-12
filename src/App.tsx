@@ -1,13 +1,13 @@
+import { MotionConfig } from 'framer-motion'
 import AppRouter from './routes/AppRouter'
-import { ThemeProvider } from './theme/context'
-import './App.css'
-import './theme/theme.css'
+import { Toaster } from './components/Toaster'
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="party">
+    <MotionConfig reducedMotion="user">
       <AppRouter />
-    </ThemeProvider>
+      <Toaster />
+    </MotionConfig>
   )
 }
 

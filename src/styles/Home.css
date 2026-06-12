@@ -5,9 +5,6 @@
  * Each file contains styles for a specific component or feature area.
  */
 
-/* Core Variables and Theme */
-@import './variables.css';
-
 /* Layout and Structure */
 @import './layout.css';
 
@@ -22,6 +19,3 @@
 
 /* Reusable Components */
 @import './components.css';
-
-/* Responsive Design */
-@import './responsive.css';
