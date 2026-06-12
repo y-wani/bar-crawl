@@ -91,11 +91,12 @@ export const BarListItem: React.FC<BarListItemProps> = ({
               "New"
             )}
           </span>
-          <span>
+          <span
+            title={
+              isWithinRadius === false ? "Outside the search radius" : undefined
+            }
+          >
             <FaMapMarkerAlt /> {(actualDistance ?? bar.distance).toFixed(2)} mi
-            {isWithinRadius === false && (
-              <span className="distance-warning"> (outside radius)</span>
-            )}
           </span>
           {bar.openNow !== undefined && (
             <span className={bar.openNow ? "open-now" : "closed-now"}>

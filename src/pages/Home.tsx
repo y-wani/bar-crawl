@@ -114,6 +114,9 @@ const Home: React.FC = () => {
   const lastFetchCenter = useRef<[number, number] | null>(null);
   const fetchedAreas = useRef<Set<string>>(new Set());
   const hasInitiallyFetched = useRef(false);
+  // Guards the one-shot position re-request when permission is granted
+  // but no coordinates are available (expired stored location)
+  const autoLocateAttempted = useRef(false);
 
   // Bars inside the user-drawn polygon (all bars when nothing is drawn)
   const polygonFilteredBars = useMemo(() => {
@@ -464,6 +467,26 @@ const Home: React.FC = () => {
         return;
       }
 
+      // Permission is granted but we have no coordinates (e.g. the stored
+      // location expired its 1h TTL on a return visit). Without this branch
+      // nobody ever re-requests the position and the map stays on the
+      // Columbus default forever. Fetch once; the resulting state update
+      // re-runs this effect and the branch above recenters + refetches.
+      if (
+        locationPermission === "granted" &&
+        !userLocation &&
+        !hasManualSearch &&
+        !autoLocateAttempted.current
+      ) {
+        autoLocateAttempted.current = true;
+        try {
+          await getUserLocation();
+        } catch (error) {
+          debug("📍 Auto-locate failed, staying on default center", error);
+        }
+        return;
+      }
+
       // Show once: respect stored consent marker
       const consentSet = localStorage.getItem("locationUserConsent") === "true";
       if (
@@ -481,6 +504,7 @@ const Home: React.FC = () => {
     hasManualSearch,
     fetchBarsInArea,
     clearFetchCache,
+    getUserLocation,
   ]);
 
   // Handle location permission callbacks

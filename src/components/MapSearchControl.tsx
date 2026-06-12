@@ -42,6 +42,12 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
 }) => {
   const [location, setLocation] = useState(initialLocation);
   const [radius, setRadius] = useState(initialRadius);
+
+  // Keep the input in sync when the parent changes the location label
+  // (e.g. geolocation resolves after mount and it becomes "Your Location")
+  useEffect(() => {
+    setLocation(initialLocation);
+  }, [initialLocation]);
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
