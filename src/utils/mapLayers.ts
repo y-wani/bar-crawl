@@ -166,7 +166,13 @@ export const createBarLayers = (map: MapboxMap) => {
         18,
         ["case", ["boolean", ["feature-state", "hover"], false], 19, 16],
       ],
-      "circle-color": "#ecb256",
+      // Visited stops (Live Crawl check-ins) go green; otherwise amber.
+      "circle-color": [
+        "case",
+        ["boolean", ["get", "visited"], false],
+        "#2ecc71",
+        "#ecb256",
+      ],
       "circle-stroke-width": 2.5,
       "circle-stroke-color": "#ffffff",
     },

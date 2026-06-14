@@ -19,8 +19,6 @@ import {
   FiNavigation,
   FiZap,
   FiCompass,
-  FiMapPin,
-  FiFlag,
   FiPlay,
   FiSave,
   FiFolder,
@@ -886,7 +884,7 @@ const Route: React.FC = () => {
                 onSelect={handleStartLocationSelect}
                 placeholder="Enter starting point..."
                 label="Start Location"
-                icon={<FiMapPin size={18} className="location-icon start" />}
+                icon={null}
               />
             </div>
           </div>
@@ -936,7 +934,7 @@ const Route: React.FC = () => {
                 onSelect={handleEndLocationSelect}
                 placeholder="Enter ending point..."
                 label="End Location"
-                icon={<FiFlag size={18} className="location-icon end" />}
+                icon={null}
                 dropdownDirection="up"
               />
             </div>

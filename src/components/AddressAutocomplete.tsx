@@ -151,10 +151,16 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     <div className={`address-autocomplete ${className}`}>
       {label && <label className="address-autocomplete-label">{label}</label>}
 
-      <div className="address-autocomplete-input-container">
-        <div className="address-autocomplete-icon">
-          {isLoading ? <FiLoader className="spinner" /> : icon}
-        </div>
+      <div
+        className={`address-autocomplete-input-container ${
+          !icon && !isLoading ? "no-icon" : ""
+        }`}
+      >
+        {(icon || isLoading) && (
+          <div className="address-autocomplete-icon">
+            {isLoading ? <FiLoader className="spinner" /> : icon}
+          </div>
+        )}
 
         <input
           ref={inputRef}

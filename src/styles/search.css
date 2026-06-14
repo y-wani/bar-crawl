@@ -2,7 +2,8 @@
 
 .map-controls-overlay {
   position: absolute;
-  top: var(--space-4);
+  /* Sit below the iOS notch / status bar (0 on devices without a notch) */
+  top: max(var(--space-4), env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -551,7 +552,7 @@
 /* ===== Mobile ===== */
 @media (max-width: 599px) {
   .map-controls-overlay {
-    top: var(--space-2);
+    top: max(var(--space-2), env(safe-area-inset-top));
     width: 92%;
   }
 }

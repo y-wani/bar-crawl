@@ -24,7 +24,12 @@ import {
 
 // Build GeoJSON features for the bars source. Selection is data-driven:
 // `selectedOrder` is the 0-based stop number, or -1 when not selected.
-const buildBarFeatures = (bars: AppBat[], selectedBarIds: Set<string>) => {
+// `visited` flags a checked-in stop (Live Crawl) so it renders green.
+const buildBarFeatures = (
+  bars: AppBat[],
+  selectedBarIds: Set<string>,
+  visitedBarIds?: Set<string>
+) => {
   const selectionOrder = Array.from(selectedBarIds);
   return bars.map((bar) => ({
     type: "Feature" as const,
@@ -35,6 +40,7 @@ const buildBarFeatures = (bars: AppBat[], selectedBarIds: Set<string>) => {
       rating: bar.rating,
       distance: bar.distance,
       selectedOrder: selectionOrder.indexOf(bar.id),
+      visited: visitedBarIds?.has(bar.id) ?? false,
     },
   }));
 };
@@ -62,6 +68,8 @@ interface MapContainerProps {
   startCoordinates?: [number, number] | null;
   endCoordinates?: [number, number] | null;
   isLoadingBars?: boolean;
+  /** Checked-in stop ids (Live Crawl) — rendered as green stop circles */
+  visitedBarIds?: Set<string>;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = ({
@@ -78,6 +86,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   startCoordinates,
   endCoordinates,
   isLoadingBars = false,
+  visitedBarIds,
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -91,6 +100,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   barsRef.current = bars;
   const selectedIdsRef = useRef(selectedBarIds);
   selectedIdsRef.current = selectedBarIds;
+  const visitedIdsRef = useRef(visitedBarIds);
+  visitedIdsRef.current = visitedBarIds;
+  // Kept current so the one-time map click handler never calls a stale toggle
+  const onToggleBarRef = useRef(onToggleBar);
+  onToggleBarRef.current = onToggleBar;
 
   // Custom hooks for animations
   useRouteAnimations({
@@ -190,7 +204,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           if (src) {
             src.setData({
               type: "FeatureCollection",
-              features: buildBarFeatures(initialBars, selectedIdsRef.current),
+              features: buildBarFeatures(
+                initialBars,
+                selectedIdsRef.current,
+                visitedIdsRef.current
+              ),
             });
           }
         }
@@ -232,15 +250,26 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
       });
 
-      // -- Click & Hover on Bars (pins + selected stop circles) --
-      [BARS_LAYER_ID, BARS_SELECTED_CIRCLE_ID].forEach((layerId) => {
-        m.on("click", layerId, (e) => {
-          const feat = e.features?.[0];
-          if (feat?.properties?.id) {
-            onToggleBar(String(feat.properties.id));
-          }
+      // -- Tap to toggle a bar. Query a small pixel box around the point
+      // (not the exact pixel) so finger taps on the small pins register
+      // reliably on touch devices. --
+      m.on("click", (e) => {
+        const pad = 14; // px — forgiving touch target
+        const box: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+          [e.point.x - pad, e.point.y - pad],
+          [e.point.x + pad, e.point.y + pad],
+        ];
+        const hits = m.queryRenderedFeatures(box, {
+          layers: [BARS_LAYER_ID, BARS_SELECTED_CIRCLE_ID],
         });
+        const id = hits[0]?.properties?.id;
+        if (id) {
+          onToggleBarRef.current(String(id));
+        }
+      });
 
+      // -- Hover on Bars (pins + selected stop circles) — desktop only --
+      [BARS_LAYER_ID, BARS_SELECTED_CIRCLE_ID].forEach((layerId) => {
         m.on("mousemove", layerId, (e) => {
           const feat = e.features?.[0];
           if (feat?.id != null) {
@@ -314,9 +343,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
     src.setData({
       type: "FeatureCollection",
-      features: buildBarFeatures(bars, selectedBarIds),
+      features: buildBarFeatures(bars, selectedBarIds, visitedBarIds),
     });
-  }, [bars, selectedBarIds, mapReady]);
+  }, [bars, selectedBarIds, visitedBarIds, mapReady]);
 
   // 5. Sync hover feature-state — only touch the two affected features
   useEffect(() => {

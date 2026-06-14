@@ -176,6 +176,16 @@ const LiveCrawl: React.FC = () => {
     () => new Set(orderedStops.map((s) => s.barId)),
     [orderedStops]
   );
+  // Checked-in (non-skipped) stops render as green circles on the map
+  const visitedBarIds = useMemo(
+    () =>
+      new Set(
+        Object.values(session?.checkIns ?? {})
+          .filter((c) => !c.skipped)
+          .map((c) => c.barId)
+      ),
+    [session]
+  );
 
   // ----- One Directions call for the planned polyline -----
   useEffect(() => {
@@ -411,6 +421,7 @@ const LiveCrawl: React.FC = () => {
               route={routeGeometry}
               startCoordinates={session.route.startCoordinates}
               endCoordinates={session.route.endCoordinates}
+              visitedBarIds={visitedBarIds}
             />
           </div>
 
