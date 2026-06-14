@@ -255,21 +255,51 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       });
 
       // -- Tap to toggle a bar. Query a small pixel box around the point
-      // (not the exact pixel) so finger taps on the small pins register
-      // reliably on touch devices. --
-      m.on("click", (e) => {
-        const pad = 14; // px — forgiving touch target
+      // (not the exact pixel) so finger taps on the small pins register. --
+      const toggleAtPoint = (point: { x: number; y: number }) => {
+        const pad = 16; // px — forgiving touch target
         const box: [mapboxgl.PointLike, mapboxgl.PointLike] = [
-          [e.point.x - pad, e.point.y - pad],
-          [e.point.x + pad, e.point.y + pad],
+          [point.x - pad, point.y - pad],
+          [point.x + pad, point.y + pad],
         ];
         const hits = m.queryRenderedFeatures(box, {
           layers: [BARS_LAYER_ID, BARS_SELECTED_CIRCLE_ID],
         });
         const id = hits[0]?.properties?.id;
-        if (id) {
-          onToggleBarRef.current(String(id));
+        if (id) onToggleBarRef.current(String(id));
+      };
+
+      // Mapbox doesn't reliably synthesize `click` from a touch tap in this
+      // app (verified: mouse fires click, touch never does), so handle touch
+      // taps explicitly. `lastTouchToggle` swallows the ghost mouse-click that
+      // some browsers emit ~300ms after a tap, preventing a double toggle.
+      let lastTouchToggle = 0;
+      let tap: { x: number; y: number; t: number; moved: boolean } | null = null;
+
+      m.on("touchstart", (e) => {
+        tap =
+          e.points && e.points.length === 1
+            ? { x: e.point.x, y: e.point.y, t: Date.now(), moved: false }
+            : null;
+      });
+      m.on("touchmove", (e) => {
+        if (tap && e.point) {
+          const d = Math.hypot(e.point.x - tap.x, e.point.y - tap.y);
+          if (d > 12) tap.moved = true;
         }
+      });
+      m.on("touchend", () => {
+        if (!tap) return;
+        const { x, y, t, moved } = tap;
+        tap = null;
+        if (moved || Date.now() - t > 500) return; // a pan or long-press
+        lastTouchToggle = Date.now();
+        toggleAtPoint({ x, y });
+      });
+
+      m.on("click", (e) => {
+        if (Date.now() - lastTouchToggle < 600) return; // ghost click after tap
+        toggleAtPoint(e.point);
       });
 
       // -- Hover on Bars (pins + selected stop circles) — desktop only --
