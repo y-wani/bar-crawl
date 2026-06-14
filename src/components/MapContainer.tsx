@@ -206,11 +206,15 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           finishSetup();
         });
 
-      // Initialize radius circle
-      const circleGeojson = turfCircle(center, radius, { units: "miles" });
-      const radiusSrc = m.getSource(RADIUS_SOURCE_ID) as mapboxgl.GeoJSONSource;
-      if (radiusSrc) {
-        radiusSrc.setData(circleGeojson);
+      // Initialize radius circle (radius <= 0 hides it, e.g. Live Crawl)
+      if (radius > 0) {
+        const circleGeojson = turfCircle(center, radius, { units: "miles" });
+        const radiusSrc = m.getSource(
+          RADIUS_SOURCE_ID
+        ) as mapboxgl.GeoJSONSource;
+        if (radiusSrc) {
+          radiusSrc.setData(circleGeojson);
+        }
       }
 
       // -- Map Move Event for Bounds Tracking --
@@ -283,8 +287,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       ) as mapboxgl.GeoJSONSource;
       if (!src) return;
 
-      const circleGeojson = turfCircle(center, radius, { units: "miles" });
-      src.setData(circleGeojson);
+      if (radius > 0) {
+        const circleGeojson = turfCircle(center, radius, { units: "miles" });
+        src.setData(circleGeojson);
+      } else {
+        // radius <= 0 hides the circle (Live Crawl page)
+        src.setData({ type: "FeatureCollection", features: [] });
+      }
     };
 
     if (map.current.isStyleLoaded()) {

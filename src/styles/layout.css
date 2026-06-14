@@ -15,23 +15,90 @@
   inset: 0;
 }
 
+/* Resume-crawl banner: floats at the top center over the map when the
+   user has an in-progress live crawl. Tap to jump back into /live. */
+.resume-crawl-banner {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-deep);
+  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-glow-accent);
+  cursor: pointer;
+  font-family: var(--font-display);
+  text-align: left;
+  max-width: calc(100vw - 32px);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.resume-crawl-banner:hover {
+  transform: translateX(-50%) translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(236, 178, 86, 0.4), 0 8px 28px var(--accent-glow);
+}
+
+.resume-crawl-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2ecc71;
+  box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6);
+  animation: resume-crawl-pulse 1.6s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes resume-crawl-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+.resume-crawl-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.resume-crawl-text strong {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.resume-crawl-text span {
+  font-size: var(--text-xs);
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resume-crawl-icon {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
 .map-container {
   width: 100%;
   height: 100%;
   position: relative;
 }
 
-/* Stacked layout on small screens: sidebar sheet on top, map below */
+/* Mobile: the map stays full-screen and the sidebar becomes a draggable
+   bottom sheet that overlays it (see sidebar.css). */
 @media (max-width: 899px) {
-  .planner-page {
-    display: flex;
-    flex-direction: column;
-  }
+  /* Map already fills via .map-wrapper inset:0 — nothing to override. */
 
-  .map-wrapper {
-    position: relative;
-    inset: auto;
-    flex: 1;
-    min-height: 0;
+  /* Keep the resume banner above the bottom sheet's collapsed (half) state */
+  .resume-crawl-banner {
+    bottom: calc(52vh + 16px);
   }
 }

@@ -7,9 +7,16 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiPlay } from "react-icons/fi";
 import { Sidebar } from "../components/Sidebar";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
+import {
+  getActiveSessionForUser,
+  type CrawlSession,
+} from "../services/sessionService";
 import type { Bar } from "../components/BarListItem";
 import { MapSearchControl } from "../components/MapSearchControl";
 import { debounce } from "lodash";
@@ -78,6 +85,21 @@ const calculateDistance = (
 
 const Home: React.FC = () => {
   const { user, signout } = useAuth();
+  const navigate = useNavigate();
+
+  // Resume entry: surface an in-progress crawl so the user can jump back in
+  const [activeSession, setActiveSession] = useState<CrawlSession | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const active = await getActiveSessionForUser(user.uid);
+      if (!cancelled) setActiveSession(active);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Initialize cache management
   useCacheManager();
@@ -180,8 +202,9 @@ const Home: React.FC = () => {
     const [newLng, newLat] = newCenter;
     const distance = calculateDistance(lastLat, lastLng, newLat, newLng);
 
-    // Only fetch if moved more than 0.5 miles
-    const threshold = 1;
+    // Only refetch after a meaningful pan, so small drags don't reload the
+    // markers and "refresh" the map under the user.
+    const threshold = 1.8;
     debug(
       `🚀 Distance moved: ${distance.toFixed(
         2
@@ -440,7 +463,7 @@ const Home: React.FC = () => {
         } else {
           debug("🗺️ Map movement too small, skipping fetch");
         }
-      }, 1200), // Increased debounce time to reduce unnecessary calls
+      }, 1800), // Longer debounce so panning settles before we refetch
     [fetchBarsInArea]
   );
 
@@ -666,6 +689,31 @@ const Home: React.FC = () => {
       />
 
       <div className="map-wrapper">
+        <AnimatePresence>
+          {activeSession?.id && (
+            <motion.button
+              className="resume-crawl-banner"
+              initial={{ opacity: 0, y: -16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              onClick={() =>
+                navigate("/live", { state: { sessionId: activeSession.id } })
+              }
+            >
+              <span className="resume-crawl-pulse" />
+              <span className="resume-crawl-text">
+                <strong>Crawl in progress</strong>
+                <span>
+                  {activeSession.crawlName
+                    ? `${activeSession.crawlName} — tap to resume`
+                    : "Tap to resume your night"}
+                </span>
+              </span>
+              <FiPlay className="resume-crawl-icon" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
         <MapSearchControl
           onSearch={handleLocationSearch}
           onRadiusChange={handleRadiusChange}

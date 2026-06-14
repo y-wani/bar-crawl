@@ -288,48 +288,119 @@
   white-space: nowrap;
 }
 
-/* ===== Responsive: top sheet on small screens ===== */
+/* ===== Drag handle (mobile sheet only) ===== */
+.sheet-handle {
+  display: none;
+}
+
+/* ===== Responsive: draggable bottom sheet on small screens ===== */
 @media (max-width: 899px) {
-  .planner-sidebar {
-    position: relative;
+  /* The sheet overlays the full-screen map; height is driven by JS
+     (useBottomSheet) so the content always fills from the drag line to the
+     screen bottom — the Generate button stays pinned, nothing clips. */
+  .planner-sidebar.is-sheet {
+    position: fixed;
     top: auto;
-    left: auto;
-    bottom: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
-    height: 54vh;
-    max-height: 54vh;
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-    border-top: none;
+    /* height comes from inline style; keep a sane fallback */
+    height: 52vh;
+    z-index: 30;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
     border-left: none;
     border-right: none;
-    padding: var(--space-4);
+    border-top: 1px solid var(--glass-border-strong);
+    background: var(--glass-1);
+    -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(150%);
+    backdrop-filter: blur(var(--blur-lg)) saturate(150%);
+    box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.5);
+    padding: 0 var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
     gap: var(--space-3);
+    will-change: height;
+    touch-action: none;
   }
 
-  /* Keep a few rows of the list visible inside the sheet */
-  .planner-sidebar .bar-list {
-    min-height: 100px;
+  @supports not (backdrop-filter: blur(1px)) {
+    .planner-sidebar.is-sheet {
+      background: rgba(16, 14, 26, 0.97);
+    }
   }
 
-  /* Compact header: drop the welcome text, keep the Saved Crawls link */
-  .planner-sidebar .user-welcome {
-    display: none;
+  /* Grab handle */
+  .planner-sidebar.is-sheet .sheet-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    flex-shrink: 0;
+    height: 26px;
+    margin: 0 calc(-1 * var(--space-4));
+    background: transparent;
+    border: none;
+    cursor: grab;
+    touch-action: none;
+    position: relative;
+    z-index: 2;
   }
 
-  .planner-sidebar .user-info {
-    justify-content: flex-end;
+  .planner-sidebar.is-sheet .sheet-handle:active {
+    cursor: grabbing;
   }
 
-  .planner-sidebar .sidebar-header {
+  .sheet-handle-grip {
+    width: 40px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.32);
+  }
+
+  /* List must be allowed to shrink so the pinned Generate button never
+     gets pushed past the sheet edge (the old min-height:100px bug). */
+  .planner-sidebar.is-sheet .bar-list {
+    min-height: 0;
+    flex: 1;
+  }
+
+  .planner-sidebar.is-sheet .btn-generate-route {
+    flex-shrink: 0;
+  }
+
+  /* Compact header: one row — title | Saved Crawls | Sign Out.
+     `display: contents` lets the title + Sign Out join the header flow. */
+  .planner-sidebar.is-sheet .sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     padding-bottom: var(--space-2);
+  }
+
+  .planner-sidebar.is-sheet .header-top {
+    display: contents;
+  }
+
+  .planner-sidebar.is-sheet .sidebar-title {
+    flex: 1;
+    order: 0;
+  }
+
+  .planner-sidebar.is-sheet .user-info {
+    order: 1;
+    margin: 0;
+  }
+
+  .planner-sidebar.is-sheet .btn-signout {
+    order: 2;
+  }
+
+  .planner-sidebar.is-sheet .user-welcome {
+    display: none;
   }
 }
 
 @media (max-width: 599px) {
-  .planner-sidebar {
-    padding: var(--space-3) var(--space-4);
-  }
-
   .sidebar-title {
     font-size: var(--text-xl);
   }

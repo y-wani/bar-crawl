@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import type { User } from '../context/types';
 import { SidebarHeader } from './SidebarHeader';
 import { SearchBar } from './SearchBar';
@@ -9,6 +10,8 @@ import { FilterGroup } from './FilterGroup';
 import { BarList } from './BarList';
 import type { Bar } from './BarListItem';
 import { FiNavigation } from 'react-icons/fi';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { useBottomSheet } from '../hooks/useBottomSheet';
 import '../styles/Home.css';
 
 // Utility function to calculate distance between two coordinates in miles
@@ -54,6 +57,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'Distance' | 'Popularity'>('Distance');
+  const isMobile = useIsMobile();
+  // Short resting height so most of the map stays visible; drag up to browse.
+  const { height, snap, snapTo, onHandlePointerDown } = useBottomSheet(isMobile, {
+    initial: 'half',
+    halfFraction: 0.45,
+    fullFraction: 0.9,
+  });
 
   const filteredAndSortedBars = useMemo(() => {
     let filteredBars = bars.filter((bar) => 
@@ -98,7 +108,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [bars, searchTerm, activeFilter, showOnlyInRadius, mapCenter, radius, selectedBarIds]);
 
   return (
-    <div className="planner-sidebar">
+    <motion.div
+      className={`planner-sidebar ${isMobile ? `is-sheet snap-${snap}` : ''}`}
+      // On desktop, height is "auto" so the absolute top/bottom stretch the
+      // panel; on mobile the sheet height comes from the motion value. The
+      // explicit "auto" matters — it clears the imperatively-set sheet height
+      // when the viewport grows back past the mobile breakpoint.
+      style={{ height: isMobile ? height : 'auto' }}
+    >
+      {isMobile && (
+        <button
+          type="button"
+          className="sheet-handle"
+          aria-label={snap === 'full' ? 'Collapse list' : 'Expand list'}
+          onPointerDown={onHandlePointerDown}
+          onClick={() => snapTo(snap === 'full' ? 'half' : 'full')}
+        >
+          <span className="sheet-handle-grip" />
+        </button>
+      )}
+
       <SidebarHeader user={user} onSignOut={onSignOut} />
 
       
@@ -142,6 +171,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <FiNavigation size={18} />
         Generate My Route ({selectedBarIds.size})
       </button>
-    </div>
+    </motion.div>
   );
 };

@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Firestore security rules for BarHop (bar-crawl-planner-5985f).
+//
+// Replaces the old permissive dev ruleset (any signed-in user could
+// read/write anything). Reads on saved crawls stay open to any signed-in
+// user so existing shared "/route?crawlId=" links keep working (a shared
+// crawl is not necessarily marked public); writes are locked to the owner.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----- Saved bar crawls -----
+    // createdBy = owner uid; isPublic flags community-visible crawls.
+    match /barCrawls/{crawlId} {
+      // Any signed-in user can read (own crawls, public crawls, and
+      // crawls opened via a shared link — matches today's behavior).
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && resource.data.createdBy == request.auth.uid;
+    }
+
+    // ----- Shared bar cache (Google Places / Mapbox results) -----
+    // Cross-user cache; any signed-in user may read and refresh it.
+    match /barCacheV5/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /barCache/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ----- Live crawl sessions -----
+    // Group-ready: access is gated on membership (memberUids array).
+    match /crawlSessions/{sessionId} {
+      allow create: if request.auth != null
+        && request.resource.data.hostUid == request.auth.uid
+        && request.auth.uid in request.resource.data.memberUids;
+      allow read, update: if request.auth != null
+        && request.auth.uid in resource.data.memberUids;
+      allow delete: if request.auth != null
+        && resource.data.hostUid == request.auth.uid;
+    }
+  }
+}

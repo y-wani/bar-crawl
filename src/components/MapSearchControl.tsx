@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { debounce } from "lodash";
 import { FiSearch, FiMapPin, FiCrosshair } from "react-icons/fi";
 import "../styles/Home.css";
@@ -147,10 +147,22 @@ export const MapSearchControl: React.FC<MapSearchControlProps> = ({
     }
   };
 
-  // Handle radius change
+  // Handle radius change. The slider (local `radius` state) updates instantly
+  // for a smooth drag + live label, but propagation to the parent — which
+  // re-renders the planner and redraws the map's radius circle — is debounced
+  // so dragging the slider stays responsive and only "commits" once the user
+  // settles on a value.
+  const onRadiusChangeRef = useRef(onRadiusChange);
+  onRadiusChangeRef.current = onRadiusChange;
+  const debouncedRadiusChange = useMemo(
+    () => debounce((r: number) => onRadiusChangeRef.current(r), 280),
+    []
+  );
+  useEffect(() => () => debouncedRadiusChange.cancel(), [debouncedRadiusChange]);
+
   const handleRadiusChange = (newRadius: number) => {
     setRadius(newRadius);
-    onRadiusChange(newRadius);
+    debouncedRadiusChange(newRadius);
   };
 
   // Calculate progress percentage for slider

@@ -518,6 +518,62 @@
   cursor: not-allowed;
 }
 
+/* Start Crawl — launches Live Crawl Mode; the night's loudest button */
+.btn-start-crawl {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-on-accent);
+  background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0.8rem 1.2rem;
+  white-space: nowrap;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    filter var(--duration-fast) ease;
+}
+
+.btn-start-crawl:not(:disabled) {
+  animation: start-crawl-pulse 2.4s ease-in-out infinite;
+}
+
+.btn-start-crawl:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.btn-start-crawl:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-start-crawl:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@keyframes start-crawl-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(236, 178, 86, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px 0 rgba(236, 178, 86, 0.4);
+  }
+}
+
+.btn-start-crawl .spinner {
+  border: 2px solid rgba(26, 18, 8, 0.3);
+  border-top-color: var(--text-on-accent);
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 767px) {
   .route-header {
@@ -533,21 +589,77 @@
     text-align: center;
   }
 
-  .route-drawer {
+  /* Drawer becomes a draggable bottom sheet; height is driven by JS
+     (useBottomSheet) so the stop list scrolls and the actions stay pinned. */
+  .route-drawer.is-sheet {
+    position: fixed;
     top: auto;
-    right: var(--space-2);
-    left: var(--space-2);
-    bottom: var(--space-2);
-    width: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100%;
     max-width: none;
-    max-height: 62vh;
+    /* Never tuck under the page header — keeps the grab handle visible */
+    max-height: calc(100dvh - 56px);
+    height: 92vh; /* fallback; real height comes from inline style */
+    z-index: 25;
+    padding: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    border-top: 1px solid var(--glass-border-strong);
+    box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.5);
+    will-change: height;
+    touch-action: none;
   }
 
-  .drawer-header,
-  .drawer-content,
-  .drawer-footer {
-    padding-left: var(--space-4);
-    padding-right: var(--space-4);
+  .route-drawer.is-sheet .sheet-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    flex-shrink: 0;
+    height: 26px;
+    background: transparent;
+    border: none;
+    cursor: grab;
+    touch-action: none;
+    position: relative;
+    z-index: 2;
+  }
+
+  .route-drawer.is-sheet .sheet-handle:active {
+    cursor: grabbing;
+  }
+
+  .route-drawer.is-sheet .sheet-handle-grip {
+    width: 40px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.32);
+  }
+
+  .route-drawer.is-sheet .drawer-header {
+    padding: 0 var(--space-4) var(--space-3);
+    flex-shrink: 0;
+  }
+
+  .route-drawer.is-sheet .drawer-content {
+    padding: 0 var(--space-4);
+    flex: 1;
+    min-height: 0;
+  }
+
+  .route-drawer.is-sheet .drawer-footer {
+    padding: var(--space-3) var(--space-4)
+      calc(var(--space-3) + env(safe-area-inset-bottom));
+    flex-shrink: 0;
+  }
+
+  /* The drag handle replaces the hamburger toggle on mobile */
+  .route-header-actions .drawer-toggle:last-child {
+    display: none;
   }
 
   .eta-summary-bar {

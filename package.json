@@ -25,6 +25,7 @@
     "dotenv": "^17.2.1",
     "firebase": "^12.0.0",
     "framer-motion": "^12.23.12",
+    "html-to-image": "^1.11.13",
     "lodash": "^4.17.21",
     "mapbox-gl": "^3.13.0",
     "mapbox-gl-style-switcher": "^1.0.11",

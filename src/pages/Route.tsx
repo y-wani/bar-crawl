@@ -19,8 +19,9 @@ import {
   FiNavigation,
   FiZap,
   FiCompass,
-  FiPlay,
+  FiMapPin,
   FiFlag,
+  FiPlay,
   FiSave,
   FiFolder,
 } from "react-icons/fi";
@@ -31,6 +32,13 @@ import {
 } from "../components/SaveCrawlModal";
 import { toast } from "../components/Toaster";
 import { getCrawlById, convertSavedBarsToAppBars } from "../services/crawlService";
+import { useAuth } from "../context/useAuth";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useBottomSheet } from "../hooks/useBottomSheet";
+import {
+  createSession,
+  getActiveSessionForUser,
+} from "../services/sessionService";
 
 // Mapbox API constants and types
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -273,6 +281,15 @@ const Route: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const isMobile = useIsMobile();
+  // Opens fairly tall (arranging stops is the main task) but leaves a strip
+  // of map visible; drag up for the full list.
+  const sheet = useBottomSheet(isMobile, {
+    initial: "full",
+    halfFraction: 0.5,
+    fullFraction: 0.82,
+  });
 
   const routeState = location.state as RoutePageState | null;
 
@@ -635,6 +652,51 @@ const Route: React.FC = () => {
     setShowSaveModal(true);
   };
 
+  // ----- Live Crawl Mode entry -----
+  const [startingCrawl, setStartingCrawl] = useState(false);
+
+  const handleStartCrawl = async () => {
+    if (!user || draggableBars.length < 2 || !startCoordinates) return;
+    setStartingCrawl(true);
+    try {
+      // One active crawl at a time — resume if it exists
+      const existing = await getActiveSessionForUser(user.uid);
+      if (existing?.id) {
+        toast.success("Resuming your active crawl");
+        navigate("/live", { state: { sessionId: existing.id } });
+        return;
+      }
+
+      const sessionId = await createSession({
+        hostUid: user.uid,
+        displayName: user.displayName ?? user.email?.split("@")[0] ?? null,
+        stops: draggableBars.map((bar) => ({
+          barId: bar.id,
+          name: bar.name,
+          rating: bar.rating,
+          order: bar.order,
+          coordinates: bar.location.coordinates,
+        })),
+        crawlId:
+          routeState?.existingCrawl?.id ?? searchParams.get("crawlId") ?? null,
+        crawlName: routeState?.crawlName ?? "",
+        route: {
+          startCoordinates,
+          endCoordinates: endCoordinates ?? startCoordinates,
+          plannedDistanceMiles: totalDistanceMiles,
+          plannedDurationMin: estimatedDurationMin,
+        },
+      });
+      navigate("/live", { state: { sessionId } });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't start the crawl"
+      );
+    } finally {
+      setStartingCrawl(false);
+    }
+  };
+
   const handleSaveSuccess = () => {
     toast.success("Crawl saved successfully!");
   };
@@ -759,10 +821,27 @@ const Route: React.FC = () => {
         </div>
 
         <motion.div
-          className={`route-drawer ${isDrawerOpen ? "open" : "closed"}`}
-          animate={{ x: isDrawerOpen ? 0 : "calc(100% + 32px)" }}
+          className={`route-drawer ${isDrawerOpen ? "open" : "closed"} ${
+            isMobile ? `is-sheet snap-${sheet.snap}` : ""
+          }`}
+          animate={isMobile ? undefined : { x: isDrawerOpen ? 0 : "calc(100% + 32px)" }}
           transition={springPanel}
+          // "auto" on desktop lets the absolute top/bottom stretch the drawer
+          // and clears any stale sheet height when crossing the breakpoint.
+          style={{ height: isMobile ? sheet.height : "auto" }}
         >
+          {isMobile && (
+            <button
+              type="button"
+              className="sheet-handle"
+              aria-label={sheet.snap === "full" ? "Collapse panel" : "Expand panel"}
+              onPointerDown={sheet.onHandlePointerDown}
+              onClick={() => sheet.snapTo(sheet.snap === "full" ? "half" : "full")}
+            >
+              <span className="sheet-handle-grip" />
+            </button>
+          )}
+
           <div className="drawer-header">
             <div className="smart-controls">
               <button
@@ -807,7 +886,7 @@ const Route: React.FC = () => {
                 onSelect={handleStartLocationSelect}
                 placeholder="Enter starting point..."
                 label="Start Location"
-                icon={<FiPlay size={18} className="location-icon start" />}
+                icon={<FiMapPin size={18} className="location-icon start" />}
               />
             </div>
           </div>
@@ -895,6 +974,32 @@ const Route: React.FC = () => {
                   )}
                 </button>
               </div>
+
+              <button
+                className="btn-start-crawl"
+                onClick={handleStartCrawl}
+                disabled={
+                  draggableBars.length < 2 ||
+                  isBusy ||
+                  !startCoordinates ||
+                  startingCrawl
+                }
+                title={
+                  draggableBars.length < 2
+                    ? "Need at least 2 stops to start"
+                    : "Start the night — live check-ins at every stop"
+                }
+              >
+                {startingCrawl ? (
+                  <>
+                    <div className="spinner"></div> Starting…
+                  </>
+                ) : (
+                  <>
+                    <FiPlay size={18} /> Start Crawl
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </motion.div>
