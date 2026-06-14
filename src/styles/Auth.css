@@ -8,6 +8,9 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-6) var(--space-4);
+  /* Respect the iOS notch / home indicator (0 on devices without them) */
+  padding-top: max(var(--space-6), env(safe-area-inset-top));
+  padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
   position: relative;
   z-index: 1;
   min-height: 100vh;

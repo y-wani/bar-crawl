@@ -7,6 +7,8 @@
   background: var(--bg-base);
   color: var(--text-primary);
   padding: var(--space-6) var(--space-5);
+  /* Clear the iOS notch / status bar (0 on devices without a notch) */
+  padding-top: max(var(--space-6), env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -437,6 +439,7 @@
 @media (max-width: 768px) {
   .saved-crawls-page {
     padding: var(--space-4);
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
   }
 
   .saved-crawls-header {

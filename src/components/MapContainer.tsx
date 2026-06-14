@@ -127,6 +127,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       style: "mapbox://styles/mapbox/dark-v11",
       center,
       zoom: 13,
+      // Finger taps jitter several px between down/up; the 3px default makes
+      // Mapbox treat them as pans and never fire `click`. Widen the tolerance
+      // so taps on the bar pins register on touch devices.
+      clickTolerance: 12,
     });
 
     const m = map.current;
