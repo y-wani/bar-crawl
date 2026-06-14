@@ -210,7 +210,50 @@
 /* ===== Actions ===== */
 .import-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-3);
   margin-top: var(--space-4);
+}
+
+/* "Clean up with AI" — distinct from the primary, pushed to the left */
+.btn-ai-clean {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    135deg,
+    rgba(236, 178, 86, 0.16),
+    rgba(155, 120, 240, 0.16)
+  );
+  border: 1px solid var(--glass-border-strong);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: border-color var(--duration-fast) ease, filter var(--duration-fast) ease;
+}
+
+.btn-ai-clean:hover:not(:disabled) {
+  border-color: var(--accent-deep);
+  filter: brightness(1.1);
+}
+
+.btn-ai-clean:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 540px) {
+  .import-actions {
+    flex-wrap: wrap;
+  }
+  .btn-ai-clean {
+    margin-right: 0;
+    width: 100%;
+    justify-content: center;
+  }
 }

@@ -16,10 +16,13 @@ import {
   FiPlus,
   FiLoader,
 } from "react-icons/fi";
+import { HiSparkles } from "react-icons/hi";
 import { modalOverlay, modalPanel } from "./motion/variants";
 import { toast } from "./Toaster";
 import { searchPlaceByText } from "../services/placesService";
+import { cleanBarListWithAI, isGeminiEnabled } from "../services/geminiService";
 import { forwardGeocode } from "../utils/geocode";
+import { cleanLine } from "../utils/listCleanup";
 import type { AppBat } from "../pages/Home";
 import "../styles/ImportBarsModal.css";
 
@@ -63,13 +66,35 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
   const [rawText, setRawText] = useState("");
   const [entries, setEntries] = useState<ImportEntry[]>([]);
   const [resolving, setResolving] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
 
   const reset = useCallback(() => {
     setStep("paste");
     setRawText("");
     setEntries([]);
     setResolving(false);
+    setCleaning(false);
   }, []);
+
+  // Optional: normalize messy pasted text with Gemini. Failures are
+  // non-fatal — the user keeps their text and can still Find bars.
+  const handleAiCleanup = useCallback(async () => {
+    if (!rawText.trim()) {
+      toast.error("Paste your list first");
+      return;
+    }
+    setCleaning(true);
+    try {
+      const cleaned = await cleanBarListWithAI(rawText);
+      setRawText(cleaned);
+      toast.success("Cleaned up your list ✨");
+    } catch (error) {
+      console.error("AI cleanup failed:", error);
+      toast.error("AI cleanup unavailable — your list is unchanged");
+    } finally {
+      setCleaning(false);
+    }
+  }, [rawText]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -87,9 +112,10 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
   );
 
   const handleFind = useCallback(async () => {
+    // Strip numbering / bullets / times / notes per line (free, instant)
     const lines = rawText
       .split("\n")
-      .map((l) => l.trim())
+      .map(cleanLine)
       .filter(Boolean);
 
     if (lines.length === 0) {
@@ -130,34 +156,48 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
         }
 
         // 2) Fallback to Mapbox geocoding — but ONLY when the line carries a
-        // real street number. Mapbox force-matches any string to something
-        // (a bare bar name can resolve to a random street worldwide), and it's
-        // only trustworthy for actual addresses. Name-only lines fall through
-        // to manual, where the user supplies the address.
-        const hasStreetNumber = /\d{2,}/.test(entry.query);
+        // real street number (a number followed by a street word; this skips
+        // bare names and trailing years like "...Crawl 2025"). Mapbox
+        // force-matches any string to something, so it's only trustworthy for
+        // actual addresses. Try the address part first (a leading venue name
+        // throws off Mapbox), then the whole line for address-only inputs.
+        const hasStreetNumber = /\d{2,}\s+\S/.test(entry.query);
         if (hasStreetNumber) {
-          try {
-            const geo = await forwardGeocode(
-              entry.query,
-              { lng: mapCenter[0], lat: mapCenter[1] },
-              ["address"]
-            );
-            if (geo) {
-              const { name } = splitNameAddress(entry.query);
-              const bar: AppBat = {
-                id: `geo-${entry.id}`,
-                name: name || entry.query,
-                rating: 0,
-                distance: 0,
-                location: { type: "Point", coordinates: geo.coordinates },
-                address: geo.placeName,
-              };
-              updateEntry(entry.id, { status: "found", bar, include: true });
-              return;
+          const { name } = splitNameAddress(entry.query);
+          // Try the WHOLE line first (resolves "201 W Broadway, San Diego"
+          // correctly); only if that fails, retry without a leading venue
+          // name (everything after the first comma) for "Name, Address" lines.
+          const comma = entry.query.indexOf(",");
+          const afterComma =
+            comma >= 0 ? entry.query.slice(comma + 1).trim() : "";
+          const candidates = [entry.query, afterComma].filter(Boolean);
+          let resolved = false;
+          for (const candidate of candidates) {
+            try {
+              // No proximity bias — import lists are often for another city,
+              // and the address text should drive the match, not the current
+              // map center (which would pull stops to the wrong town).
+              const geo = await forwardGeocode(candidate, undefined, [
+                "address",
+              ]);
+              if (geo) {
+                const bar: AppBat = {
+                  id: `geo-${entry.id}`,
+                  name: name || entry.query,
+                  rating: 0,
+                  distance: 0,
+                  location: { type: "Point", coordinates: geo.coordinates },
+                  address: geo.placeName,
+                };
+                updateEntry(entry.id, { status: "found", bar, include: true });
+                resolved = true;
+                break;
+              }
+            } catch (error) {
+              console.warn("Geocode fallback failed:", error);
             }
-          } catch (error) {
-            console.warn("Geocode fallback failed:", error);
           }
+          if (resolved) return;
         }
 
         // 3) Truly unresolved — let the user fix it by hand
@@ -179,13 +219,12 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
         return;
       }
       updateEntry(entry.id, { geocoding: true });
-      // Geocode the address on its own — prefixing the venue name throws off
-      // Mapbox's address matching. The name is only used for display.
-      const geo = await forwardGeocode(
-        addr || name,
-        { lng: mapCenter[0], lat: mapCenter[1] },
-        ["address", "poi"]
-      );
+      // Geocode the address on its own (no map bias — the typed address should
+      // win); prefixing the venue name throws off Mapbox's address matching.
+      const geo = await forwardGeocode(addr || name, undefined, [
+        "address",
+        "poi",
+      ]);
       if (!geo) {
         updateEntry(entry.id, { geocoding: false });
         toast.error("Couldn't pin that — add a street address (with city)");
@@ -279,13 +318,28 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
                 />
 
                 <div className="import-actions">
+                  {isGeminiEnabled && (
+                    <button
+                      className="btn-ai-clean"
+                      onClick={handleAiCleanup}
+                      disabled={cleaning || !rawText.trim()}
+                      title="Tidy up a messy paste with AI"
+                    >
+                      {cleaning ? (
+                        <FiLoader className="import-spin" />
+                      ) : (
+                        <HiSparkles />
+                      )}
+                      Clean up with AI
+                    </button>
+                  )}
                   <button className="btn btn--ghost" onClick={handleClose}>
                     Cancel
                   </button>
                   <button
                     className="btn btn--primary"
                     onClick={handleFind}
-                    disabled={!rawText.trim()}
+                    disabled={cleaning || !rawText.trim()}
                   >
                     <FiSearch /> Find bars
                   </button>
