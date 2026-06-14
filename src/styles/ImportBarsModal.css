@@ -1,0 +1,216 @@
+/* Bar-list importer modal. Builds on .modal-overlay / .modal-panel. */
+
+.import-modal {
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+}
+
+.import-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text-tertiary);
+  background: var(--glass-2);
+  border: 1px solid var(--glass-border);
+  transition: color var(--duration-fast) ease, background-color var(--duration-fast) ease;
+}
+
+.import-close:hover {
+  color: var(--text-primary);
+  background: var(--glass-3);
+}
+
+/* ===== Paste step ===== */
+.import-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 160px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  outline: none;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+.import-textarea::placeholder {
+  color: var(--text-disabled);
+}
+
+.import-textarea:focus {
+  border-color: var(--accent-deep);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ===== Review step ===== */
+.import-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-1);
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.import-row {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--glass-2);
+}
+
+.import-row.is-found {
+  border-color: rgba(46, 204, 113, 0.3);
+}
+
+.import-row.is-notfound {
+  border-color: rgba(236, 178, 86, 0.3);
+}
+
+.import-row-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.import-row-found {
+  cursor: pointer;
+}
+
+.import-row-found input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.import-row-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.import-row-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-row-addr {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-row-query {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-row-rating {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.import-ok {
+  color: #2ecc71;
+  flex-shrink: 0;
+}
+
+.import-warn {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.import-spin {
+  animation: import-spin 0.9s linear infinite;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+@keyframes import-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Manual add row */
+.import-row-manual {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.import-manual-fields {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.import-manual-input {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.5rem 0.75rem;
+  background: var(--glass-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.import-manual-input:focus {
+  border-color: var(--accent-deep);
+}
+
+.import-manual-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.5rem 0.9rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-deep);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.import-manual-add:disabled {
+  opacity: 0.6;
+}
+
+/* ===== Actions ===== */
+.import-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}

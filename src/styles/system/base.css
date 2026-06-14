@@ -65,6 +65,19 @@ select {
   font-size: inherit;
 }
 
+/* iOS Safari auto-zooms the whole page when a focused field has a
+   font-size below 16px (and never zooms back out). Force 16px on mobile
+   text fields so focusing the login / search / address inputs doesn't
+   trigger that unwanted zoom. Range/checkbox/radio don't zoom, so skip them
+   to keep the radius slider etc. untouched. */
+@media (max-width: 899px) {
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Accessibility: amber focus ring, only for keyboard navigation */
 :focus {
   outline: none;

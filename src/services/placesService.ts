@@ -13,6 +13,7 @@ const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY as
 export const isGooglePlacesEnabled = Boolean(GOOGLE_PLACES_API_KEY);
 
 const SEARCH_URL = "https://places.googleapis.com/v1/places:searchNearby";
+const TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 
 // Only fields we ask for are billed — keep the mask tight
 const FIELD_MASK = [
@@ -99,6 +100,72 @@ const searchNearbyOnce = async (
 
   const data: { places?: GooglePlace[] } = await response.json();
   return data.places ?? [];
+};
+
+/**
+ * Resolve a single free-text line ("Bar Name, 123 Main St, City") to a real
+ * place via Google Places Text Search. Used by the bar-list importer. Returns
+ * the best match as an AppBat, or null when nothing is found / no API key.
+ *
+ * `bias` softly prefers results near a point (e.g. the current map center) but
+ * never excludes a far match, so a list for another city still resolves from
+ * the address in the query.
+ */
+export const searchPlaceByText = async (
+  query: string,
+  bias?: { lat: number; lng: number }
+): Promise<AppBat | null> => {
+  const trimmed = query.trim();
+  if (!trimmed || !GOOGLE_PLACES_API_KEY) return null;
+
+  const body: Record<string, unknown> = {
+    textQuery: trimmed,
+    maxResultCount: 1,
+  };
+  if (bias) {
+    body.locationBias = {
+      circle: {
+        center: { latitude: bias.lat, longitude: bias.lng },
+        radius: 50000,
+      },
+    };
+  }
+
+  const response = await fetch(TEXT_SEARCH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+      "X-Goog-FieldMask": FIELD_MASK,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Places text search ${response.status}: ${text}`);
+  }
+
+  const data: { places?: GooglePlace[] } = await response.json();
+  const p = data.places?.[0];
+  if (!p || !p.location) return null;
+
+  const lat = p.location.latitude;
+  const lng = p.location.longitude;
+  const priceText = p.priceLevel ? PRICE_TEXT[p.priceLevel] : undefined;
+  const openNow = p.currentOpeningHours?.openNow;
+
+  return {
+    id: p.id,
+    name: p.displayName?.text || trimmed,
+    rating: p.rating ?? 0,
+    distance: 0,
+    location: { type: "Point", coordinates: [lng, lat] },
+    ...(p.userRatingCount !== undefined && { userRatingCount: p.userRatingCount }),
+    ...(p.formattedAddress && { address: p.formattedAddress }),
+    ...(openNow !== undefined && { openNow }),
+    ...(priceText && { priceText }),
+  };
 };
 
 /**

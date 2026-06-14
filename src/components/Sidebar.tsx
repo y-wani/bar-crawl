@@ -9,9 +9,11 @@ import { SearchBar } from './SearchBar';
 import { FilterGroup } from './FilterGroup';
 import { BarList } from './BarList';
 import type { Bar } from './BarListItem';
-import { FiNavigation } from 'react-icons/fi';
+import { FiNavigation, FiDownload } from 'react-icons/fi';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useBottomSheet } from '../hooks/useBottomSheet';
+import { ImportBarsModal } from './ImportBarsModal';
+import type { AppBat } from '../pages/Home';
 import '../styles/Home.css';
 
 // Utility function to calculate distance between two coordinates in miles
@@ -64,6 +66,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     halfFraction: 0.45,
     fullFraction: 0.9,
   });
+  const [showImport, setShowImport] = useState(false);
+
+  // Bring an imported event lineup straight to the route planner
+  const handleImport = (importedBars: AppBat[]) => {
+    setShowImport(false);
+    const n = importedBars.length;
+    const centroid: [number, number] = [
+      importedBars.reduce((s, b) => s + b.location.coordinates[0], 0) / n,
+      importedBars.reduce((s, b) => s + b.location.coordinates[1], 0) / n,
+    ];
+    navigate('/route', {
+      state: {
+        selectedBars: importedBars,
+        mapCenter: centroid,
+        searchRadius: radius,
+      },
+    });
+  };
 
   const filteredAndSortedBars = useMemo(() => {
     let filteredBars = bars.filter((bar) => 
@@ -135,6 +155,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="search-and-filters">
         <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
         <FilterGroup activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+        <button
+          className="btn-import-list"
+          onClick={() => setShowImport(true)}
+          title="Paste an event's bar lineup to build the crawl"
+        >
+          <FiDownload size={15} /> Import a bar list
+        </button>
       </div>
 
       <BarList
@@ -171,6 +198,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <FiNavigation size={18} />
         Generate My Route ({selectedBarIds.size})
       </button>
+
+      <ImportBarsModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        mapCenter={mapCenter}
+        onImport={handleImport}
+      />
     </motion.div>
   );
 };
