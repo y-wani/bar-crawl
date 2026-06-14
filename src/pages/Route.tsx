@@ -108,10 +108,13 @@ const RouteStopItem: React.FC<RouteStopItemProps> = ({
       <div className="bar-order-number">{index + 1}</div>
       <div className="bar-details">
         <h4 className="bar-name">{bar.name}</h4>
-        <div className="bar-meta">
-          <span>⭐ {bar.rating.toFixed(1)}</span>
-          <span>📍 {bar.distance.toFixed(2)} mi</span>
-        </div>
+        {/* Imported stops carry no rating/distance — hide the empty meta */}
+        {(bar.rating > 0 || bar.distance > 0) && (
+          <div className="bar-meta">
+            {bar.rating > 0 && <span>⭐ {bar.rating.toFixed(1)}</span>}
+            {bar.distance > 0 && <span>📍 {bar.distance.toFixed(2)} mi</span>}
+          </div>
+        )}
       </div>
     </Reorder.Item>
   );

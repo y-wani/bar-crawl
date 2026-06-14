@@ -662,13 +662,55 @@
     flex-shrink: 0;
   }
 
-  .route-drawer.is-sheet .btn-optimize-route,
-  .route-drawer.is-sheet .btn-current-location {
-    padding: 0.4rem 0.5rem;
+  .route-drawer.is-sheet .smart-controls {
+    gap: var(--space-2);
   }
 
+  .route-drawer.is-sheet .btn-optimize-route,
+  .route-drawer.is-sheet .btn-current-location {
+    padding: 0.32rem 0.55rem;
+    font-size: 0.72rem;
+  }
+
+  .route-drawer.is-sheet .btn-optimize-route svg,
+  .route-drawer.is-sheet .btn-current-location svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Tighter start/end fields — smaller label + shorter input */
   .route-drawer.is-sheet .address-autocomplete-label {
-    margin-bottom: var(--space-1);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+    opacity: 0.85;
+  }
+
+  .route-drawer.is-sheet .address-autocomplete-input {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+  }
+
+  /* More compact stop cards so more of the route is visible */
+  .route-drawer.is-sheet .draggable-bar-item {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .route-drawer.is-sheet .bar-order-number {
+    width: 23px;
+    height: 23px;
+    font-size: var(--text-xs);
+  }
+
+  .route-drawer.is-sheet .bar-name {
+    font-size: var(--text-sm);
+    margin-bottom: 0.1rem;
+  }
+
+  /* Keep the timeline connector aligned with the smaller cards */
+  .route-drawer.is-sheet .draggable-bar-item:not(:last-child)::after {
+    left: 44px;
   }
 
   /* One compact action row: [Save] [Generate] [Start Crawl].
@@ -691,14 +733,14 @@
     flex: 0 0 auto;
     font-size: 0;
     gap: 0;
-    padding: 0.55rem 0.85rem;
+    padding: 0.5rem 0.7rem;
   }
 
   .route-drawer.is-sheet .btn-start-crawl {
     width: auto;
     flex: 1;
     font-size: var(--text-sm);
-    padding: 0.6rem 1rem;
+    padding: 0.5rem 0.9rem;
   }
 
   /* Keep the section heading tight */
