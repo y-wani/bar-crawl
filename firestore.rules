@@ -21,11 +21,17 @@ service cloud.firestore {
         && resource.data.createdBy == request.auth.uid;
     }
 
-    // ----- Shared bar cache (Google Places / Mapbox results) -----
-    // Cross-user cache; any signed-in user may read and refresh it.
+    // ----- Shared bar cache (Google Places, prod) -----
+    // Read-only for clients; writes happen ONLY server-side via the Admin SDK
+    // in /api (which bypasses these rules). This prevents a signed-in user from
+    // poisoning the shared cache with fabricated venues or abusing it for
+    // unbounded writes.
     match /barCacheV5/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if false;
     }
+    // Legacy/dev cache (Mapbox fallback only; never read in prod where Places
+    // is enabled). Left client-writable for local dev without the proxy.
     match /barCache/{docId} {
       allow read, write: if request.auth != null;
     }

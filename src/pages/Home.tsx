@@ -383,8 +383,10 @@ const Home: React.FC = () => {
       fetchedAreas.current.add(areaKey);
       hasInitiallyFetched.current = true;
 
-      // Cache the fetched data to Firebase
-      if (allBars.length > 0) {
+      // Cache the fetched data. With Google Places enabled (prod) the proxy
+      // already writes the shared cache server-side (barCacheV5 is read-only to
+      // clients), so we only cache here on the legacy Mapbox fallback path.
+      if (allBars.length > 0 && !isGooglePlacesEnabled) {
         try {
           await cacheBars(
             centerCoords[1],

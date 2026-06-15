@@ -194,8 +194,16 @@ export const useCacheManager = () => {
   };
 
   // Initialize after the visible page has settled — popular-city caching is
-  // a background optimization and must not compete with the initial load
+  // a background optimization and must not compete with the initial load.
+  //
+  // With Google Places enabled (prod), caching is owned by the serverless
+  // proxy: it reads/writes barCacheV5 via the Admin SDK, and that collection is
+  // read-only to clients. Running the old client-side prefetch here would bill
+  // Google for cities nobody visited (and consume the user's rate budget) while
+  // its writes would be denied — so it's disabled on the Places path.
   useEffect(() => {
+    if (isGooglePlacesEnabled) return;
+
     const idleTimeout = setTimeout(() => {
       initializeCache();
       startBackgroundRefresh();

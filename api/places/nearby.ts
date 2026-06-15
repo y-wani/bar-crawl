@@ -13,6 +13,7 @@ import {
   readJson,
 } from "../_lib/guard";
 import { fetchNearbyBars } from "../_lib/places";
+import { readBarCache, writeBarCache } from "../_lib/cache";
 
 interface Body {
   centerLat?: number;
@@ -58,12 +59,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const lat = centerLat as number;
+  const lng = centerLng as number;
+  const radius = radiusMeters as number;
+
   try {
-    const bars = await fetchNearbyBars(
-      centerLat as number,
-      centerLng as number,
-      radiusMeters as number
-    );
+    // Server-side cache check first — bounds Google spend even if a client
+    // skips its own cache read or calls the endpoint directly.
+    const cached = await readBarCache(lat, lng);
+    if (cached) {
+      res.status(200).json({ bars: cached, cached: true });
+      return;
+    }
+
+    const bars = await fetchNearbyBars(lat, lng, radius);
+    await writeBarCache(lat, lng, bars, radius / 1609);
     res.status(200).json({ bars });
   } catch (err) {
     console.error("places/nearby failed:", err);

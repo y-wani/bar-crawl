@@ -24,6 +24,16 @@ Each request must carry a valid Firebase ID token
 before spending. The keys live only in **server** env vars and never reach the
 browser (verified: the keys no longer appear in `dist/`).
 
+### Shared cache is server-owned
+
+`barCacheV5` is **read-only to clients** (`firestore.rules`); writes happen only
+in the proxy via the Admin SDK (`api/_lib/cache.ts`). The `nearby` endpoint
+checks the cache *before* calling Google and writes it *after*, so a client that
+bypasses its own cache check still rarely bills a Places request, and no
+signed-in user can poison the shared cache with fabricated venues. The old
+client-side popular-city prefetch is disabled on the Places path (it billed
+Google for unvisited cities); the proxy populates the cache from real searches.
+
 ### Rate limits (per user, enforced in `api/_lib/guard.ts`)
 
 | Endpoint        | Per minute | Per day |
