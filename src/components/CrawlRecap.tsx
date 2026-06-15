@@ -211,7 +211,7 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         </div>
 
         <span className="recap-footer-tag">
-          planned with barhop · bar-crawl.vercel.app
+          planned with barhop · gobarhop.app
         </span>
       </motion.div>
 

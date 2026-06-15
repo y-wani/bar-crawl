@@ -1,6 +1,6 @@
 # 🍸 Bar Crawl Route Planner
 
-> **Live Demo:** [https://bar-crawl.vercel.app/](https://bar-crawl.vercel.app/)
+> **Live Demo:** [https://gobarhop.app/](https://gobarhop.app/)
 
 A modern, interactive web application for planning and optimizing bar crawl routes. Built with React, TypeScript, and Mapbox GL JS, featuring real-time route optimization, interactive maps, and a sleek cyberpunk-inspired UI.
 
