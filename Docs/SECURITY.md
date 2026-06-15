@@ -85,9 +85,24 @@ Mapbox GL needs its token client-side, so it can't be proxied. In the Mapbox
 account, add a **URL restriction** to the public token
 (`https://bar-crawl.vercel.app/*`) and scope it to public styles/tiles only.
 
-### 6. (Recommended) Firebase App Check
-Enable App Check (reCAPTCHA Enterprise / v3) so only your real app — not a
-scripted client with a stolen token — can call Firebase and the proxy.
+### 6. Firebase App Check (closes the multi-account / stolen-token vector)
+App Check attests that a request came from your real app, not a script — so an
+attacker can't just create accounts and call the proxy from curl. The code is
+already wired and ships **dormant**; enable it in stages so you never lock out
+real users:
+
+1. **Firebase Console → App Check** → register the web app with the
+   **reCAPTCHA v3** provider. Copy the **site key**.
+2. Set `VITE_APPCHECK_SITE_KEY=<site key>` in Vercel and redeploy. The app now
+   attaches an App Check token to every proxy call; the server still ignores it.
+3. Watch **Console → App Check → Metrics** until "verified" requests look
+   healthy (a day or so of real traffic).
+4. Set `APPCHECK_ENFORCE=true` in Vercel (server env). The proxy now **rejects**
+   any call without a valid App Check token. To roll back, unset it.
+
+(Do NOT also "enforce" App Check on Firestore/Auth in the Console until you've
+confirmed step 3 — the proxy enforcement above is independent and safer to
+toggle.)
 
 ## Local development
 

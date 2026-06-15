@@ -11,7 +11,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { FieldValue, type Transaction } from "firebase-admin/firestore";
-import { adminAuth, adminDb } from "./firebaseAdmin";
+import { adminAuth, adminDb, adminAppCheck } from "./firebaseAdmin";
 
 export interface AuthedUser {
   uid: string;
@@ -51,6 +51,35 @@ export const verifyAuth = async (
   } catch {
     res.status(401).json({ error: "Invalid or expired auth token" });
     return null;
+  }
+};
+
+/**
+ * Verify the Firebase App Check token (header `X-Firebase-AppCheck`), which
+ * attests the request came from our real app rather than a script. Gated on
+ * APPCHECK_ENFORCE so it ships dormant: with the flag unset it always passes,
+ * so deploying this code changes nothing until App Check is set up + enabled.
+ *
+ * Returns true when the request may proceed; otherwise writes 401 + returns
+ * false.
+ */
+export const verifyAppCheck = async (
+  req: VercelRequest,
+  res: VercelResponse
+): Promise<boolean> => {
+  if (process.env.APPCHECK_ENFORCE !== "true") return true; // dormant
+
+  const token = req.headers["x-firebase-appcheck"];
+  if (typeof token !== "string" || !token) {
+    res.status(401).json({ error: "Missing App Check token" });
+    return false;
+  }
+  try {
+    await adminAppCheck().verifyToken(token);
+    return true;
+  } catch {
+    res.status(401).json({ error: "Invalid App Check token" });
+    return false;
   }
 };
 

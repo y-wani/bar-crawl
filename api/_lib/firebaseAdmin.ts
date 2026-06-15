@@ -14,6 +14,7 @@ import {
 } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getAppCheck, type AppCheck } from "firebase-admin/app-check";
 
 let cached: App | undefined;
 
@@ -49,3 +50,4 @@ const init = (): App => {
 
 export const adminAuth = (): Auth => getAuth(init());
 export const adminDb = (): Firestore => getFirestore(init());
+export const adminAppCheck = (): AppCheck => getAppCheck(init());

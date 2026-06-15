@@ -5,7 +5,8 @@
 // these endpoints with the signed-in user's Firebase ID token so the proxy can
 // verify + rate-limit before spending budget.
 
-import { auth } from "../firebase/config";
+import { auth, appCheck } from "../firebase/config";
+import { getToken } from "firebase/app-check";
 
 class ApiError extends Error {
   status: number;
@@ -27,12 +28,25 @@ export const postJson = async <T>(
   // Firebase refreshes the token automatically if it's near expiry.
   const token = await user.getIdToken();
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  // Attach an App Check token when configured. Harmless when the server isn't
+  // enforcing App Check yet; required once it is.
+  if (appCheck) {
+    try {
+      const { token: appCheckToken } = await getToken(appCheck);
+      headers["X-Firebase-AppCheck"] = appCheckToken;
+    } catch {
+      // Proceed without it; the server only blocks when enforcement is on.
+    }
+  }
+
   const res = await fetch(path, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify(body),
   });
 

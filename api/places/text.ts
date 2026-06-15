@@ -8,6 +8,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   requirePost,
   verifyAuth,
+  verifyAppCheck,
   enforceRateLimit,
   buckets,
   readJson,
@@ -21,6 +22,7 @@ interface Body {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!requirePost(req, res)) return;
+  if (!(await verifyAppCheck(req, res))) return;
   const user = await verifyAuth(req, res);
   if (!user) return;
 
