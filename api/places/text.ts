@@ -42,6 +42,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: "query required" });
     return;
   }
+  // A real venue line is short; cap it so a bloated query can't be abused.
+  if (query.length > 250) {
+    res.status(413).json({ error: "query too long" });
+    return;
+  }
 
   try {
     const bar = await searchPlaceByText(query, bias);

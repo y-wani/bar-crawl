@@ -40,16 +40,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { centerLat, centerLng, radiusMeters } = readJson<Body>(req);
   if (
-    typeof centerLat !== "number" ||
-    typeof centerLng !== "number" ||
-    typeof radiusMeters !== "number"
+    !Number.isFinite(centerLat) ||
+    !Number.isFinite(centerLng) ||
+    !Number.isFinite(radiusMeters)
   ) {
     res.status(400).json({ error: "centerLat, centerLng, radiusMeters required" });
     return;
   }
+  // Reject out-of-range coordinates before they cost a billed Google call.
+  if (
+    (centerLat as number) < -90 ||
+    (centerLat as number) > 90 ||
+    (centerLng as number) < -180 ||
+    (centerLng as number) > 180
+  ) {
+    res.status(400).json({ error: "coordinates out of range" });
+    return;
+  }
 
   try {
-    const bars = await fetchNearbyBars(centerLat, centerLng, radiusMeters);
+    const bars = await fetchNearbyBars(
+      centerLat as number,
+      centerLng as number,
+      radiusMeters as number
+    );
     res.status(200).json({ bars });
   } catch (err) {
     console.error("places/nearby failed:", err);
