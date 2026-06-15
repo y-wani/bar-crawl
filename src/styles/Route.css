@@ -180,10 +180,22 @@
 .drawer-header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
+}
+
+/* Match the footer's compaction so the Start Location field doesn't crowd the
+   stop list either. Scoped to .drawer-header (desktop); the mobile sheet keeps
+   its own sizing via the more specific .route-drawer.is-sheet overrides. */
+.drawer-header .address-autocomplete-label {
+  margin-bottom: var(--space-1);
+}
+
+.drawer-header .address-autocomplete-input {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
 }
 
 .smart-controls {
@@ -438,10 +450,23 @@
 .drawer-footer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--glass-border);
   flex-shrink: 0;
+}
+
+/* The End Location is a single optional tweak, not a primary input, so keep it
+   compact — the reclaimed height goes to the stop list above (.drawer-content,
+   which is flex:1). The mobile sheet keeps its own sizing via the more specific
+   .route-drawer.is-sheet overrides below. */
+.drawer-footer .address-autocomplete-label {
+  margin-bottom: var(--space-1);
+}
+
+.drawer-footer .address-autocomplete-input {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
 }
 
 .route-actions {
