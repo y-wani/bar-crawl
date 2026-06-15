@@ -27,6 +27,9 @@
 .search-container {
   position: relative;
   width: 100%;
+  /* Sit above the radius control (a later sibling in the overlay) so the
+     suggestions dropdown isn't painted behind the Radius box. */
+  z-index: 40;
   filter: drop-shadow(0 6px 15px rgba(0, 0, 0, 0.25));
 }
 

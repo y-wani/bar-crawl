@@ -649,6 +649,13 @@
     flex-shrink: 0;
   }
 
+  /* Collapsed peek: drop the optimize/location controls + start field so the
+     short resting sheet shows the stop list + the pinned actions, leaving a
+     strip of map. Flicking/dragging up to "full" brings them back. */
+  .route-drawer.is-sheet.snap-half .drawer-header {
+    display: none;
+  }
+
   .route-drawer.is-sheet .drawer-content {
     padding: 0 var(--space-4);
     flex: 1;

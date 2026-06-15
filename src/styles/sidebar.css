@@ -385,6 +385,13 @@
     background: rgba(255, 255, 255, 0.32);
   }
 
+  /* Collapsed peek: hide the search + filters chrome so the short resting
+     sheet leaves most of the map visible and still shows a glimpse of bars.
+     Flicking/dragging up to "full" reveals them again. */
+  .planner-sidebar.is-sheet.snap-half .search-and-filters {
+    display: none;
+  }
+
   /* List must be allowed to shrink so the pinned Generate button never
      gets pushed past the sheet edge (the old min-height:100px bug). */
   .planner-sidebar.is-sheet .bar-list {

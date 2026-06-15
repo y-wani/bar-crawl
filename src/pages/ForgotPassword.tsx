@@ -69,10 +69,26 @@ const ForgotPassword: React.FC = () => {
         {sent ? (
           <div className="auth-form">
             <p style={{ textAlign: 'center', lineHeight: 1.6 }}>
-              If an account exists for <strong>{email}</strong>, a password
-              reset link is on its way. It can take a minute or two — check
-              your spam folder if it doesn't show up.
+              If an account exists for <strong>{email}</strong>, a reset link
+              from <strong>BarHop</strong> is on its way. It can take a minute
+              or two to arrive.
             </p>
+            <div className="auth-note">
+              <span className="auth-note-title">Don't see it?</span> Check your{' '}
+              <strong>Spam</strong> or <strong>Junk</strong> folder, then mark
+              the message <strong>"Not spam"</strong> so future BarHop emails
+              land straight in your inbox.
+            </div>
+            <button
+              type="button"
+              className="auth-link-button"
+              onClick={() => {
+                setSent(false);
+                setEmail('');
+              }}
+            >
+              Use a different email
+            </button>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>

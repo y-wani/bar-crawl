@@ -63,7 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Short resting height so most of the map stays visible; drag up to browse.
   const { height, snap, snapTo, onHandlePointerDown } = useBottomSheet(isMobile, {
     initial: 'half',
-    halfFraction: 0.45,
+    halfFraction: 0.3,
     fullFraction: 0.9,
   });
   const [showImport, setShowImport] = useState(false);

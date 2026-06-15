@@ -78,6 +78,13 @@ export const useBottomSheet = (
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
       dragState.current = { startY: e.clientY, startH: height.get() };
 
+      // Track the most recent motion so a quick flick can decide the snap by
+      // velocity (not just final position) — one flick opens/closes the sheet
+      // without having to drag it all the way to the other snap.
+      let lastY = e.clientY;
+      let lastT = performance.now();
+      let velocity = 0; // px/ms, positive = flicking up (open)
+
       const onMove = (ev: PointerEvent) => {
         if (!dragState.current) return;
         const { startY, startH } = dragState.current;
@@ -85,6 +92,12 @@ export const useBottomSheet = (
         const { half, full } = snapsRef.current;
         const next = Math.min(full + 24, Math.max(half - 80, startH + dy));
         height.set(next);
+
+        const now = performance.now();
+        const dt = now - lastT;
+        if (dt > 0) velocity = (lastY - ev.clientY) / dt; // up => positive
+        lastY = ev.clientY;
+        lastT = now;
       };
 
       const onUp = () => {
@@ -93,7 +106,12 @@ export const useBottomSheet = (
         dragState.current = null;
         const { half, full } = snapsRef.current;
         const cur = height.get();
-        snapTo(cur > (half + full) / 2 ? "full" : "half");
+        // A decisive flick wins over position; otherwise fall back to the
+        // nearest snap by midpoint.
+        const FLICK = 0.45; // px/ms
+        if (velocity > FLICK) snapTo("full");
+        else if (velocity < -FLICK) snapTo("half");
+        else snapTo(cur > (half + full) / 2 ? "full" : "half");
       };
 
       window.addEventListener("pointermove", onMove);

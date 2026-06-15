@@ -288,7 +288,7 @@ const Route: React.FC = () => {
   // of map visible; drag up for the full list.
   const sheet = useBottomSheet(isMobile, {
     initial: "full",
-    halfFraction: 0.5,
+    halfFraction: 0.34,
     fullFraction: 0.82,
   });
 
