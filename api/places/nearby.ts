@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Each call = 4 billed Google searches, so keep the area-search budget tight.
   const ok = await enforceRateLimit(
     user.uid,
-    "places-nearby",
+    "placesNearby",
     [
       { ...minute, limit: 10 },
       { ...day, limit: 80 },

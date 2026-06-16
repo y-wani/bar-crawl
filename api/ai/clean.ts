@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { minute, day } = buckets();
   const ok = await enforceRateLimit(
     user.uid,
-    "ai-clean",
+    "aiClean",
     [
       { ...minute, limit: 8 },
       { ...day, limit: 40 },

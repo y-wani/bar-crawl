@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Importer fans one call per line, so allow a higher ceiling than area search.
   const ok = await enforceRateLimit(
     user.uid,
-    "places-text",
+    "placesText",
     [
       { ...minute, limit: 60 },
       { ...day, limit: 300 },

@@ -1,13 +1,12 @@
 // api/_lib/cache.ts
 //
-// Server-owned bar cache (Firestore collection barCacheV5). Clients may READ
-// this collection but no longer WRITE it (see firestore.rules) — writes happen
-// here via the Admin SDK, so the shared cache can't be poisoned with fake
-// venues. The proxy also reads the cache BEFORE calling Google, so even a
-// client that bypasses its own cache check rarely bills a Places request.
+// Server-owned bar cache (Firestore collection barCacheV5) over the REST API.
+// Clients may READ this collection but no longer WRITE it (see firestore.rules)
+// — writes happen here via the service-account-authenticated REST calls, so the
+// shared cache can't be poisoned. The proxy reads the cache BEFORE calling
+// Google, so a client that bypasses its own cache check rarely bills a request.
 
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "./firebaseAdmin";
+import { runQuery, createDocument } from "./firestore";
 import type { Bar } from "./places";
 
 const COLLECTION = "barCacheV5";
@@ -32,35 +31,27 @@ const milesBetween = (
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-interface CachedArea {
-  centerLat: number;
-  centerLng: number;
-  bars: Bar[];
-  fetchedAt?: Timestamp;
-}
-
 /** Return cached bars for a nearby, unexpired area, or null on miss. */
 export const readBarCache = async (
   lat: number,
   lng: number
 ): Promise<Bar[] | null> => {
   try {
-    const snap = await adminDb()
-      .collection(COLLECTION)
-      .orderBy("fetchedAt", "desc")
-      .limit(50)
-      .get();
+    const docs = await runQuery({
+      from: [{ collectionId: COLLECTION }],
+      orderBy: [{ field: { fieldPath: "fetchedAt" }, direction: "DESCENDING" }],
+      limit: 50,
+    });
 
     const now = Date.now();
-    for (const doc of snap.docs) {
-      const d = doc.data() as CachedArea;
-      if (typeof d.centerLat !== "number" || typeof d.centerLng !== "number")
-        continue;
-      if (milesBetween(lat, lng, d.centerLat, d.centerLng) > SEARCH_RADIUS_MILES)
-        continue;
-      const fetchedMs = d.fetchedAt?.toMillis?.() ?? 0;
+    for (const d of docs) {
+      const cLat = d.centerLat;
+      const cLng = d.centerLng;
+      if (typeof cLat !== "number" || typeof cLng !== "number") continue;
+      if (milesBetween(lat, lng, cLat, cLng) > SEARCH_RADIUS_MILES) continue;
+      const fetchedMs = typeof d.fetchedAt === "number" ? d.fetchedAt : 0;
       if (now - fetchedMs < EXPIRY_HOURS * 3600 * 1000) {
-        return Array.isArray(d.bars) ? d.bars : null;
+        return Array.isArray(d.bars) ? (d.bars as Bar[]) : null;
       }
     }
   } catch (err) {
@@ -79,12 +70,12 @@ export const writeBarCache = async (
 ): Promise<void> => {
   if (bars.length === 0) return;
   try {
-    await adminDb().collection(COLLECTION).add({
+    await createDocument(COLLECTION, {
       centerLat: lat,
       centerLng: lng,
       radius: radiusMiles,
-      bars,
-      fetchedAt: FieldValue.serverTimestamp(),
+      bars: bars as unknown as Record<string, unknown>[],
+      fetchedAt: new Date(),
       location: "",
     });
   } catch (err) {
