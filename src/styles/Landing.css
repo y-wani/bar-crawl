@@ -79,6 +79,35 @@
   border-color: #fff;
 }
 
+/* Legal links pinned to the bottom so they don't disturb the centered hero */
+.landing-footer {
+  position: absolute;
+  left: 50%;
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.85rem;
+  z-index: 2;
+  animation: fadeIn 1.5s ease-out 0.8s both;
+}
+
+.landing-footer a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.landing-footer a:hover {
+  color: #ecb256;
+}
+
+.landing-footer span {
+  color: rgba(255, 255, 255, 0.35);
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {

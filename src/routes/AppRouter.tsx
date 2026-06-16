@@ -16,6 +16,8 @@ const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
 const ForgotPassword = React.lazy(() => import('../pages/ForgotPassword'));
+const PrivacyPolicy = React.lazy(() => import('../pages/PrivacyPolicy'));
+const Terms = React.lazy(() => import('../pages/Terms'));
 
 // Inner component so useLocation is called within BrowserRouter.
 // AnimatePresence + keyed Routes drive the page enter/exit transitions
@@ -87,6 +89,10 @@ const AnimatedRoutes: React.FC = () => {
             </PublicRoute>
           }
         />
+        {/* Public legal pages — no auth gate so anyone (and Google's OAuth
+            verification) can reach them. */}
+        <RouterRoute path="/privacy" element={<PrivacyPolicy />} />
+        <RouterRoute path="/terms" element={<Terms />} />
         {/* Unknown URLs go back to the landing page */}
         <RouterRoute path="*" element={<Navigate to="/" replace />} />
       </Routes>

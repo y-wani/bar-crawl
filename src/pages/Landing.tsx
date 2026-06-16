@@ -27,6 +27,11 @@ const Landing: React.FC = () => {
             </Link>
           </div>
         </div>
+        <footer className="landing-footer">
+          <Link to="/privacy">Privacy Policy</Link>
+          <span>·</span>
+          <Link to="/terms">Terms &amp; Conditions</Link>
+        </footer>
       </div>
     </>
   );
