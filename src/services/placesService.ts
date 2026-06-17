@@ -29,7 +29,8 @@ export const searchPlaceByText = async (
   const trimmed = query.trim();
   if (!trimmed) return null;
 
-  const { bar } = await postJson<{ bar: AppBat | null }>("/api/places/text", {
+  const { bar } = await postJson<{ bar: AppBat | null }>("/api/proxy", {
+    action: "text",
     query: trimmed,
     ...(bias && { bias }),
   });
@@ -46,7 +47,8 @@ export const fetchNearbyBars = async (
   centerLng: number,
   radiusMeters: number
 ): Promise<AppBat[]> => {
-  const { bars } = await postJson<{ bars: AppBat[] }>("/api/places/nearby", {
+  const { bars } = await postJson<{ bars: AppBat[] }>("/api/proxy", {
+    action: "nearby",
     centerLat,
     centerLng,
     radiusMeters,

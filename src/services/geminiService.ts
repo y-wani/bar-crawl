@@ -19,7 +19,10 @@ export const isGeminiEnabled =
  * user's original text.
  */
 export const cleanBarListWithAI = async (raw: string): Promise<string> => {
-  const { text } = await postJson<{ text: string }>("/api/ai/clean", { raw });
+  const { text } = await postJson<{ text: string }>("/api/proxy", {
+    action: "clean",
+    raw,
+  });
   if (!text || !text.trim()) throw new Error("AI returned no text");
   return text.trim();
 };
