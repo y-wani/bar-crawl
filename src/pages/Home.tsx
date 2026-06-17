@@ -14,7 +14,7 @@ import { Sidebar } from "../components/Sidebar";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
 import {
-  getActiveSessionForUser,
+  getActiveSessionForMember,
   type CrawlSession,
 } from "../services/sessionService";
 import type { Bar } from "../components/BarListItem";
@@ -93,7 +93,7 @@ const Home: React.FC = () => {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const active = await getActiveSessionForUser(user.uid);
+      const active = await getActiveSessionForMember(user.uid);
       if (!cancelled) setActiveSession(active);
     })();
     return () => {

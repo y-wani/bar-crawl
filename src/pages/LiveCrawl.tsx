@@ -41,7 +41,7 @@ import { useAuth } from "../context/useAuth";
 import { useLiveTracking } from "../hooks/useLiveTracking";
 import { toast } from "../components/Toaster";
 import {
-  getActiveSessionForUser,
+  getActiveSessionForMember,
   subscribeToSession,
   joinSession,
   updateMemberPosition,
@@ -166,7 +166,7 @@ const LiveCrawl: React.FC = () => {
     if (sessionId || !user || joinId) return;
     let cancelled = false;
     (async () => {
-      const active = await getActiveSessionForUser(user.uid);
+      const active = await getActiveSessionForMember(user.uid);
       if (cancelled) return;
       if (active?.id) {
         setSessionId(active.id);

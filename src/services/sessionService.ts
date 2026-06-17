@@ -171,7 +171,9 @@ export const createSession = async (
 };
 
 /**
- * Find the user's active session, if any (used for resume).
+ * Find the user's active session that they HOST, if any. Used by the
+ * "Start Crawl" guard (one hosted crawl at a time) — joining a friend's
+ * crawl should not block you from starting your own.
  */
 export const getActiveSessionForUser = async (
   uid: string
@@ -189,6 +191,35 @@ export const getActiveSessionForUser = async (
     return { id: docSnap.id, ...docSnap.data() } as CrawlSession;
   } catch (error) {
     console.error("❌ Error fetching active session:", error);
+    if (error instanceof FirebaseError) {
+      console.error("🔥 Firebase error code:", error.code);
+    }
+    return null;
+  }
+};
+
+/**
+ * Find the user's active session that they HOST *or* have JOINED. Used by
+ * the Home resume banner and the /live hydrate so joiners can get back into
+ * a crawl. Needs the composite index on (memberUids array-contains, status)
+ * defined in firestore.indexes.json.
+ */
+export const getActiveSessionForMember = async (
+  uid: string
+): Promise<CrawlSession | null> => {
+  try {
+    const q = query(
+      collection(db, SESSIONS_COLLECTION),
+      where("memberUids", "array-contains", uid),
+      where("status", "==", "active"),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    const docSnap = snapshot.docs[0];
+    return { id: docSnap.id, ...docSnap.data() } as CrawlSession;
+  } catch (error) {
+    console.error("❌ Error fetching active member session:", error);
     if (error instanceof FirebaseError) {
       console.error("🔥 Firebase error code:", error.code);
     }
