@@ -685,10 +685,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (err) {
     console.error(`proxy action=${body.action} failed:`, err);
-    // TEMP DEBUG: surface the upstream error detail to diagnose the 502.
-    res.status(502).json({
-      error: "Upstream request failed",
-      detail: err instanceof Error ? err.message : String(err),
-    });
+    res.status(502).json({ error: "Upstream request failed" });
   }
 }
