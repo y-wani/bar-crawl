@@ -18,7 +18,6 @@ import { FaBars, FaTimes, FaGripVertical, FaArrowLeft } from "react-icons/fa";
 import {
   FiNavigation,
   FiZap,
-  FiCompass,
   FiPlay,
   FiSave,
   FiFolder,
@@ -648,10 +647,6 @@ const Route: React.FC = () => {
     setEndLocation(suggestion.place_name);
   };
 
-  const handleFinalGenerateClick = () => {
-    throttledGenerateRoute(draggableBars, startCoordinates, endCoordinates);
-  };
-
   const handleSaveCrawl = () => {
     setShowSaveModal(true);
   };
@@ -895,7 +890,7 @@ const Route: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <FiZap size={16} /> Optimize Route
+                    <FiZap size={16} /> Optimize
                   </>
                 )}
               </button>
@@ -912,9 +907,21 @@ const Route: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <FiNavigation size={16} /> Use My Location
+                    <FiNavigation size={16} /> My Location
                   </>
                 )}
+              </button>
+              <button
+                className="btn-save-route"
+                onClick={handleSaveCrawl}
+                disabled={draggableBars.length < 2}
+                title={
+                  draggableBars.length < 2
+                    ? "Need at least 2 bars to save"
+                    : "Save this crawl"
+                }
+              >
+                <FiSave size={16} /> Save
               </button>
             </div>
             <div className="location-section">
@@ -979,40 +986,6 @@ const Route: React.FC = () => {
               />
             </div>
             <div className="route-actions">
-              <div className="route-buttons">
-                <button
-                  className="btn-save-crawl"
-                  onClick={handleSaveCrawl}
-                  disabled={draggableBars.length < 2}
-                  title={
-                    draggableBars.length < 2
-                      ? "Need at least 2 bars to save"
-                      : "Save this crawl"
-                  }
-                >
-                  <FiSave size={16} />
-                  Save Crawl
-                </button>
-
-                <button
-                  className={`btn-generate-final-route ${
-                    isLoading.generating ? "loading" : ""
-                  }`}
-                  onClick={handleFinalGenerateClick}
-                  disabled={isBusy}
-                >
-                  {isLoading.generating ? (
-                    <>
-                      <div className="spinner"></div> Generating...
-                    </>
-                  ) : (
-                    <>
-                      <FiCompass size={18} /> Generate Route
-                    </>
-                  )}
-                </button>
-              </div>
-
               <div className="route-cta-row">
               <button
                 className="btn-start-crawl"

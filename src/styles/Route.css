@@ -204,22 +204,41 @@
 }
 
 .btn-optimize-route,
-.btn-current-location {
+.btn-current-location,
+.btn-save-route {
   flex: 1;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: 6px;
   font-family: var(--font-body);
   font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0.55rem 1rem;
+  padding: 0.55rem 0.6rem;
   border-radius: var(--radius-pill);
   white-space: nowrap;
   transition:
     background-color var(--duration-fast) ease,
     border-color var(--duration-fast) ease,
     color var(--duration-fast) ease;
+}
+
+.btn-save-route {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1.5px solid transparent;
+}
+.btn-save-route svg {
+  color: var(--accent);
+}
+.btn-save-route:hover:not(:disabled) {
+  background: var(--glass-3);
+  color: var(--text-primary);
+}
+.btn-save-route:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-optimize-route {
@@ -262,11 +281,6 @@
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: route-spin 0.9s linear infinite;
-}
-
-.btn-generate-final-route .spinner {
-  border: 2px solid rgba(26, 18, 8, 0.3);
-  border-top-color: var(--text-on-accent);
 }
 
 @keyframes route-spin {
@@ -475,81 +489,12 @@
   gap: var(--space-2);
 }
 
-.route-buttons {
-  display: flex;
-  gap: var(--space-2);
-}
-
-/* Start Crawl + Plan with friends share one compact row (was two stacked
-   full-width buttons, which ate the drag-list's vertical space). */
+/* Start Crawl + Plan with friends share one compact row (Save moved to the
+   drawer tool row; Generate was removed — the route auto-regenerates on
+   reorder). */
 .route-cta-row {
   display: flex;
   gap: var(--space-2);
-}
-
-.btn-save-crawl {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  background: transparent;
-  border: 1.5px solid var(--glass-border-strong);
-  border-radius: var(--radius-pill);
-  padding: 0.65rem 1rem;
-  white-space: nowrap;
-  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.btn-save-crawl:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.btn-save-crawl:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.btn-generate-final-route {
-  flex: 1.4;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 0.65rem 1rem;
-  white-space: nowrap;
-  transition:
-    transform var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-base) var(--ease-out),
-    background-color var(--duration-fast) ease;
-}
-
-.btn-generate-final-route:hover:not(:disabled) {
-  background: var(--accent-bright);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-glow-accent);
-}
-
-.btn-generate-final-route:active:not(:disabled) {
-  background: var(--accent-deep);
-  transform: translateY(0);
-}
-
-.btn-generate-final-route:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 /* Start Crawl — launches Live Crawl Mode; the night's loudest button */
@@ -781,24 +726,20 @@
     left: 44px;
   }
 
-  /* One compact action row: [Save] [Generate] [Start Crawl].
-     display:contents lifts Save/Generate out of .route-buttons so all three
-     sit in a single flex row. Save/Generate go icon-only (font-size:0 hides
-     the text labels; the sized SVGs stay) and Start Crawl shrinks but keeps
-     its gradient + pulse so it's still the obvious primary action. */
+  /* One compact action row: [Plan with friends] [Start Crawl].
+     display:contents lifts the two CTAs out of .route-cta-row so they sit in
+     a single flex row. Plan goes icon-only (font-size:0 hides the label; the
+     sized SVG stays) and Start Crawl keeps its gradient + pulse as the primary. */
   .route-drawer.is-sheet .route-actions {
     flex-direction: row;
     align-items: stretch;
     gap: var(--space-2);
   }
 
-  .route-drawer.is-sheet .route-buttons,
   .route-drawer.is-sheet .route-cta-row {
     display: contents;
   }
 
-  .route-drawer.is-sheet .btn-save-crawl,
-  .route-drawer.is-sheet .btn-generate-final-route,
   .route-drawer.is-sheet .btn-plan-friends {
     flex: 0 0 auto;
     font-size: 0;
@@ -834,9 +775,8 @@
     display: none;
   }
 
-  /* Keep controls + actions side by side to save vertical space */
-  .smart-controls,
-  .route-buttons {
+  /* Keep the tool row horizontal to save vertical space */
+  .smart-controls {
     flex-direction: row;
   }
 }
