@@ -71,6 +71,8 @@ export interface SessionMember {
   joinedAt: Timestamp | Date;
   /** Group live mode: last published GPS fix, for friend dots on the map */
   lastPosition?: MemberPosition;
+  /** Set when the member taps "I'm home safe" on the recap */
+  homeSafeAt?: Timestamp | Date;
 }
 
 export interface SessionStats {
@@ -368,6 +370,25 @@ export const skipStop = async (
   } catch (error) {
     console.error("❌ Error skipping stop:", error);
     throw new Error("Couldn't skip the stop. Please try again.");
+  }
+};
+
+/**
+ * Mark the caller as home safe (group safety board on the recap). A member
+ * write, so no rule change needed; other members see it via their snapshot.
+ */
+export const markHomeSafe = async (
+  sessionId: string,
+  uid: string
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
+      [`members.${uid}.homeSafeAt`]: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("❌ Error marking home safe:", error);
+    throw new Error("Couldn't update your status. Please try again.");
   }
 };
 

@@ -560,6 +560,91 @@
   text-align: center;
 }
 
+/* ===== Get home safe (outside the captured card) ===== */
+.recap-safe {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+.recap-safe-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+}
+.recap-safe-rides {
+  display: flex;
+  gap: var(--space-2);
+}
+.recap-ride {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--glass-2);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 0.55rem 1rem;
+  text-decoration: none;
+  transition: background var(--duration-fast) ease;
+}
+.recap-ride:hover {
+  background: var(--glass-3);
+}
+.recap-safe-btn {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(236, 178, 86, 0.3);
+  border-radius: var(--radius-pill);
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: background var(--duration-fast) ease;
+}
+.recap-safe-btn:hover:not(:disabled) {
+  background: rgba(236, 178, 86, 0.2);
+}
+.recap-safe-btn.is-safe {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border-color: rgba(110, 231, 183, 0.4);
+  cursor: default;
+}
+.recap-safe-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.recap-safe-chip {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--glass-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 0.2rem 0.6rem;
+}
+.recap-safe-chip.is-safe {
+  color: #6ee7b7;
+  border-color: rgba(110, 231, 183, 0.35);
+}
+
 .recap-actions {
   display: flex;
   gap: var(--space-3);

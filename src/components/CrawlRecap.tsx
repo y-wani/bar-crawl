@@ -4,15 +4,16 @@
 // is captured with html-to-image, so it must stay fully opaque (no
 // backdrop-filter / glass translucency / external images inside it).
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toPng } from "html-to-image";
 import party from "party-js";
-import { FiShare2, FiDownload, FiCheck } from "react-icons/fi";
+import { FiShare2, FiDownload, FiCheck, FiHome } from "react-icons/fi";
 import { toast } from "./Toaster";
 import { analytics } from "../utils/analytics";
+import { useAuth } from "../context/useAuth";
 import { springPanel } from "./motion/variants";
-import type { CrawlSession } from "../services/sessionService";
+import { markHomeSafe, type CrawlSession } from "../services/sessionService";
 import "../styles/LiveCrawl.css";
 
 interface CrawlRecapProps {
@@ -123,9 +124,11 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
   session,
   onDone,
 }) => {
+  const { user } = useAuth();
   const cardRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [safing, setSafing] = useState(false);
   const [mapDataUrl, setMapDataUrl] = useState<string | null>(null);
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     MAPBOX_TOKEN ? "loading" : "failed"
@@ -142,6 +145,46 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
     () => [...session.stops].sort((a, b) => a.order - b.order),
     [session.stops]
   );
+
+  // ----- Get home safe -----
+  const members = useMemo(
+    () =>
+      Object.entries(session.members ?? {}).map(([uid, m]) => ({
+        uid,
+        displayName: m.displayName,
+        isSelf: uid === user?.uid,
+        homeSafe: !!m.homeSafeAt,
+      })),
+    [session.members, user]
+  );
+  const isHomeSafe = !!user && !!session.members?.[user.uid]?.homeSafeAt;
+
+  // Ride pickup = the last stop of the night (fall back to the route end).
+  const pickup =
+    orderedStops[orderedStops.length - 1]?.coordinates ??
+    session.route.endCoordinates ??
+    session.route.startCoordinates;
+  const rideName = orderedStops[orderedStops.length - 1]?.name ?? "My last stop";
+  const uberHref = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${pickup[1]}&pickup[longitude]=${pickup[0]}&pickup[nickname]=${encodeURIComponent(
+    rideName
+  )}`;
+  const lyftHref = `https://lyft.com/ride?id=lyft&pickup[latitude]=${pickup[1]}&pickup[longitude]=${pickup[0]}`;
+
+  const handleHomeSafe = useCallback(async () => {
+    if (!user || !session.id || isHomeSafe || safing) return;
+    setSafing(true);
+    try {
+      await markHomeSafe(session.id, user.uid);
+      analytics.markedHomeSafe();
+      toast.success("Glad you made it home! 🏠");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't update status"
+      );
+    } finally {
+      setSafing(false);
+    }
+  }, [user, session.id, isHomeSafe, safing]);
 
   useEffect(() => {
     if (overlayRef.current) {
@@ -359,6 +402,54 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
           planned with barhop · gobarhop.app
         </span>
       </motion.div>
+
+      {/* Get home safe — kept outside the captured card (live links + status) */}
+      <div className="recap-safe">
+        <span className="recap-safe-title">
+          <FiHome /> Get home safe
+        </span>
+        <div className="recap-safe-rides">
+          <a
+            className="recap-ride"
+            href={uberHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => analytics.homeRide("uber")}
+          >
+            Uber
+          </a>
+          <a
+            className="recap-ride"
+            href={lyftHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => analytics.homeRide("lyft")}
+          >
+            Lyft
+          </a>
+        </div>
+        <button
+          className={`recap-safe-btn ${isHomeSafe ? "is-safe" : ""}`}
+          onClick={handleHomeSafe}
+          disabled={isHomeSafe || safing}
+        >
+          {isHomeSafe ? "✅ You're home safe" : "I'm home safe"}
+        </button>
+        {members.length > 1 && (
+          <div className="recap-safe-roster">
+            {members.map((m) => (
+              <span
+                key={m.uid}
+                className={`recap-safe-chip ${m.homeSafe ? "is-safe" : ""}`}
+              >
+                {m.homeSafe ? "✅" : "⏳"}{" "}
+                {m.displayName || "Friend"}
+                {m.isSelf ? " (you)" : ""}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="recap-actions">
         <button

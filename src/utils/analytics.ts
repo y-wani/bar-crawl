@@ -37,4 +37,8 @@ export const analytics = {
   planVote: () => safeTrack("plan_vote"),
   planLocked: (attendees: number, stops: number) =>
     safeTrack("plan_locked", { attendees, stops }),
+  // Get-home-safe
+  homeRide: (provider: "uber" | "lyft") =>
+    safeTrack("home_ride", { provider }),
+  markedHomeSafe: () => safeTrack("marked_home_safe"),
 };
