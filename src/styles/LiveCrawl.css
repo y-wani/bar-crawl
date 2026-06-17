@@ -560,27 +560,12 @@
   text-align: center;
 }
 
-/* ===== Get home safe (outside the captured card) ===== */
+/* ===== Get home safe (lives in a modal, opened from the recap actions) ===== */
 .recap-safe {
-  width: 100%;
-  max-width: 360px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--glass-1);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-}
-.recap-safe-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--text-primary);
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-2);
 }
 .recap-safe-rides {
   display: flex;

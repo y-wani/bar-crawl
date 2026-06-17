@@ -5,14 +5,14 @@
 // backdrop-filter / glass translucency / external images inside it).
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toPng } from "html-to-image";
 import party from "party-js";
 import { FiShare2, FiDownload, FiCheck, FiHome } from "react-icons/fi";
 import { toast } from "./Toaster";
 import { analytics } from "../utils/analytics";
 import { useAuth } from "../context/useAuth";
-import { springPanel } from "./motion/variants";
+import { springPanel, modalOverlay, modalPanel } from "./motion/variants";
 import { markHomeSafe, type CrawlSession } from "../services/sessionService";
 import "../styles/LiveCrawl.css";
 
@@ -129,6 +129,7 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [exporting, setExporting] = useState(false);
   const [safing, setSafing] = useState(false);
+  const [showHomeSafe, setShowHomeSafe] = useState(false);
   const [mapDataUrl, setMapDataUrl] = useState<string | null>(null);
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     MAPBOX_TOKEN ? "loading" : "failed"
@@ -403,54 +404,6 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         </span>
       </motion.div>
 
-      {/* Get home safe — kept outside the captured card (live links + status) */}
-      <div className="recap-safe">
-        <span className="recap-safe-title">
-          <FiHome /> Get home safe
-        </span>
-        <div className="recap-safe-rides">
-          <a
-            className="recap-ride"
-            href={uberHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => analytics.homeRide("uber")}
-          >
-            Uber
-          </a>
-          <a
-            className="recap-ride"
-            href={lyftHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => analytics.homeRide("lyft")}
-          >
-            Lyft
-          </a>
-        </div>
-        <button
-          className={`recap-safe-btn ${isHomeSafe ? "is-safe" : ""}`}
-          onClick={handleHomeSafe}
-          disabled={isHomeSafe || safing}
-        >
-          {isHomeSafe ? "✅ You're home safe" : "I'm home safe"}
-        </button>
-        {members.length > 1 && (
-          <div className="recap-safe-roster">
-            {members.map((m) => (
-              <span
-                key={m.uid}
-                className={`recap-safe-chip ${m.homeSafe ? "is-safe" : ""}`}
-              >
-                {m.homeSafe ? "✅" : "⏳"}{" "}
-                {m.displayName || "Friend"}
-                {m.isSelf ? " (you)" : ""}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
       <div className="recap-actions">
         <button
           className="btn btn--primary"
@@ -461,6 +414,12 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         </button>
         <button
           className="btn btn--secondary"
+          onClick={() => setShowHomeSafe(true)}
+        >
+          <FiHome /> Get home{isHomeSafe ? " ✅" : ""}
+        </button>
+        <button
+          className="btn btn--ghost"
           onClick={handleDownload}
           disabled={exporting || mapStatus === "loading"}
         >
@@ -470,6 +429,89 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
           <FiCheck /> Done
         </button>
       </div>
+
+      {/* Get-home-safe modal — keeps ride links + safe-status out of the
+          card/actions so the recap stays clean. */}
+      <AnimatePresence>
+        {showHomeSafe && (
+          <motion.div
+            className="modal-overlay"
+            variants={modalOverlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={() => setShowHomeSafe(false)}
+          >
+            <motion.div
+              className="modal-panel"
+              variants={modalPanel}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="home-safe-title"
+            >
+              <h2 className="modal-title" id="home-safe-title">
+                <FiHome /> Get home safe
+              </h2>
+              <p className="modal-subtitle">
+                Grab a ride from {rideName} and let everyone know you made it.
+              </p>
+
+              <div className="recap-safe">
+                <div className="recap-safe-rides">
+                  <a
+                    className="recap-ride"
+                    href={uberHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => analytics.homeRide("uber")}
+                  >
+                    Uber
+                  </a>
+                  <a
+                    className="recap-ride"
+                    href={lyftHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => analytics.homeRide("lyft")}
+                  >
+                    Lyft
+                  </a>
+                </div>
+                <button
+                  className={`recap-safe-btn ${isHomeSafe ? "is-safe" : ""}`}
+                  onClick={handleHomeSafe}
+                  disabled={isHomeSafe || safing}
+                >
+                  {isHomeSafe ? "✅ You're home safe" : "I'm home safe"}
+                </button>
+                {members.length > 1 && (
+                  <div className="recap-safe-roster">
+                    {members.map((m) => (
+                      <span
+                        key={m.uid}
+                        className={`recap-safe-chip ${m.homeSafe ? "is-safe" : ""}`}
+                      >
+                        {m.homeSafe ? "✅" : "⏳"} {m.displayName || "Friend"}
+                        {m.isSelf ? " (you)" : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => setShowHomeSafe(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
