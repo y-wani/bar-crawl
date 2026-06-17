@@ -41,4 +41,6 @@ export const analytics = {
   homeRide: (provider: "uber" | "lyft") =>
     safeTrack("home_ride", { provider }),
   markedHomeSafe: () => safeTrack("marked_home_safe"),
+  // Never-lose-the-squad
+  squadPing: (text: string) => safeTrack("squad_ping", { text }),
 };

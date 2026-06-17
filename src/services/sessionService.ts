@@ -66,6 +66,15 @@ export interface MemberPosition {
   at: Timestamp | Date;
 }
 
+/** A lightweight squad ping — the latest one wins (single shared field, no
+ *  message log). Covers both "regroup" nudges and quick status shout-outs. */
+export interface SquadPing {
+  by: string;
+  byName: string | null;
+  text: string;
+  at: Timestamp | Date;
+}
+
 export interface SessionMember {
   displayName: string | null;
   joinedAt: Timestamp | Date;
@@ -110,6 +119,8 @@ export interface CrawlSession {
   };
   /** Running accumulator fed by watchPosition deltas, flushed periodically */
   walkedMiles: number;
+  /** Latest squad ping (regroup nudge / quick shout-out); newest overwrites */
+  lastPing?: SquadPing;
   startedAt: Timestamp | Date;
   endedAt?: Timestamp | Date;
   /** Computed once when the session is finished */
@@ -285,6 +296,34 @@ export const updateMemberPosition = async (
     });
   } catch (error) {
     console.warn("⚠️ Failed to publish member position:", error);
+  }
+};
+
+/**
+ * Send a squad ping — a regroup nudge or quick status shout-out. Writes a
+ * single `lastPing` field (newest wins, no message log) so everyone's
+ * snapshot surfaces it. A member write, so no rule change is needed.
+ * Best-effort: a failure is surfaced to the caller for a toast.
+ */
+export const sendSquadPing = async (
+  sessionId: string,
+  uid: string,
+  displayName: string | null,
+  text: string
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
+      lastPing: {
+        by: uid,
+        byName: displayName,
+        text,
+        at: serverTimestamp(),
+      },
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("❌ Error sending squad ping:", error);
+    throw new Error("Couldn't send that ping. Please try again.");
   }
 };
 

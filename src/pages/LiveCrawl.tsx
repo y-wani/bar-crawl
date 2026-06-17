@@ -26,6 +26,8 @@ import {
   FiFastForward,
   FiCheckCircle,
   FiUserPlus,
+  FiUsers,
+  FiBell,
 } from "react-icons/fi";
 import { MapContainer } from "../components/MapContainer";
 import { CrawlRecap } from "../components/CrawlRecap";
@@ -50,12 +52,14 @@ import {
   updateWalkedMiles,
   finishSession,
   abandonSession,
+  sendSquadPing,
   type CrawlSession,
   type SessionStop,
   type CheckInMethod,
   type SessionStats,
 } from "../services/sessionService";
 import type { FriendPosition } from "../components/MapContainer";
+import { haversineMiles, walkingEtaMinutes, GEOFENCE_MILES } from "../utils/geo";
 import { analytics } from "../utils/analytics";
 import type { AppBat } from "./Home";
 import "../styles/LiveCrawl.css";
@@ -66,6 +70,18 @@ const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 const FRIEND_STALE_MS = 10 * 60 * 1000;
 /** Throttle for publishing the user's own position */
 const POSITION_PUBLISH_MS = 12000;
+/** How long an incoming squad-ping banner stays up before auto-dismissing */
+const PING_BANNER_MS = 6000;
+/** A member this far from the current stop (while someone else has arrived)
+ *  is flagged as lagging behind the squad. ~0.15 mi ≈ 240 m. */
+const LAG_MILES = 0.15;
+/** Preset squad pings — one tap, no typing on a night out. */
+const PING_PRESETS = [
+  "Wait up! 👋",
+  "Omw 🏃",
+  "Here already 🍻",
+  "Next round's on me 🍻",
+] as const;
 
 // Convert a Firestore Timestamp | Date to epoch ms (null while a
 // serverTimestamp() is pending in a latency-compensated snapshot).
@@ -125,6 +141,12 @@ const LiveCrawl: React.FC = () => {
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   const [showEndModal, setShowEndModal] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pinging, setPinging] = useState(false);
+  const [pingBanner, setPingBanner] = useState<CrawlSession["lastPing"] | null>(
+    null
+  );
+  // Baseline so we don't toast a ping that already existed on first load
+  const lastSeenPingAtRef = useRef<number | null>(null);
 
   // Walked-miles accumulator: seeded from the first snapshot, fed by GPS
   // deltas, flushed on a throttle + at check-in/finish
@@ -484,6 +506,101 @@ const LiveCrawl: React.FC = () => {
       }));
   }, [session, user]);
 
+  // Squad tracker: each member's live distance + walking ETA to the current
+  // stop, sorted closest-first. Pure client compute from the snapshot's
+  // published positions (my own live fix is fresher than the throttled one).
+  const squad = useMemo(() => {
+    if (!session) return [];
+    const now = Date.now();
+    const target = currentStop?.coordinates ?? null;
+    const rows = Object.entries(session.members ?? {}).map(([uid, m]) => {
+      const isSelf = uid === user?.uid;
+      const coords: [number, number] | null =
+        isSelf && tracking.coords
+          ? tracking.coords
+          : m.lastPosition
+            ? [m.lastPosition.lng, m.lastPosition.lat]
+            : null;
+      const fixAt =
+        isSelf && tracking.coords
+          ? now
+          : m.lastPosition
+            ? tsToMillis(m.lastPosition.at)
+            : null;
+      const stale =
+        coords === null || (fixAt !== null && now - fixAt > FRIEND_STALE_MS);
+      const miles =
+        coords && target && !stale ? haversineMiles(coords, target) : null;
+      return {
+        uid,
+        displayName: m.displayName,
+        isSelf,
+        isHost: uid === session.hostUid,
+        stale,
+        miles,
+        atStop: miles !== null && miles <= GEOFENCE_MILES,
+        eta: miles !== null ? walkingEtaMinutes(miles) : null,
+      };
+    });
+    rows.sort((a, b) => {
+      const am = a.miles ?? Infinity;
+      const bm = b.miles ?? Infinity;
+      return am - bm;
+    });
+    return rows;
+  }, [session, user, currentStop, tracking.coords]);
+
+  // Once anyone reaches the next stop, flag the stragglers so the group
+  // notices who to wait for.
+  const someoneArrived = useMemo(
+    () => squad.some((s) => s.atStop),
+    [squad]
+  );
+
+  // ----- Squad pings: surface a fresh ping from someone else -----
+  useEffect(() => {
+    const ping = session?.lastPing;
+    if (!ping) return;
+    const at = tsToMillis(ping.at);
+    if (at === null) return; // serverTimestamp() still pending in this snapshot
+    // First resolved ping we see is the baseline — don't replay history
+    if (lastSeenPingAtRef.current === null) {
+      lastSeenPingAtRef.current = at;
+      return;
+    }
+    if (at <= lastSeenPingAtRef.current) return;
+    lastSeenPingAtRef.current = at;
+    if (ping.by === user?.uid) return; // don't echo my own ping back to me
+    toast.success(`${ping.byName || "Someone"}: ${ping.text}`);
+    setPingBanner(ping);
+  }, [session?.lastPing, user]);
+
+  // Auto-dismiss the ping banner
+  useEffect(() => {
+    if (!pingBanner) return;
+    const t = setTimeout(() => setPingBanner(null), PING_BANNER_MS);
+    return () => clearTimeout(t);
+  }, [pingBanner]);
+
+  const handleSendPing = useCallback(
+    async (text: string) => {
+      if (!sessionId || !user || pinging) return;
+      setPinging(true);
+      try {
+        await sendSquadPing(sessionId, user.uid, myDisplayName, text);
+        analytics.squadPing(text);
+        toast.success("Ping sent to the squad 📣");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Couldn't send that ping"
+        );
+      } finally {
+        setPinging(false);
+      }
+    },
+    [sessionId, user, pinging, myDisplayName]
+  );
+
   const handleInvite = useCallback(async () => {
     if (!sessionId) return;
     const url = `${window.location.origin}/live?join=${sessionId}`;
@@ -581,6 +698,26 @@ const LiveCrawl: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={springPanel}
           >
+            {/* Incoming squad ping */}
+            <AnimatePresence>
+              {pingBanner && (
+                <motion.button
+                  type="button"
+                  className="live-ping-banner"
+                  initial={{ opacity: 0, y: -8, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: "auto" }}
+                  exit={{ opacity: 0, y: -8, height: 0 }}
+                  onClick={() => setPingBanner(null)}
+                >
+                  <FiBell />
+                  <span className="live-ping-banner-text">
+                    <strong>{pingBanner.byName || "Someone"}</strong>{" "}
+                    {pingBanner.text}
+                  </span>
+                </motion.button>
+              )}
+            </AnimatePresence>
+
             {/* Group presence: who's on the crawl + invite */}
             <div className="live-presence">
               <div className="live-presence-people">
@@ -667,6 +804,84 @@ const LiveCrawl: React.FC = () => {
                 </>
               )}
             </div>
+
+            {/* Squad tracker: where everyone is + quick pings */}
+            {isActive && members.length > 1 && (
+              <div className="live-squad">
+                <div className="live-squad-head">
+                  <span className="live-squad-title">
+                    <FiUsers /> Squad
+                  </span>
+                  <span className="live-squad-sub">
+                    {currentStop
+                      ? `Heading to ${currentStop.name}`
+                      : "Wrapping up"}
+                  </span>
+                </div>
+                <div className="live-squad-list">
+                  {squad.map((s) => {
+                    const lagging =
+                      someoneArrived &&
+                      !s.atStop &&
+                      s.miles !== null &&
+                      s.miles >= LAG_MILES;
+                    let status: string;
+                    if (s.stale) status = "location off";
+                    else if (!currentStop) status = "on the crawl";
+                    else if (s.atStop) status = "at the bar 🍻";
+                    else
+                      status = `~${s.eta} min · ${
+                        s.miles! < 0.1
+                          ? "<0.1"
+                          : s.miles!.toFixed(s.miles! < 10 ? 1 : 0)
+                      } mi`;
+                    return (
+                      <div
+                        key={s.uid}
+                        className={`live-squad-row ${
+                          lagging ? "is-lagging" : ""
+                        } ${s.atStop ? "is-here" : ""}`}
+                      >
+                        <span
+                          className={`live-avatar ${
+                            s.isSelf ? "is-self" : ""
+                          } ${s.isHost ? "is-host" : ""}`}
+                        >
+                          {initialOf(s.displayName)}
+                        </span>
+                        <span className="live-squad-name">
+                          {s.displayName || "Friend"}
+                          {s.isSelf ? " (you)" : ""}
+                        </span>
+                        <span
+                          className={`live-squad-status ${
+                            s.stale ? "is-stale" : ""
+                          }`}
+                        >
+                          {lagging && (
+                            <span className="live-squad-lag">lagging</span>
+                          )}
+                          {status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="live-ping-row">
+                  {PING_PRESETS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      className="live-ping-chip"
+                      onClick={() => handleSendPing(p)}
+                      disabled={pinging}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Stop timeline */}
             <motion.div

@@ -745,6 +745,158 @@
   gap: 6px;
 }
 
+/* ===== Squad tracker + pings ===== */
+.live-squad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3);
+  background: var(--glass-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.live-squad-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.live-squad-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+}
+.live-squad-sub {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-squad-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.live-squad-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+.live-squad-row .live-avatar {
+  margin-left: 0;
+  width: 26px;
+  height: 26px;
+}
+.live-squad-row.is-here {
+  background: rgba(46, 204, 113, 0.12);
+}
+.live-squad-row.is-lagging {
+  background: rgba(236, 178, 86, 0.1);
+  border-color: rgba(236, 178, 86, 0.35);
+}
+.live-squad-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-squad-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.live-squad-status.is-stale {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+.live-squad-lag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(236, 178, 86, 0.16);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.live-ping-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.live-ping-chip {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  background: var(--glass-2);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.1s ease;
+}
+.live-ping-chip:hover {
+  background: var(--glass-3, var(--glass-2));
+  border-color: var(--glass-border-strong);
+}
+.live-ping-chip:active {
+  transform: scale(0.96);
+}
+.live-ping-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Incoming ping banner */
+.live-ping-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: calc(100% - 2 * var(--space-4));
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--ink, #0b0a12);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(236, 178, 86, 0.3);
+}
+.live-ping-banner svg {
+  flex-shrink: 0;
+}
+.live-ping-banner-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== Live friend dots (Mapbox markers) ===== */
 .friend-marker {
   position: relative;
