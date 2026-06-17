@@ -292,7 +292,7 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-5);
 }
 
 .bars-section {
@@ -314,7 +314,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
 .section-subtitle {
@@ -451,7 +451,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-2) var(--space-5) var(--space-3);
   border-top: 1px solid var(--glass-border);
   flex-shrink: 0;
 }
@@ -472,10 +472,17 @@
 .route-actions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .route-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Start Crawl + Plan with friends share one compact row (was two stacked
+   full-width buttons, which ate the drag-list's vertical space). */
+.route-cta-row {
   display: flex;
   gap: var(--space-2);
 }
@@ -547,7 +554,7 @@
 
 /* Start Crawl — launches Live Crawl Mode; the night's loudest button */
 .btn-start-crawl {
-  width: 100%;
+  flex: 1.5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -559,7 +566,7 @@
   background: linear-gradient(135deg, var(--accent-bright), var(--accent));
   border: none;
   border-radius: var(--radius-pill);
-  padding: 0.8rem 1.2rem;
+  padding: 0.65rem 1rem;
   white-space: nowrap;
   transition:
     transform var(--duration-fast) var(--ease-out),
@@ -586,14 +593,13 @@
   cursor: not-allowed;
 }
 
-/* Secondary CTA under Start Crawl: gather friends to RSVP + vote first */
+/* Secondary CTA beside Start Crawl: gather friends to RSVP + vote first */
 .btn-plan-friends {
-  width: 100%;
+  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  margin-top: var(--space-2);
   font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -601,7 +607,7 @@
   background: var(--accent-soft);
   border: 1px solid rgba(236, 178, 86, 0.3);
   border-radius: var(--radius-pill);
-  padding: 0.7rem 1.2rem;
+  padding: 0.65rem 0.9rem;
   white-space: nowrap;
   transition:
     transform var(--duration-fast) var(--ease-out),
@@ -786,12 +792,14 @@
     gap: var(--space-2);
   }
 
-  .route-drawer.is-sheet .route-buttons {
+  .route-drawer.is-sheet .route-buttons,
+  .route-drawer.is-sheet .route-cta-row {
     display: contents;
   }
 
   .route-drawer.is-sheet .btn-save-crawl,
-  .route-drawer.is-sheet .btn-generate-final-route {
+  .route-drawer.is-sheet .btn-generate-final-route,
+  .route-drawer.is-sheet .btn-plan-friends {
     flex: 0 0 auto;
     font-size: 0;
     gap: 0;

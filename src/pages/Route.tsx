@@ -1013,6 +1013,7 @@ const Route: React.FC = () => {
                 </button>
               </div>
 
+              <div className="route-cta-row">
               <button
                 className="btn-start-crawl"
                 onClick={handleStartCrawl}
@@ -1064,6 +1065,7 @@ const Route: React.FC = () => {
                   </>
                 )}
               </button>
+              </div>
             </div>
           </div>
         </motion.div>
