@@ -11,18 +11,26 @@ budget.
 
 ## The fix: an auth-gated serverless proxy
 
-The billed calls now go through Vercel serverless functions in `/api`:
+The billed calls go through a single self-contained Vercel function,
+`POST /api/proxy`, which dispatches on a JSON `action`:
 
-| Endpoint              | Replaces (client) | Google API it proxies        |
-| --------------------- | ----------------- | ---------------------------- |
-| `POST /api/places/nearby` | `fetchNearbyBars`   | Places `searchNearby` (×4 fan-out) |
-| `POST /api/places/text`   | `searchPlaceByText` | Places `searchText`          |
-| `POST /api/ai/clean`      | `cleanBarListWithAI`| Gemini `generateContent`     |
+| `action`  | Replaces (client)   | Google API it proxies              |
+| --------- | ------------------- | ---------------------------------- |
+| `nearby`  | `fetchNearbyBars`   | Places `searchNearby` (×4 fan-out) |
+| `text`    | `searchPlaceByText` | Places `searchText`                |
+| `clean`   | `cleanBarListWithAI`| Gemini `generateContent`           |
 
 Each request must carry a valid Firebase ID token
-(`Authorization: Bearer <token>`); the proxy verifies it with `firebase-admin`
-before spending. The keys live only in **server** env vars and never reach the
-browser (verified: the keys no longer appear in `dist/`).
+(`Authorization: Bearer <token>`); the proxy verifies it with `jose` against
+Google's public JWKS before spending. Rate-limit counters and the cache use the
+Firestore REST API authenticated with a service-account access token. The keys
+live only in **server** env vars and never reach the browser (verified: the keys
+do not appear in `dist/`).
+
+> **Why one file?** Vercel's ESM serverless tracer does not deploy shared local
+> modules (`api/_lib/*` / `lib/*` resolve to "Cannot find module" at runtime),
+> so all logic is inlined into `api/proxy.ts` with `jose` as the only import.
+> Keep new server logic in that file — don't reintroduce shared local imports.
 
 ### Shared cache is server-owned
 
