@@ -56,6 +56,7 @@ import {
   type SessionStats,
 } from "../services/sessionService";
 import type { FriendPosition } from "../components/MapContainer";
+import { analytics } from "../utils/analytics";
 import type { AppBat } from "./Home";
 import "../styles/LiveCrawl.css";
 
@@ -141,6 +142,7 @@ const LiveCrawl: React.FC = () => {
         await joinSession(joinId, user.uid, myDisplayName);
         if (cancelled) return;
         setSessionId(joinId);
+        analytics.crawlJoined();
         toast.success("You're in! 🎉 Welcome to the crawl");
       } catch (error) {
         if (cancelled) return;
@@ -386,6 +388,7 @@ const LiveCrawl: React.FC = () => {
     setBusy(true);
     try {
       await finishSession(sessionId, computeStats());
+      analytics.crawlCompleted(stopsHit, orderedStops.length);
       setShowEndModal(false);
       // Snapshot flips status → recap renders
     } catch (error) {
@@ -393,7 +396,7 @@ const LiveCrawl: React.FC = () => {
     } finally {
       setBusy(false);
     }
-  }, [sessionId, busy, computeStats]);
+  }, [sessionId, busy, computeStats, stopsHit, orderedStops]);
 
   const handleAbandon = useCallback(async () => {
     if (!sessionId || busy) return;
@@ -495,6 +498,7 @@ const LiveCrawl: React.FC = () => {
         await navigator.clipboard.writeText(url);
         toast.success("Invite link copied — share it with your friends!");
       }
+      analytics.inviteSent();
     } catch {
       // Share sheet dismissed or clipboard blocked — non-fatal
     }

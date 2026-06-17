@@ -8,9 +8,11 @@ import {
   onAuthStateChanged,
   updateProfile as updateFirebaseProfile,
   sendPasswordResetEmail,
+  getAdditionalUserInfo,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
+import { analytics } from '../utils/analytics';
 import type { AuthContextType, AuthProviderProps, User } from './types';
 
 // Create the auth context
@@ -24,6 +26,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signup = async (email: string, password: string, displayName?: string): Promise<void> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      analytics.signUp('email');
 
       // Update profile with display name if provided
       if (displayName && userCredential.user) {
@@ -53,7 +56,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      // Count only first-time Google users as a sign-up
+      if (getAdditionalUserInfo(result)?.isNewUser) {
+        analytics.signUp('google');
+      }
     } catch (error) {
       console.error('Google sign-in error:', error);
       throw error;

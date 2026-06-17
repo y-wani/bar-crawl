@@ -4,12 +4,13 @@
 // is captured with html-to-image, so it must stay fully opaque (no
 // backdrop-filter / glass translucency / external images inside it).
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toPng } from "html-to-image";
 import party from "party-js";
 import { FiShare2, FiDownload, FiCheck } from "react-icons/fi";
 import { toast } from "./Toaster";
+import { analytics } from "../utils/analytics";
 import { springPanel } from "./motion/variants";
 import type { CrawlSession } from "../services/sessionService";
 import "../styles/LiveCrawl.css";
@@ -40,6 +41,84 @@ const formatDuration = (minutes: number): string => {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+// Fetch the real walking path through the waypoints as an encoded polyline
+// (follows the streets — curved, not straight lines between bars). `simplified`
+// keeps the polyline short enough to fit in the static-image URL.
+const fetchRoutePolyline = async (
+  waypoints: [number, number][]
+): Promise<string | null> => {
+  if (!MAPBOX_TOKEN || waypoints.length < 2) return null;
+  const coordStr = waypoints.map((c) => `${c[0]},${c[1]}`).join(";");
+  const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordStr}?geometries=polyline&overview=simplified&access_token=${MAPBOX_TOKEN}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.routes?.[0]?.geometry as string) ?? null;
+  } catch {
+    return null;
+  }
+};
+
+// Build a Mapbox Static Images URL. The route is drawn as several stacked
+// strokes of decreasing width/increasing brightness — a faux neon glow, since
+// static images can't do CSS glow — over the dark style, with numbered amber
+// pins. Falls back to straight lines if the walking path couldn't be fetched.
+// Fetched as a data URL so html-to-image can embed it (no external image refs).
+const buildRouteMapUrl = (
+  polyline: string | null,
+  straightCoords: [number, number][],
+  stops: { coordinates: [number, number] }[]
+): string | null => {
+  if (!MAPBOX_TOKEN || stops.length === 0) return null;
+  const overlays: string[] = [];
+
+  if (polyline) {
+    const enc = encodeURIComponent(polyline);
+    // outer halo → mid glow → bright core (drawn bottom-to-top)
+    overlays.push(`path-13+ecb256-0.12(${enc})`);
+    overlays.push(`path-8+f0bf6a-0.3(${enc})`);
+    overlays.push(`path-4+ffd98a-0.6(${enc})`);
+    overlays.push(`path-2+fff4dc-0.95(${enc})`);
+  } else if (straightCoords.length >= 2) {
+    const fc = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {
+            stroke: "#ffd98a",
+            "stroke-width": 4,
+            "stroke-opacity": 0.9,
+          },
+          geometry: { type: "LineString", coordinates: straightCoords },
+        },
+      ],
+    };
+    overlays.push(`geojson(${encodeURIComponent(JSON.stringify(fc))})`);
+  }
+
+  // Mapbox pin labels support 0–99; beyond that the pin renders unlabeled.
+  stops.forEach((s, i) => {
+    overlays.push(
+      `pin-s-${i + 1}+ecb256(${s.coordinates[0]},${s.coordinates[1]})`
+    );
+  });
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${overlays.join(
+    ","
+  )}/auto/600x340@2x?padding=50&access_token=${MAPBOX_TOKEN}`;
+};
+
 export const CrawlRecap: React.FC<CrawlRecapProps> = ({
   session,
   onDone,
@@ -47,6 +126,7 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
   const cardRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [mapDataUrl, setMapDataUrl] = useState<string | null>(null);
 
   const stats = session.stats ?? {
     stopsHit: 0,
@@ -55,13 +135,49 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
     durationMin: 0,
   };
 
-  const orderedStops = [...session.stops].sort((a, b) => a.order - b.order);
+  const orderedStops = useMemo(
+    () => [...session.stops].sort((a, b) => a.order - b.order),
+    [session.stops]
+  );
 
   useEffect(() => {
     if (overlayRef.current) {
       party.confetti(overlayRef.current, { count: 60, spread: 30 });
     }
   }, []);
+
+  // Render the route as a static map and inline it as a data URL (so the
+  // html-to-image capture includes it). Failure is silent — the card still
+  // renders without the map.
+  useEffect(() => {
+    let cancelled = false;
+    const routeCoords: [number, number][] = [
+      session.route.startCoordinates,
+      ...orderedStops.map((s) => s.coordinates),
+    ];
+    const end = session.route.endCoordinates;
+    const last = routeCoords[routeCoords.length - 1];
+    if (end && (end[0] !== last[0] || end[1] !== last[1])) {
+      routeCoords.push(end);
+    }
+    (async () => {
+      try {
+        const polyline = await fetchRoutePolyline(routeCoords);
+        if (cancelled) return;
+        const url = buildRouteMapUrl(polyline, routeCoords, orderedStops);
+        if (!url) return;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const dataUrl = await blobToDataUrl(await res.blob());
+        if (!cancelled) setMapDataUrl(dataUrl);
+      } catch {
+        /* no map — recap still works */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session.route, orderedStops]);
 
   const renderCardPng = async (): Promise<string | null> => {
     if (!cardRef.current) return null;
@@ -110,6 +226,7 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         downloadPng(dataUrl);
         toast.success("Recap saved — share it anywhere!");
       }
+      analytics.recapShared("share");
     } catch (error) {
       if ((error as Error)?.name !== "AbortError") {
         console.error("Share failed:", error);
@@ -129,6 +246,7 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         return;
       }
       downloadPng(dataUrl);
+      analytics.recapShared("download");
       toast.success("Recap downloaded");
     } finally {
       setExporting(false);
@@ -168,6 +286,12 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
           </h2>
           <span className="recap-date">{crawlDate}</span>
         </div>
+
+        {mapDataUrl && (
+          <div className="recap-map">
+            <img src={mapDataUrl} alt="Your crawl route" />
+          </div>
+        )}
 
         <div className="recap-stats">
           <div className="recap-stat">

@@ -37,6 +37,7 @@ import {
   createSession,
   getActiveSessionForUser,
 } from "../services/sessionService";
+import { analytics } from "../utils/analytics";
 
 // Mapbox API constants and types
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -688,6 +689,7 @@ const Route: React.FC = () => {
           plannedDurationMin: estimatedDurationMin,
         },
       });
+      analytics.crawlStarted(draggableBars.length);
       navigate("/live", { state: { sessionId } });
     } catch (error) {
       toast.error(

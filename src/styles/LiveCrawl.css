@@ -408,6 +408,20 @@
   color: #9b97a8;
 }
 
+.recap-map {
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(236, 178, 86, 0.28);
+  background: #0b0a12;
+  line-height: 0;
+}
+.recap-map img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .recap-stats {
   display: flex;
   justify-content: space-between;

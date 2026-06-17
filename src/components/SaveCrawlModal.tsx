@@ -12,6 +12,7 @@ import {
   type SavedBarCrawl,
 } from "../services/crawlService";
 import { useAuth } from "../context/useAuth";
+import { analytics } from "../utils/analytics";
 import "../styles/SaveCrawlModal.css";
 
 // Present when re-saving a loaded crawl: updates it instead of duplicating
@@ -212,6 +213,7 @@ export const SaveCrawlModal: React.FC<SaveCrawlModalProps> = ({
         crawlId = existingCrawl.id;
       } else {
         crawlId = await saveCrawl(crawlData);
+        analytics.crawlCreated(crawlData.bars?.length ?? 0);
       }
 
       onSaveSuccess(crawlId);

@@ -7,11 +7,13 @@ import { useAuth } from '../context/useAuth';
 import SwirlBackground from '../components/SwirlBackground';
 import PageTransition from '../components/motion/PageTransition';
 import { springPanel } from '../components/motion/variants';
+import { useInviteIntent } from '../hooks/useInviteIntent';
 import '../styles/Auth.css';
 import { FcGoogle } from 'react-icons/fc';
 
 const SignUp: React.FC = () => {
   const { signup, signinWithGoogle } = useAuth();
+  const { isInvite, from } = useInviteIntent();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -149,6 +151,13 @@ const SignUp: React.FC = () => {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={springPanel}
         >
+        {isInvite && (
+          <div className="auth-invite-banner">
+            🍻 A friend invited you to their live crawl — create an account to
+            join and see each other on the map.
+          </div>
+        )}
+
         <div className="auth-header">
           <h1 className="auth-title">Create Account</h1>
           <p className="auth-subtitle">Join the ultimate bar crawl experience.</p>
@@ -275,7 +284,7 @@ const SignUp: React.FC = () => {
         <div className="auth-footer">
           <p>
             Already have an account?{' '}
-            <Link to="/signin" className="auth-link">
+            <Link to="/signin" state={from ? { from } : undefined} className="auth-link">
               Sign In
             </Link>
           </p>

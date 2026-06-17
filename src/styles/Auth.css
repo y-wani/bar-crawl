@@ -237,6 +237,20 @@
   font-weight: 700;
 }
 
+/* "You've been invited" banner shown on auth pages when arriving via a crawl
+   join link (see useInviteIntent). */
+.auth-invite-banner {
+  background: var(--accent-soft);
+  border: 1px solid rgba(236, 178, 86, 0.35);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-5);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-primary);
+  text-align: center;
+}
+
 /* Text button styled like a link (resets the form to try another email) */
 .auth-link-button {
   align-self: center;
