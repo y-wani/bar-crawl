@@ -15,6 +15,24 @@
   overflow: hidden;
 }
 
+/* Brand wordmark — the app name "BarHop", shown so it matches the OAuth
+   consent screen and is visible to home-page branding verification. */
+.landing-brand {
+  position: absolute;
+  top: max(1.75rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #ecb256;
+  text-shadow: 0 0 18px rgba(236, 178, 86, 0.35);
+  z-index: 2;
+  animation: fadeIn 1.2s ease-out;
+}
+
 .landing-content {
   animation: fadeIn 1.5s ease-out;
   max-width: 800px;

@@ -36,7 +36,13 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static fallback so the app name "BarHop" is present in the raw HTML
+           for crawlers / branding verification that don't execute JS. React
+           replaces this on mount. -->
+      <noscript>BarHop — Plan Your Perfect Night Out</noscript>
+      <h1 style="font-family: 'Rajdhani', sans-serif; color: #ecb256; text-align: center; margin-top: 2rem;">BarHop</h1>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

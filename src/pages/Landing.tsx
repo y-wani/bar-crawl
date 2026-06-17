@@ -13,6 +13,7 @@ const Landing: React.FC = () => {
     <>
       <SwirlBackground />
       <div className="landing-container">
+        <div className="landing-brand">BarHop</div>
         <div className="landing-content">
           <h1 className="landing-title">Your Night, Your Route.</h1>
           <p className="landing-subtitle">
