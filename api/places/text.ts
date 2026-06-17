@@ -12,8 +12,8 @@ import {
   enforceRateLimit,
   buckets,
   readJson,
-} from "../_lib/guard";
-import { searchPlaceByText } from "../_lib/places";
+} from "../../lib/guard";
+import { searchPlaceByText } from "../../lib/places";
 
 interface Body {
   query?: string;

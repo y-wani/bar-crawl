@@ -1,6 +1,6 @@
 // Diagnostic: does importing our _lib chain (guard -> auth + firestore) crash
 // at load? Only references requirePost; no env or network needed.
-import { requirePost } from "./_lib/guard";
+import { requirePost } from "../lib/guard";
 
 export default function handler(
   _req: unknown,

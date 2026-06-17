@@ -12,7 +12,7 @@ import {
   enforceRateLimit,
   buckets,
   readJson,
-} from "../_lib/guard";
+} from "../../lib/guard";
 
 const MODEL = "gemini-2.5-flash";
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;

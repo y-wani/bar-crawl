@@ -12,9 +12,9 @@ import {
   enforceRateLimit,
   buckets,
   readJson,
-} from "../_lib/guard";
-import { fetchNearbyBars } from "../_lib/places";
-import { readBarCache, writeBarCache } from "../_lib/cache";
+} from "../../lib/guard";
+import { fetchNearbyBars } from "../../lib/places";
+import { readBarCache, writeBarCache } from "../../lib/cache";
 
 interface Body {
   centerLat?: number;
