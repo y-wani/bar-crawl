@@ -21,7 +21,12 @@ import {
   FaMapMarkerAlt,
   FaFlagCheckered,
 } from "react-icons/fa";
-import { FiClock, FiFastForward, FiCheckCircle } from "react-icons/fi";
+import {
+  FiClock,
+  FiFastForward,
+  FiCheckCircle,
+  FiUserPlus,
+} from "react-icons/fi";
 import { MapContainer } from "../components/MapContainer";
 import { CrawlRecap } from "../components/CrawlRecap";
 import PageTransition from "../components/motion/PageTransition";
@@ -38,6 +43,8 @@ import { toast } from "../components/Toaster";
 import {
   getActiveSessionForUser,
   subscribeToSession,
+  joinSession,
+  updateMemberPosition,
   checkInStop,
   skipStop,
   updateWalkedMiles,
@@ -48,10 +55,29 @@ import {
   type CheckInMethod,
   type SessionStats,
 } from "../services/sessionService";
+import type { FriendPosition } from "../components/MapContainer";
 import type { AppBat } from "./Home";
 import "../styles/LiveCrawl.css";
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+/** Friend dots older than this are treated as stale and hidden */
+const FRIEND_STALE_MS = 10 * 60 * 1000;
+/** Throttle for publishing the user's own position */
+const POSITION_PUBLISH_MS = 12000;
+
+// Convert a Firestore Timestamp | Date to epoch ms (null while a
+// serverTimestamp() is pending in a latency-compensated snapshot).
+const tsToMillis = (at: unknown): number | null => {
+  if (!at) return null;
+  if (at instanceof Date) return at.getTime();
+  const toDate = (at as { toDate?: () => Date }).toDate;
+  return typeof toDate === "function" ? toDate.call(at).getTime() : null;
+};
+
+// First initial for a friend avatar.
+const initialOf = (name: string | null): string =>
+  (name?.trim()?.[0] ?? "?").toUpperCase();
 
 // Format a Firestore Timestamp | Date check-in time as e.g. "9:42 PM".
 // serverTimestamp() is briefly null in latency-compensated snapshots.
@@ -80,6 +106,19 @@ const LiveCrawl: React.FC = () => {
   );
   const [session, setSession] = useState<CrawlSession | null>(null);
   const [hydrating, setHydrating] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [joinHandled, setJoinHandled] = useState(false);
+
+  // Friend's "join my crawl" link → /live?join=<sessionId>
+  const joinId = useMemo(
+    () => new URLSearchParams(location.search).get("join"),
+    [location.search]
+  );
+
+  const myDisplayName = useMemo(
+    () => user?.displayName ?? user?.email?.split("@")[0] ?? null,
+    [user]
+  );
   const [routeGeometry, setRouteGeometry] =
     useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
@@ -92,9 +131,39 @@ const LiveCrawl: React.FC = () => {
   const heroCardRef = useRef<HTMLDivElement | null>(null);
   const deniedToastShown = useRef(false);
 
-  // ----- Hydrate: state sessionId → else the user's active session -----
+  // ----- Join: a shared ?join=<id> link adds the caller as a member -----
   useEffect(() => {
-    if (sessionId || !user) return;
+    if (!joinId || !user || joinHandled) return;
+    let cancelled = false;
+    setJoining(true);
+    (async () => {
+      try {
+        await joinSession(joinId, user.uid, myDisplayName);
+        if (cancelled) return;
+        setSessionId(joinId);
+        toast.success("You're in! 🎉 Welcome to the crawl");
+      } catch (error) {
+        if (cancelled) return;
+        toast.error(
+          error instanceof Error ? error.message : "Couldn't join the crawl"
+        );
+        navigate("/home");
+      } finally {
+        if (!cancelled) {
+          setJoinHandled(true);
+          setJoining(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [joinId, user, joinHandled, myDisplayName, navigate]);
+
+  // ----- Hydrate: state sessionId → else the user's active session -----
+  // Skip while a join is pending (the join effect sets the sessionId).
+  useEffect(() => {
+    if (sessionId || !user || joinId) return;
     let cancelled = false;
     (async () => {
       const active = await getActiveSessionForUser(user.uid);
@@ -109,7 +178,7 @@ const LiveCrawl: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, user, navigate]);
+  }, [sessionId, user, joinId, navigate]);
 
   // ----- Subscribe: Firestore snapshot is the single source of truth -----
   useEffect(() => {
@@ -246,7 +315,8 @@ const LiveCrawl: React.FC = () => {
           sessionId,
           currentStop.barId,
           method,
-          nextIndexAfter(currentStop.barId)
+          nextIndexAfter(currentStop.barId),
+          user ? { uid: user.uid, displayName: myDisplayName } : undefined
         );
         flushWalkedMiles();
         toast.success(`Checked in at ${currentStop.name}! 🍻`);
@@ -261,7 +331,16 @@ const LiveCrawl: React.FC = () => {
         setBusy(false);
       }
     },
-    [session, sessionId, currentStop, busy, nextIndexAfter, flushWalkedMiles]
+    [
+      session,
+      sessionId,
+      currentStop,
+      busy,
+      nextIndexAfter,
+      flushWalkedMiles,
+      user,
+      myDisplayName,
+    ]
   );
 
   const handleSkip = useCallback(async () => {
@@ -271,7 +350,8 @@ const LiveCrawl: React.FC = () => {
       await skipStop(
         sessionId,
         currentStop.barId,
-        nextIndexAfter(currentStop.barId)
+        nextIndexAfter(currentStop.barId),
+        user ? { uid: user.uid, displayName: myDisplayName } : undefined
       );
       toast.success(`Skipped ${currentStop.name}`);
     } catch (error) {
@@ -279,7 +359,7 @@ const LiveCrawl: React.FC = () => {
     } finally {
       setBusy(false);
     }
-  }, [session, sessionId, currentStop, busy, nextIndexAfter]);
+  }, [session, sessionId, currentStop, busy, nextIndexAfter, user, myDisplayName]);
 
   const computeStats = useCallback((): SessionStats => {
     const total = orderedStops.length;
@@ -355,13 +435,78 @@ const LiveCrawl: React.FC = () => {
     return () => clearInterval(interval);
   }, [isActive, flushWalkedMiles]);
 
+  // ----- Group presence: publish my position, render friends' dots -----
+  const lastPositionPublishRef = useRef(0);
+  useEffect(() => {
+    if (!isActive || !sessionId || !user || !tracking.coords) return;
+    const now = Date.now();
+    if (now - lastPositionPublishRef.current < POSITION_PUBLISH_MS) return;
+    lastPositionPublishRef.current = now;
+    updateMemberPosition(
+      sessionId,
+      user.uid,
+      tracking.coords[0],
+      tracking.coords[1]
+    );
+  }, [tracking.coords, isActive, sessionId, user]);
+
+  // Members of this crawl (host first, me flagged) for the presence row
+  const members = useMemo(() => {
+    if (!session) return [];
+    return Object.entries(session.members ?? {})
+      .map(([uid, m]) => ({
+        uid,
+        displayName: m.displayName,
+        isHost: uid === session.hostUid,
+        isSelf: uid === user?.uid,
+      }))
+      .sort((a, b) => (a.isHost ? -1 : 0) - (b.isHost ? -1 : 0));
+  }, [session, user]);
+
+  // Friends' live dots (exclude me + stale fixes)
+  const friendPositions: FriendPosition[] = useMemo(() => {
+    if (!session || !user) return [];
+    const now = Date.now();
+    return Object.entries(session.members ?? {})
+      .filter(([uid, m]) => {
+        if (uid === user.uid || !m.lastPosition) return false;
+        const at = tsToMillis(m.lastPosition.at);
+        return at === null || now - at < FRIEND_STALE_MS;
+      })
+      .map(([uid, m]) => ({
+        uid,
+        displayName: m.displayName,
+        lng: m.lastPosition!.lng,
+        lat: m.lastPosition!.lat,
+      }));
+  }, [session, user]);
+
+  const handleInvite = useCallback(async () => {
+    if (!sessionId) return;
+    const url = `${window.location.origin}/live?join=${sessionId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Join my BarHop crawl",
+          text: "Come crawl with me — tap to join and share your live location:",
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Invite link copied — share it with your friends!");
+      }
+    } catch {
+      // Share sheet dismissed or clipboard blocked — non-fatal
+    }
+  }, [sessionId]);
+
   // ----- Render -----
   if (hydrating || !session) {
     return (
       <PageTransition>
         <div className="live-page live-page--loading">
           <div className="live-loading-spinner" />
-          <p>Finding your crawl…</p>
+          <p>{joining ? "Joining the crawl…" : "Finding your crawl…"}</p>
         </div>
       </PageTransition>
     );
@@ -422,6 +567,7 @@ const LiveCrawl: React.FC = () => {
               startCoordinates={session.route.startCoordinates}
               endCoordinates={session.route.endCoordinates}
               visitedBarIds={visitedBarIds}
+              friendPositions={friendPositions}
             />
           </div>
 
@@ -431,6 +577,47 @@ const LiveCrawl: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={springPanel}
           >
+            {/* Group presence: who's on the crawl + invite */}
+            <div className="live-presence">
+              <div className="live-presence-people">
+                <div className="live-avatar-stack">
+                  {members.slice(0, 5).map((m) => (
+                    <span
+                      key={m.uid}
+                      className={`live-avatar ${m.isSelf ? "is-self" : ""} ${
+                        m.isHost ? "is-host" : ""
+                      }`}
+                      title={
+                        (m.displayName || "Friend") +
+                        (m.isHost ? " (host)" : "") +
+                        (m.isSelf ? " — you" : "")
+                      }
+                    >
+                      {initialOf(m.displayName)}
+                    </span>
+                  ))}
+                  {members.length > 5 && (
+                    <span className="live-avatar is-more">
+                      +{members.length - 5}
+                    </span>
+                  )}
+                </div>
+                <span className="live-presence-label">
+                  {members.length > 1
+                    ? `${members.length} on this crawl`
+                    : "Just you so far"}
+                </span>
+              </div>
+              {isActive && (
+                <button
+                  className="btn btn--ghost btn--sm live-invite-btn"
+                  onClick={handleInvite}
+                >
+                  <FiUserPlus /> Invite
+                </button>
+              )}
+            </div>
+
             {/* Hero card: next stop or finish CTA */}
             <div className="live-hero-card" ref={heroCardRef}>
               {allResolved ? (
@@ -523,6 +710,9 @@ const LiveCrawl: React.FC = () => {
                       {isDone && (
                         <span className="live-stop-time">
                           {formatCheckInTime(checkIn!.at) || "just now"}
+                          {members.length > 1 && checkIn!.checkedInByName
+                            ? ` · ${checkIn!.checkedInByName}`
+                            : ""}
                         </span>
                       )}
                       {isSkipped && (

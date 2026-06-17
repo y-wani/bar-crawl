@@ -70,6 +70,15 @@ interface MapContainerProps {
   isLoadingBars?: boolean;
   /** Checked-in stop ids (Live Crawl) — rendered as green stop circles */
   visitedBarIds?: Set<string>;
+  /** Live friend locations (group Live Crawl) — rendered as labeled dots */
+  friendPositions?: FriendPosition[];
+}
+
+export interface FriendPosition {
+  uid: string;
+  displayName: string | null;
+  lng: number;
+  lat: number;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = ({
@@ -87,9 +96,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   endCoordinates,
   isLoadingBars = false,
   visitedBarIds,
+  friendPositions,
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  // Live friend dots, keyed by uid so we move/remove markers incrementally
+  const friendMarkers = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const hoveredStateId = useRef<string | null>(null);
   const isInitialLoad = useRef(true);
@@ -380,6 +392,50 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       features: buildBarFeatures(bars, selectedBarIds, visitedBarIds),
     });
   }, [bars, selectedBarIds, visitedBarIds, mapReady]);
+
+  // 4b. Sync live friend dots — incrementally move/add/remove HTML markers
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !mapReady) return;
+
+    const positions = friendPositions ?? [];
+    const seen = new Set<string>();
+
+    positions.forEach((friend) => {
+      seen.add(friend.uid);
+      const lngLat: [number, number] = [friend.lng, friend.lat];
+      const existing = friendMarkers.current.get(friend.uid);
+      if (existing) {
+        existing.setLngLat(lngLat);
+        const label = existing
+          .getElement()
+          .querySelector(".friend-marker-label");
+        if (label) label.textContent = friend.displayName || "Friend";
+        return;
+      }
+
+      const el = document.createElement("div");
+      el.className = "friend-marker";
+      el.innerHTML = `
+        <span class="friend-marker-pulse"></span>
+        <span class="friend-marker-dot"></span>
+        <span class="friend-marker-label">${
+          friend.displayName || "Friend"
+        }</span>`;
+      const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+        .setLngLat(lngLat)
+        .addTo(m);
+      friendMarkers.current.set(friend.uid, marker);
+    });
+
+    // Remove markers for members who are no longer present
+    friendMarkers.current.forEach((marker, uid) => {
+      if (!seen.has(uid)) {
+        marker.remove();
+        friendMarkers.current.delete(uid);
+      }
+    });
+  }, [friendPositions, mapReady]);
 
   // 5. Sync hover feature-state — only touch the two affected features
   useEffect(() => {

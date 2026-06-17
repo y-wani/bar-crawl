@@ -27,6 +27,7 @@ import {
   query,
   where,
   limit,
+  arrayUnion,
   serverTimestamp,
   type Timestamp,
   type Unsubscribe,
@@ -54,12 +55,22 @@ export interface StopCheckIn {
   method: CheckInMethod;
   /** Skips are recorded as check-ins with skipped: true */
   skipped: boolean;
+  /** Group mode: which member moved the group to/past this stop */
+  checkedInBy?: string;
+  checkedInByName?: string | null;
+}
+
+export interface MemberPosition {
+  lng: number;
+  lat: number;
+  at: Timestamp | Date;
 }
 
 export interface SessionMember {
   displayName: string | null;
   joinedAt: Timestamp | Date;
-  // Phase 2 (group live mode): lastPosition?: { lng; lat; at }
+  /** Group live mode: last published GPS fix, for friend dots on the map */
+  lastPosition?: MemberPosition;
 }
 
 export interface SessionStats {
@@ -186,6 +197,65 @@ export const getActiveSessionForUser = async (
 };
 
 /**
+ * Join an existing crawl via a shared link. Adds the caller to the
+ * members map + memberUids array. This is a *blind* write on purpose: a
+ * non-member can't read the session first (the read rule is member-gated),
+ * so we let the security rule be the gatekeeper. The matching rule allows a
+ * non-member to add only *themselves* to an active session and nothing else
+ * (host/stops/status/checkIns stay pinned). It's idempotent — an existing
+ * member's write passes via the member branch, and arrayUnion is a no-op.
+ */
+export const joinSession = async (
+  sessionId: string,
+  uid: string,
+  displayName: string | null
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
+      memberUids: arrayUnion(uid),
+      [`members.${uid}`]: {
+        displayName,
+        joinedAt: serverTimestamp(),
+      },
+      updatedAt: serverTimestamp(),
+    });
+    debug("🤝 Joined session:", sessionId, uid);
+  } catch (error) {
+    console.error("❌ Error joining session:", error);
+    if (
+      error instanceof FirebaseError &&
+      error.code === "permission-denied"
+    ) {
+      throw new Error("That crawl link is no longer valid or has ended.");
+    }
+    throw new Error("Couldn't join the crawl. Please try again.");
+  }
+};
+
+/**
+ * Publish the caller's latest GPS fix so other members can see their dot.
+ * Best-effort (called on a throttle) — a failure is non-fatal.
+ */
+export const updateMemberPosition = async (
+  sessionId: string,
+  uid: string,
+  lng: number,
+  lat: number
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
+      [`members.${uid}.lastPosition`]: {
+        lng,
+        lat,
+        at: serverTimestamp(),
+      },
+    });
+  } catch (error) {
+    console.warn("⚠️ Failed to publish member position:", error);
+  }
+};
+
+/**
  * Realtime subscription to a session doc. Group phases rely on this;
  * for solo it makes refresh/resume free (state always from Firestore).
  */
@@ -218,7 +288,8 @@ export const checkInStop = async (
   sessionId: string,
   barId: string,
   method: CheckInMethod,
-  nextStopIndex: number
+  nextStopIndex: number,
+  actor?: { uid: string; displayName: string | null }
 ): Promise<void> => {
   try {
     await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
@@ -227,6 +298,8 @@ export const checkInStop = async (
         at: serverTimestamp(),
         method,
         skipped: false,
+        checkedInBy: actor?.uid ?? null,
+        checkedInByName: actor?.displayName ?? null,
       },
       currentStopIndex: nextStopIndex,
       updatedAt: serverTimestamp(),
@@ -244,7 +317,8 @@ export const checkInStop = async (
 export const skipStop = async (
   sessionId: string,
   barId: string,
-  nextStopIndex: number
+  nextStopIndex: number,
+  actor?: { uid: string; displayName: string | null }
 ): Promise<void> => {
   try {
     await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
@@ -253,6 +327,8 @@ export const skipStop = async (
         at: serverTimestamp(),
         method: "manual" as CheckInMethod,
         skipped: true,
+        checkedInBy: actor?.uid ?? null,
+        checkedInByName: actor?.displayName ?? null,
       },
       currentStopIndex: nextStopIndex,
       updatedAt: serverTimestamp(),

@@ -45,11 +45,36 @@ service cloud.firestore {
       // hostUid is also allowed so the "find my active session" query
       // (where hostUid == uid) passes Firestore's query-safety analysis —
       // the host is always a member, so this doesn't widen access.
-      allow read, update: if request.auth != null
+      allow read: if request.auth != null
         && (request.auth.uid in resource.data.memberUids
           || resource.data.hostUid == request.auth.uid);
+      // Members (and the host) may update the session freely. A NON-member
+      // who holds the share link may also update, but ONLY to add themselves
+      // as a member (self-join) — the join branch pins host/stops/status so
+      // a stranger can't tamper with the crawl in the same write.
+      allow update: if request.auth != null
+        && (request.auth.uid in resource.data.memberUids
+          || resource.data.hostUid == request.auth.uid
+          || isSelfJoin());
       allow delete: if request.auth != null
         && resource.data.hostUid == request.auth.uid;
+    }
+
+    // A self-join adds exactly the caller (and nothing else of substance):
+    // the session is active, memberUids grows by one to include the caller,
+    // and the immutable crawl fields are unchanged.
+    function isSelfJoin() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return before.status == 'active'
+        && !(request.auth.uid in before.memberUids)
+        && request.auth.uid in after.memberUids
+        && after.memberUids.hasAll(before.memberUids)
+        && after.memberUids.size() == before.memberUids.size() + 1
+        && after.hostUid == before.hostUid
+        && after.stops == before.stops
+        && after.status == before.status
+        && after.checkIns == before.checkIns;
     }
   }
 }
