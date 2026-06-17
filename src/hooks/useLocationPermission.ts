@@ -33,7 +33,7 @@ export const useLocationPermission = () => {
       try {
         const permission = await navigator.permissions.query({ name: "geolocation" as PermissionName });
         return permission.state as "granted" | "denied" | "prompt";
-      } catch (error) {
+      } catch {
         console.warn("Permissions API not supported, falling back to manual check");
       }
     }
@@ -124,58 +124,71 @@ export const useLocationPermission = () => {
     }
   }, [isGeolocationSupported]);
 
-  // Initialize location state from localStorage and check permissions
+  // Initialize: the browser's LIVE permission state is authoritative. A stale
+  // stored "denied"/skip flag must never strand a user whose browser actually
+  // granted location (that bug left the app stuck on the default center until
+  // localStorage was cleared). When granted, seed instantly from the cached
+  // coords (if any) then refresh to the *current* position, so every reload
+  // re-centers on where the user actually is now.
   useEffect(() => {
+    let cancelled = false;
     const initializeLocation = async () => {
-      // Check if we have stored location data and user consent
-      const storedLocation = localStorage.getItem("userLocation");
-      const storedPermission = localStorage.getItem("locationPermission") as "granted" | "denied" | "prompt" | null;
-      const hasUserConsent = localStorage.getItem("locationUserConsent") === "true";
-      const locationTimestamp = localStorage.getItem("locationTimestamp");
+      const livePermission = await checkPermissionStatus();
+      if (cancelled) return;
+      const storedConsent =
+        localStorage.getItem("locationUserConsent") === "true";
 
-      // Check if stored location is still valid (less than 1 hour old)
-      const isLocationValid = locationTimestamp && 
-        (Date.now() - parseInt(locationTimestamp)) < 3600000; // 1 hour
-
-      if (storedLocation && storedPermission === "granted" && hasUserConsent && isLocationValid) {
-        try {
-          const coords: [number, number] = JSON.parse(storedLocation);
-          setLocationState({
-            coords,
-            permission: "granted",
-            isLoading: false,
-            error: null,
-            hasUserConsent: true,
-          });
-          console.log("📍 Loaded stored location:", coords);
-        } catch (error) {
-          console.error("Error parsing stored location:", error);
-          localStorage.removeItem("userLocation");
-          localStorage.removeItem("locationTimestamp");
+      if (livePermission === "granted") {
+        let cached: [number, number] | null = null;
+        const storedLocation = localStorage.getItem("userLocation");
+        if (storedLocation) {
+          try {
+            cached = JSON.parse(storedLocation);
+          } catch {
+            localStorage.removeItem("userLocation");
+            localStorage.removeItem("locationTimestamp");
+          }
         }
-      } else if (hasUserConsent && storedPermission === "denied") {
-        // User has explicitly denied location access
+        // Keep consent flags consistent with reality
+        localStorage.setItem("locationPermission", "granted");
+        localStorage.setItem("locationUserConsent", "true");
+        setLocationState({
+          coords: cached,
+          permission: "granted",
+          isLoading: false,
+          error: null,
+          hasUserConsent: true,
+        });
+        // Refresh to the current position. If there's no cached placeholder,
+        // Home's auto-locate branch handles the first fetch, so only refresh
+        // here when we already showed a (possibly stale) cached center.
+        if (cached) {
+          getUserLocation().catch(() => {
+            /* keep the cached placeholder if the refresh fails */
+          });
+        }
+      } else if (livePermission === "denied") {
         setLocationState({
           coords: null,
           permission: "denied",
           isLoading: false,
           error: null,
-          hasUserConsent: true,
+          hasUserConsent: storedConsent,
         });
-        console.log("📍 User has denied location access");
       } else {
-        // Check current permission status
-        const currentPermission = await checkPermissionStatus();
-        setLocationState(prev => ({
+        setLocationState((prev) => ({
           ...prev,
-          permission: currentPermission,
-          hasUserConsent: false, // User hasn't made a choice yet
+          permission: "prompt",
+          hasUserConsent: storedConsent,
         }));
       }
     };
 
     initializeLocation();
-  }, [checkPermissionStatus]);
+    return () => {
+      cancelled = true;
+    };
+  }, [checkPermissionStatus, getUserLocation]);
 
   // Clear stored location data
   const clearStoredLocation = useCallback(() => {

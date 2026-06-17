@@ -127,6 +127,9 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [exporting, setExporting] = useState(false);
   const [mapDataUrl, setMapDataUrl] = useState<string | null>(null);
+  const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
+    MAPBOX_TOKEN ? "loading" : "failed"
+  );
 
   const stats = session.stats ?? {
     stopsHit: 0,
@@ -165,13 +168,23 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         const polyline = await fetchRoutePolyline(routeCoords);
         if (cancelled) return;
         const url = buildRouteMapUrl(polyline, routeCoords, orderedStops);
-        if (!url) return;
+        if (!url) {
+          if (!cancelled) setMapStatus("failed");
+          return;
+        }
         const res = await fetch(url);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setMapStatus("failed");
+          return;
+        }
         const dataUrl = await blobToDataUrl(await res.blob());
-        if (!cancelled) setMapDataUrl(dataUrl);
+        if (!cancelled) {
+          setMapDataUrl(dataUrl);
+          setMapStatus("ready");
+        }
       } catch {
-        /* no map — recap still works */
+        // no map — recap still works without it
+        if (!cancelled) setMapStatus("failed");
       }
     })();
     return () => {
@@ -287,9 +300,17 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
           <span className="recap-date">{crawlDate}</span>
         </div>
 
-        {mapDataUrl && (
+        {mapStatus !== "failed" && (
           <div className="recap-map">
-            <img src={mapDataUrl} alt="Your crawl route" />
+            {mapStatus === "ready" && mapDataUrl ? (
+              <img src={mapDataUrl} alt="Your crawl route" />
+            ) : (
+              <div className="recap-map-skeleton">
+                <span className="recap-map-skeleton-label">
+                  Tracing your route…
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -343,14 +364,14 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         <button
           className="btn btn--primary"
           onClick={handleShare}
-          disabled={exporting}
+          disabled={exporting || mapStatus === "loading"}
         >
           <FiShare2 /> Share recap
         </button>
         <button
           className="btn btn--secondary"
           onClick={handleDownload}
-          disabled={exporting}
+          disabled={exporting || mapStatus === "loading"}
         >
           <FiDownload /> Download
         </button>

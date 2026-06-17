@@ -410,6 +410,9 @@
 
 .recap-map {
   width: 100%;
+  /* Reserve the space up-front (matches the 600x340 static map) so the card
+     doesn't reflow / the route doesn't "pop in" when the image arrives. */
+  aspect-ratio: 600 / 340;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(236, 178, 86, 0.28);
@@ -419,7 +422,56 @@
 .recap-map img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  animation: recap-map-fade 0.45s ease both;
+}
+.recap-map-skeleton {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    100deg,
+    #15131f 28%,
+    #221d31 50%,
+    #15131f 72%
+  );
+  background-size: 200% 100%;
+  animation: recap-shimmer 1.25s linear infinite;
+}
+.recap-map-skeleton-label {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: rgba(236, 178, 86, 0.75);
+  line-height: 1;
+}
+@keyframes recap-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes recap-map-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recap-map-skeleton {
+    animation: none;
+  }
+  .recap-map img {
+    animation: none;
+  }
 }
 
 .recap-stats {
