@@ -36,3 +36,6 @@ dist-ssr
 # Temporary files
 temp_*.tsx
 example-*.tsx
+
+# Third-party Claude Code skills (not part of the app)
+.claude/skills/

@@ -54,6 +54,22 @@ const RADIUS_OUTLINE_LAYER = "radius-outline";
 // Props & types
 export type MapBounds = [number, number, number, number];
 
+// Escape user-controlled strings before interpolating into popup innerHTML.
+// Bar names/addresses can come from the importer (user-typed) and from shared
+// crawls, so they're untrusted — without this a crafted bar name is stored XSS.
+const escapeHtml = (value: string): string =>
+  value.replace(
+    /[&<>"']/g,
+    (ch) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[ch] as string
+  );
+
 interface MapContainerProps {
   center: [number, number];
   radius: number; // in miles
@@ -414,14 +430,19 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         return;
       }
 
+      // Build the marker with DOM APIs (not innerHTML): the display name is
+      // attacker-controlled (a user's Firebase profile name), so interpolating
+      // it into innerHTML would be a stored XSS in every other member's tab.
       const el = document.createElement("div");
       el.className = "friend-marker";
-      el.innerHTML = `
-        <span class="friend-marker-pulse"></span>
-        <span class="friend-marker-dot"></span>
-        <span class="friend-marker-label">${
-          friend.displayName || "Friend"
-        }</span>`;
+      const pulse = document.createElement("span");
+      pulse.className = "friend-marker-pulse";
+      const dot = document.createElement("span");
+      dot.className = "friend-marker-dot";
+      const label = document.createElement("span");
+      label.className = "friend-marker-label";
+      label.textContent = friend.displayName || "Friend";
+      el.append(pulse, dot, label);
       const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
         .setLngLat(lngLat)
         .addTo(m);
@@ -506,7 +527,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           ? `
                 <div class="neon-stat">
                   <span class="neon-stat-icon">🏠</span>
-                  <span class="popup-address">${hoveredBar.address}</span>
+                  <span class="popup-address">${escapeHtml(hoveredBar.address)}</span>
                 </div>`
           : "";
 
@@ -518,9 +539,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             <div class="neon-popup-container">
               <div class="neon-popup-header">
                 <div class="neon-bar-icon">🍸</div>
-                <h3 class="neon-bar-name">${
+                <h3 class="neon-bar-name">${escapeHtml(
                   hoveredBar.name || "Unknown Bar"
-                }${hoveredBar.priceText ? ` <span class="review-count">${hoveredBar.priceText}</span>` : ""}</h3>
+                )}${hoveredBar.priceText ? ` <span class="review-count">${escapeHtml(hoveredBar.priceText)}</span>` : ""}</h3>
               </div>
               <div class="neon-popup-content">
                 <div class="neon-stat">

@@ -649,7 +649,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(413).json({ error: "query too long" });
           return;
         }
-        const bar = await searchPlaceByText(query, bias);
+        // Only honor a well-formed bias; drop garbage rather than 400 so a
+        // slightly-off client never breaks (defense-in-depth, not validation).
+        const safeBias =
+          bias &&
+          Number.isFinite(bias.lat) &&
+          Number.isFinite(bias.lng) &&
+          bias.lat >= -90 &&
+          bias.lat <= 90 &&
+          bias.lng >= -180 &&
+          bias.lng <= 180
+            ? bias
+            : undefined;
+        const bar = await searchPlaceByText(query, safeBias);
         res.status(200).json({ bar });
         return;
       }
