@@ -30,4 +30,11 @@ export const analytics = {
     safeTrack("crawl_completed", { stopsHit, stopsTotal }),
   recapShared: (method: "share" | "download") =>
     safeTrack("recap_shared", { method }),
+  // "Plan it together" funnel
+  planCreated: (candidates: number) =>
+    safeTrack("plan_created", { candidates }),
+  planRsvp: () => safeTrack("plan_rsvp"),
+  planVote: () => safeTrack("plan_vote"),
+  planLocked: (attendees: number, stops: number) =>
+    safeTrack("plan_locked", { attendees, stops }),
 };

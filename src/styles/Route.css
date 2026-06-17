@@ -586,6 +586,36 @@
   cursor: not-allowed;
 }
 
+/* Secondary CTA under Start Crawl: gather friends to RSVP + vote first */
+.btn-plan-friends {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(236, 178, 86, 0.3);
+  border-radius: var(--radius-pill);
+  padding: 0.7rem 1.2rem;
+  white-space: nowrap;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-base) var(--ease-out);
+}
+.btn-plan-friends:hover:not(:disabled) {
+  background: rgba(236, 178, 86, 0.2);
+  transform: translateY(-1px);
+}
+.btn-plan-friends:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 @keyframes start-crawl-pulse {
   0%,
   100% {

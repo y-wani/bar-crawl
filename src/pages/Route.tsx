@@ -22,6 +22,7 @@ import {
   FiPlay,
   FiSave,
   FiFolder,
+  FiUsers,
 } from "react-icons/fi";
 import "../styles/Route.css";
 import {
@@ -37,6 +38,7 @@ import {
   createSession,
   getActiveSessionForUser,
 } from "../services/sessionService";
+import { createPlan } from "../services/planService";
 import { analytics } from "../utils/analytics";
 
 // Mapbox API constants and types
@@ -656,6 +658,39 @@ const Route: React.FC = () => {
 
   // ----- Live Crawl Mode entry -----
   const [startingCrawl, setStartingCrawl] = useState(false);
+  const [creatingPlan, setCreatingPlan] = useState(false);
+
+  // "Plan it together": create a plan lobby (RSVP + vote) from the current
+  // selection, then send the host there to share the link with friends.
+  const handlePlanWithFriends = async () => {
+    if (!user || draggableBars.length < 2 || !startCoordinates) return;
+    setCreatingPlan(true);
+    try {
+      const planId = await createPlan({
+        hostUid: user.uid,
+        hostName: user.displayName ?? user.email?.split("@")[0] ?? null,
+        title: routeState?.crawlName || "Bar Crawl",
+        candidates: draggableBars.map((bar) => ({
+          barId: bar.id,
+          name: bar.name,
+          rating: bar.rating,
+          coordinates: bar.location.coordinates,
+        })),
+        route: {
+          startCoordinates,
+          endCoordinates: endCoordinates ?? startCoordinates,
+        },
+      });
+      analytics.planCreated(draggableBars.length);
+      navigate("/plan", { state: { planId } });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't create the plan"
+      );
+    } finally {
+      setCreatingPlan(false);
+    }
+  };
 
   const handleStartCrawl = async () => {
     if (!user || draggableBars.length < 2 || !startCoordinates) return;
@@ -1000,6 +1035,32 @@ const Route: React.FC = () => {
                 ) : (
                   <>
                     <FiPlay size={18} /> Start Crawl
+                  </>
+                )}
+              </button>
+
+              <button
+                className="btn-plan-friends"
+                onClick={handlePlanWithFriends}
+                disabled={
+                  draggableBars.length < 2 ||
+                  isBusy ||
+                  !startCoordinates ||
+                  creatingPlan
+                }
+                title={
+                  draggableBars.length < 2
+                    ? "Need at least 2 stops to plan"
+                    : "Invite friends to RSVP & vote before you go"
+                }
+              >
+                {creatingPlan ? (
+                  <>
+                    <div className="spinner"></div> Creating…
+                  </>
+                ) : (
+                  <>
+                    <FiUsers size={18} /> Plan with friends
                   </>
                 )}
               </button>

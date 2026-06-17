@@ -12,6 +12,7 @@ const Landing = React.lazy(() => import('../pages/Landing'));
 const Home = React.lazy(() => import('../pages/Home'));
 const Route = React.lazy(() => import('../pages/Route'));
 const LiveCrawl = React.lazy(() => import('../pages/LiveCrawl'));
+const PlanLobby = React.lazy(() => import('../pages/PlanLobby'));
 const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
@@ -51,6 +52,16 @@ const AnimatedRoutes: React.FC = () => {
             <ProtectedRoute>
               <ErrorBoundary>
                 <LiveCrawl />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+        <RouterRoute
+          path="/plan"
+          element={
+            <ProtectedRoute>
+              <ErrorBoundary>
+                <PlanLobby />
               </ErrorBoundary>
             </ProtectedRoute>
           }
