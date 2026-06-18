@@ -39,3 +39,7 @@ example-*.tsx
 
 # Third-party Claude Code skills (not part of the app)
 .claude/skills/
+
+# Demo recordings + ephemeral demo state
+demo-output/
+scripts/.demo-ids.json

@@ -8,7 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:production": "NODE_ENV=production npm run build"
+    "build:production": "NODE_ENV=production npm run build",
+    "demo:bootstrap": "node scripts/demo-bootstrap.mjs",
+    "demo:seed": "node scripts/demo-seed.mjs",
+    "demo:play": "node scripts/demo-play.mjs",
+    "demo": "node scripts/demo-seed.mjs && node scripts/demo-play.mjs"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-directions": "^4.3.1",
@@ -24,9 +28,9 @@
     "@vercel/analytics": "^1.5.0",
     "dotenv": "^17.2.1",
     "firebase": "^12.0.0",
-    "jose": "^5.9.6",
     "framer-motion": "^12.23.12",
     "html-to-image": "^1.11.13",
+    "jose": "^5.9.6",
     "lodash": "^4.17.21",
     "mapbox-gl": "^3.13.0",
     "mapbox-gl-style-switcher": "^1.0.11",
@@ -54,6 +58,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "playwright": "^1.61.0",
     "rollup-plugin-node-polyfills": "^0.2.1",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
