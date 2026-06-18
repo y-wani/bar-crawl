@@ -629,21 +629,68 @@ const sendViaResend = async (
 const escapeAttr = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+// Optional hosted logo image (PNG/JPG on our domain). Falls back to a
+// text+emoji wordmark when unset, so the email always renders even with
+// images blocked. Set EMAIL_LOGO_URL to a square-ish logo to use an image.
+const EMAIL_LOGO_URL = process.env.EMAIL_LOGO_URL || "";
+const FONT_STACK = "'Helvetica Neue',Helvetica,Arial,sans-serif";
+
+const emailLogoMarkup = (): string =>
+  EMAIL_LOGO_URL
+    ? `<img src="${escapeAttr(EMAIL_LOGO_URL)}" width="140" alt="BarHop" style="display:block;border:0;outline:none;max-width:140px;height:auto;">`
+    : `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+         <td style="font-size:26px;line-height:1;padding-right:9px;">&#127866;</td>
+         <td style="font-family:${FONT_STACK};font-size:24px;font-weight:800;letter-spacing:1px;color:#ECB256;">BarHop</td>
+       </tr></table>`;
+
 const verifyEmailHtml = (link: string): string => {
   const safe = escapeAttr(link);
-  return `<!doctype html><html><body style="margin:0;background:#0b0a12;font-family:Arial,Helvetica,sans-serif;color:#e9e6f0;padding:32px 12px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-    <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#15131f;border-radius:16px;padding:36px 32px;text-align:left;">
-      <tr><td style="font-size:22px;font-weight:bold;color:#ECB256;padding-bottom:10px;">BarHop</td></tr>
-      <tr><td style="font-size:20px;font-weight:bold;padding-bottom:12px;">Verify your email</td></tr>
-      <tr><td style="font-size:15px;line-height:1.6;color:#c9c5d6;padding-bottom:26px;">Tap the button below to confirm your email and start planning your night out.</td></tr>
-      <tr><td style="padding-bottom:26px;"><a href="${safe}" style="display:inline-block;background:#ECB256;color:#16110a;text-decoration:none;font-weight:bold;font-size:16px;padding:13px 28px;border-radius:999px;">Verify my email</a></td></tr>
-      <tr><td style="font-size:13px;line-height:1.6;color:#8e8a9c;padding-bottom:6px;">Or paste this link into your browser:</td></tr>
-      <tr><td style="font-size:12px;color:#8e8a9c;word-break:break-all;padding-bottom:26px;">${safe}</td></tr>
-      <tr><td style="font-size:12px;line-height:1.6;color:#6b6878;border-top:1px solid #2a2738;padding-top:16px;">If you didn't create a BarHop account, you can safely ignore this email.<br>${APP_ORIGIN.replace("https://", "")}</td></tr>
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark only">
+<title>Verify your email for BarHop</title>
+</head>
+<body style="margin:0;padding:0;background:#0b0a12;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#0b0a12;">Confirm your email to start planning your night out.&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0a12;padding:32px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;">
+
+      <tr><td align="center" style="padding-bottom:24px;">${emailLogoMarkup()}</td></tr>
+
+      <tr><td style="background:#15131f;border:1px solid #2a2738;border-radius:18px;padding:40px 36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="font-family:${FONT_STACK};font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ECB256;padding-bottom:10px;">One quick step</td></tr>
+          <tr><td style="font-family:${FONT_STACK};font-size:26px;font-weight:800;color:#f4f2f8;padding-bottom:14px;">Verify your email</td></tr>
+          <tr><td style="font-family:${FONT_STACK};font-size:15px;line-height:1.65;color:#c4c0d2;padding-bottom:30px;">You're almost in. Confirm your email address to start planning bar crawls, invite your crew, and track the whole night together.</td></tr>
+          <tr><td style="padding-bottom:28px;">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td align="center" bgcolor="#ECB256" style="border-radius:999px;">
+                <a href="${safe}" style="display:inline-block;padding:15px 38px;font-family:${FONT_STACK};font-size:16px;font-weight:700;color:#16110a;text-decoration:none;border-radius:999px;">Verify my email &rarr;</a>
+              </td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="font-family:${FONT_STACK};font-size:13px;line-height:1.6;color:#8e8a9c;padding-bottom:6px;">Button not working? Paste this link into your browser:</td></tr>
+          <tr><td style="font-family:${FONT_STACK};font-size:12px;line-height:1.6;word-break:break-all;"><a href="${safe}" style="color:#a98a4f;text-decoration:underline;">${safe}</a></td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:24px 36px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="font-family:${FONT_STACK};font-size:13px;font-weight:700;color:#ECB256;padding-bottom:5px;">BarHop</td></tr>
+          <tr><td style="font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#6b6878;">Plan the perfect night out &middot; <a href="${APP_ORIGIN}" style="color:#8e8a9c;text-decoration:underline;">${APP_ORIGIN.replace("https://", "")}</a></td></tr>
+          <tr><td style="font-family:${FONT_STACK};font-size:11px;line-height:1.6;color:#56546a;padding-top:14px;">You received this because someone signed up for BarHop with this email address. If that wasn't you, you can safely ignore this message.</td></tr>
+        </table>
+      </td></tr>
+
     </table>
-  </td></tr></table>
-  </body></html>`;
+  </td></tr>
+</table>
+</body>
+</html>`;
 };
 
 const sendVerificationEmail = async (
