@@ -21,6 +21,12 @@ import { jwtVerify, createRemoteJWKSet, SignJWT, importPKCS8 } from "jose";
 // ---------------------------------------------------------------------------
 const PROJECT_ID = "bar-crawl-planner-5985f";
 const PROJECT_NUMBER = "235279583042";
+const APP_ORIGIN = "https://www.gobarhop.app";
+
+// OAuth scopes for service-account access tokens
+const DATASTORE_SCOPE = "https://www.googleapis.com/auth/datastore";
+const CLOUD_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
+const IDENTITY_BASE = `https://identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}`;
 
 interface ServiceAccount {
   client_email: string;
@@ -71,17 +77,18 @@ const verifyAppCheckToken = async (token: string): Promise<void> => {
 const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-let tokenCache: { token: string; expiresAt: number } | null = null;
-const getAccessToken = async (): Promise<string> => {
-  if (tokenCache && Date.now() < tokenCache.expiresAt - 60_000) {
-    return tokenCache.token;
-  }
+// Cached per scope — Firestore uses the datastore scope, Identity Toolkit
+// admin calls (email verification) need the broader cloud-platform scope.
+const tokenCacheByScope = new Map<string, { token: string; expiresAt: number }>();
+const getAccessToken = async (
+  scope: string = DATASTORE_SCOPE
+): Promise<string> => {
+  const cached = tokenCacheByScope.get(scope);
+  if (cached && Date.now() < cached.expiresAt - 60_000) return cached.token;
   const sa = getServiceAccount();
   const key = await importPKCS8(sa.private_key, "RS256");
   const now = Math.floor(Date.now() / 1000);
-  const assertion = await new SignJWT({
-    scope: "https://www.googleapis.com/auth/datastore",
-  })
+  const assertion = await new SignJWT({ scope })
     .setProtectedHeader({ alg: "RS256" })
     .setIssuer(sa.client_email)
     .setSubject(sa.client_email)
@@ -100,10 +107,10 @@ const getAccessToken = async (): Promise<string> => {
   });
   if (!res.ok) throw new Error(`Token exchange ${res.status}: ${await res.text()}`);
   const data = (await res.json()) as { access_token: string; expires_in: number };
-  tokenCache = {
+  tokenCacheByScope.set(scope, {
     token: data.access_token,
     expiresAt: Date.now() + data.expires_in * 1000,
-  };
+  });
   return data.access_token;
 };
 
@@ -558,6 +565,98 @@ const cleanBarListWithAI = async (raw: string): Promise<string> => {
 };
 
 // ---------------------------------------------------------------------------
+// Email verification via Resend (sent from our authenticated domain so it
+// doesn't land in spam, unlike Firebase's shared firebaseapp.com sender).
+// We generate a *real* Firebase verification link server-side (Identity
+// Toolkit admin) and deliver it ourselves.
+// ---------------------------------------------------------------------------
+const idtHeaders = async (): Promise<Record<string, string>> => ({
+  Authorization: `Bearer ${await getAccessToken(CLOUD_SCOPE)}`,
+  "Content-Type": "application/json",
+});
+
+const lookupUserEmail = async (
+  uid: string
+): Promise<{ email: string; emailVerified: boolean }> => {
+  const res = await fetch(`${IDENTITY_BASE}/accounts:lookup`, {
+    method: "POST",
+    headers: await idtHeaders(),
+    body: JSON.stringify({ localId: [uid] }),
+  });
+  if (!res.ok) throw new Error(`IDP lookup ${res.status}: ${await res.text()}`);
+  const data = (await res.json()) as {
+    users?: Array<{ email?: string; emailVerified?: boolean }>;
+  };
+  const u = data.users?.[0];
+  if (!u?.email) throw new Error("User record has no email");
+  return { email: u.email, emailVerified: !!u.emailVerified };
+};
+
+const generateVerifyLink = async (email: string): Promise<string> => {
+  const res = await fetch(`${IDENTITY_BASE}/accounts:sendOobCode`, {
+    method: "POST",
+    headers: await idtHeaders(),
+    // returnOobLink: true makes Identity Toolkit hand us the link instead of
+    // sending the email itself — we send it via Resend.
+    body: JSON.stringify({ requestType: "VERIFY_EMAIL", email, returnOobLink: true }),
+  });
+  if (!res.ok) throw new Error(`OOB link ${res.status}: ${await res.text()}`);
+  const data = (await res.json()) as { oobLink?: string };
+  if (!data.oobLink) throw new Error("No oobLink returned");
+  return data.oobLink;
+};
+
+const sendViaResend = async (
+  to: string,
+  subject: string,
+  html: string
+): Promise<void> => {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("RESEND_API_KEY env var is not set");
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "BarHop <noreply@gobarhop.app>",
+      to,
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+};
+
+const escapeAttr = (s: string): string =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const verifyEmailHtml = (link: string): string => {
+  const safe = escapeAttr(link);
+  return `<!doctype html><html><body style="margin:0;background:#0b0a12;font-family:Arial,Helvetica,sans-serif;color:#e9e6f0;padding:32px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+    <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#15131f;border-radius:16px;padding:36px 32px;text-align:left;">
+      <tr><td style="font-size:22px;font-weight:bold;color:#ECB256;padding-bottom:10px;">BarHop</td></tr>
+      <tr><td style="font-size:20px;font-weight:bold;padding-bottom:12px;">Verify your email</td></tr>
+      <tr><td style="font-size:15px;line-height:1.6;color:#c9c5d6;padding-bottom:26px;">Tap the button below to confirm your email and start planning your night out.</td></tr>
+      <tr><td style="padding-bottom:26px;"><a href="${safe}" style="display:inline-block;background:#ECB256;color:#16110a;text-decoration:none;font-weight:bold;font-size:16px;padding:13px 28px;border-radius:999px;">Verify my email</a></td></tr>
+      <tr><td style="font-size:13px;line-height:1.6;color:#8e8a9c;padding-bottom:6px;">Or paste this link into your browser:</td></tr>
+      <tr><td style="font-size:12px;color:#8e8a9c;word-break:break-all;padding-bottom:26px;">${safe}</td></tr>
+      <tr><td style="font-size:12px;line-height:1.6;color:#6b6878;border-top:1px solid #2a2738;padding-top:16px;">If you didn't create a BarHop account, you can safely ignore this email.<br>${APP_ORIGIN.replace("https://", "")}</td></tr>
+    </table>
+  </td></tr></table>
+  </body></html>`;
+};
+
+const sendVerificationEmail = async (
+  uid: string
+): Promise<"sent" | "already"> => {
+  const { email, emailVerified } = await lookupUserEmail(uid);
+  if (emailVerified) return "already";
+  const link = await generateVerifyLink(email);
+  await sendViaResend(email, "Verify your email for BarHop", verifyEmailHtml(link));
+  return "sent";
+};
+
+// ---------------------------------------------------------------------------
 // Handler: dispatch on `action`
 // ---------------------------------------------------------------------------
 const readBody = <T>(req: VercelRequest): T => {
@@ -688,6 +787,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         const text = await cleanBarListWithAI(raw);
         res.status(200).json({ text });
+        return;
+      }
+
+      case "sendVerificationEmail": {
+        const ok = await enforceRateLimit(
+          uid,
+          "verifyEmail",
+          [
+            { ...minute, limit: 2 },
+            { ...day, limit: 10 },
+          ],
+          res
+        );
+        if (!ok) return;
+        const result = await sendVerificationEmail(uid);
+        res.status(200).json({
+          sent: result === "sent",
+          alreadyVerified: result === "already",
+        });
         return;
       }
 

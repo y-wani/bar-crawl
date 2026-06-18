@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { FirebaseError } from 'firebase/app';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
 import SwirlBackground from '../components/SwirlBackground';
@@ -49,7 +48,8 @@ const VerifyEmail: React.FC = () => {
         setCooldown(SEND_COOLDOWN);
         if (!silent) setInfo('Sent! Check your inbox.');
       } catch (err) {
-        if (err instanceof FirebaseError && err.code === 'auth/too-many-requests') {
+        const msg = err instanceof Error ? err.message : '';
+        if (/rate limit|too many/i.test(msg)) {
           setError("That's a lot of emails — please wait a minute before resending.");
           setCooldown(SEND_COOLDOWN);
         } else {

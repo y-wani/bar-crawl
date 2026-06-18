@@ -8,12 +8,12 @@ import {
   onAuthStateChanged,
   updateProfile as updateFirebaseProfile,
   sendPasswordResetEmail,
-  sendEmailVerification,
   getAdditionalUserInfo,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { analytics } from '../utils/analytics';
+import { postJson } from '../services/apiClient';
 import type { AuthContextType, AuthProviderProps, User } from './types';
 
 // Create the auth context
@@ -100,10 +100,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Re-send the verification email to the signed-in user
+  // Send/re-send the verification email. Routed through our serverless proxy
+  // so it's delivered via Resend from noreply@gobarhop.app (authenticated
+  // domain → inbox) instead of Firebase's shared firebaseapp.com sender.
   const resendVerificationEmail = async (): Promise<void> => {
     if (!auth.currentUser) throw new Error('You must be signed in');
-    await sendEmailVerification(auth.currentUser);
+    await postJson('/api/proxy', { action: 'sendVerificationEmail' });
   };
 
   // Refresh the current user from the server (e.g. to pick up a just-completed
