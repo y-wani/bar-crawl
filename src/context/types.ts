@@ -16,6 +16,11 @@ export interface AuthContextType {
   signout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: { displayName?: string; photoURL?: string }) => Promise<void>;
+  /** Re-send the email-verification link to the current user. */
+  resendVerificationEmail: () => Promise<void>;
+  /** Refresh the current user from the server and sync state; returns the
+   *  latest emailVerified flag (used to detect verification while polling). */
+  reloadUser: () => Promise<boolean>;
 }
 
 // Auth provider props interface

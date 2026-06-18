@@ -8,6 +8,7 @@ import {
   onAuthStateChanged,
   updateProfile as updateFirebaseProfile,
   sendPasswordResetEmail,
+  sendEmailVerification,
   getAdditionalUserInfo,
   type User as FirebaseUser
 } from 'firebase/auth';
@@ -17,6 +18,18 @@ import type { AuthContextType, AuthProviderProps, User } from './types';
 
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Map a Firebase user onto our extended User shape. Spreading alone can miss
+// prototype getters, so the fields the app relies on (incl. emailVerified,
+// which gates app access) are copied explicitly.
+const mapUser = (firebaseUser: FirebaseUser): User => ({
+  ...firebaseUser,
+  displayName: firebaseUser.displayName,
+  email: firebaseUser.email,
+  photoURL: firebaseUser.photoURL,
+  uid: firebaseUser.uid,
+  emailVerified: firebaseUser.emailVerified,
+});
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -87,6 +100,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Re-send the verification email to the signed-in user
+  const resendVerificationEmail = async (): Promise<void> => {
+    if (!auth.currentUser) throw new Error('You must be signed in');
+    await sendEmailVerification(auth.currentUser);
+  };
+
+  // Refresh the current user from the server (e.g. to pick up a just-completed
+  // email verification) and sync it into state. Returns the latest flag.
+  const reloadUser = async (): Promise<boolean> => {
+    if (!auth.currentUser) return false;
+    await auth.currentUser.reload();
+    // reload() mutates auth.currentUser in place and does NOT fire
+    // onAuthStateChanged, so push a fresh object to trigger a re-render.
+    setUser(mapUser(auth.currentUser));
+    return auth.currentUser.emailVerified;
+  };
+
   // Update profile function
   const updateProfile = async (data: { displayName?: string; photoURL?: string }): Promise<void> => {
     try {
@@ -102,19 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        // Convert Firebase user to our User interface
-        const user: User = {
-          ...firebaseUser,
-          displayName: firebaseUser.displayName,
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL,
-          uid: firebaseUser.uid,
-        };
-        setUser(user);
-      } else {
-        setUser(null);
-      }
+      setUser(firebaseUser ? mapUser(firebaseUser) : null);
       setLoading(false);
     });
 
@@ -131,6 +149,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signout,
     resetPassword,
     updateProfile,
+    resendVerificationEmail,
+    reloadUser,
   };
 
   return (

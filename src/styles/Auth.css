@@ -342,6 +342,56 @@
   }
 }
 
+/* Email-verification page */
+.verify-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.verify-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--glass-border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: verify-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes verify-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-info-message {
+  color: var(--accent-bright);
+  font-size: var(--text-sm);
+  text-align: center;
+  margin-top: var(--space-2);
+}
+
+/* Secondary CTA — ghost variant of the amber pill (used for Resend) */
+.auth-button--secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--glass-border-strong);
+  margin-top: var(--space-3);
+}
+.auth-button--secondary:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  box-shadow: none;
+}
+.auth-button--secondary:active:not(:disabled) {
+  background: var(--accent-soft);
+}
+
 /* Sign-up page: more compact card to avoid scrolling */
 .signup-container {
   height: auto;

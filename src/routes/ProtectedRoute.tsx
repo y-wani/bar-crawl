@@ -33,6 +33,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Signed in but email not verified (email/password sign-ups; Google users
+  // are verified automatically) — gate the app behind verification, keeping
+  // the intended destination so we can return them here afterwards.
+  if (!user.emailVerified) {
+    return (
+      <Navigate
+        to="/verify-email"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
+    );
+  }
+
   // If user is authenticated, render the protected content
   return <>{children}</>;
 };

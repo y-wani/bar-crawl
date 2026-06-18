@@ -24,6 +24,11 @@ const PublicRoute: React.FC<PublicRouteProps> = ({
   // bounced them from (e.g. a shared join link), else the default home page.
   if (user) {
     const from = (location.state as { from?: string } | null)?.from;
+    // Unverified email/password users still need to verify first; carry the
+    // intended destination through so they land there once verified.
+    if (!user.emailVerified) {
+      return <Navigate to="/verify-email" replace state={from ? { from } : undefined} />;
+    }
     return <Navigate to={from || redirectTo} replace />;
   }
 

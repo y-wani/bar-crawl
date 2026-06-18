@@ -16,6 +16,7 @@ const PlanLobby = React.lazy(() => import('../pages/PlanLobby'));
 const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
+const VerifyEmail = React.lazy(() => import('../pages/VerifyEmail'));
 const ForgotPassword = React.lazy(() => import('../pages/ForgotPassword'));
 const PrivacyPolicy = React.lazy(() => import('../pages/PrivacyPolicy'));
 const Terms = React.lazy(() => import('../pages/Terms'));
@@ -92,6 +93,9 @@ const AnimatedRoutes: React.FC = () => {
             </PublicRoute>
           }
         />
+        {/* Email-verification gate — manages its own redirects (no user →
+            signin, verified → home), so it isn't wrapped in a route guard. */}
+        <RouterRoute path="/verify-email" element={<VerifyEmail />} />
         <RouterRoute
           path="/forgot-password"
           element={
