@@ -532,6 +532,17 @@ const Home: React.FC = () => {
     getUserLocation,
   ]);
 
+  // Safety net: close the permission modal the moment location is obtained,
+  // no matter which path delivered it. The modal-button callback can fail to
+  // fire (e.g. getUserLocation times out / returns null on desktops without
+  // GPS even after the browser granted), which used to leave the modal stuck
+  // open over a populated map.
+  useEffect(() => {
+    if (showLocationPermission && (locationPermission === "granted" || userLocation)) {
+      setShowLocationPermission(false);
+    }
+  }, [showLocationPermission, locationPermission, userLocation]);
+
   // Handle location permission callbacks
   const handleLocationGranted = async (coords: [number, number]) => {
     debug("📍 Location granted:", coords);
