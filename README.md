@@ -1,217 +1,166 @@
-# 🍸 Bar Crawl Route Planner
+<div align="center">
 
-> **Live Demo:** [https://gobarhop.app/](https://gobarhop.app/)
+<img src="public/barhop-social-image.png" alt="BarHop" width="100%" />
 
-A modern, interactive web application for planning and optimizing bar crawl routes. Built with React, TypeScript, and Mapbox GL JS, featuring real-time route optimization, interactive maps, and a sleek cyberpunk-inspired UI.
+# BarHop
 
-![Bar Crawl Route Planner](https://img.shields.io/badge/Status-Live%20Demo-brightgreen)
-![React](https://img.shields.io/badge/React-18.2.0-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
-![Vite](https://img.shields.io/badge/Vite-5.0-purple)
-![Mapbox](https://img.shields.io/badge/Mapbox%20GL%20JS-Latest-orange)
+**Plan, optimize, and share the perfect bar crawl.**
 
-## ✨ Features
+[Live Demo](https://www.gobarhop.app/) · [Report an Issue](https://github.com/y-wani/bar-crawl/issues)
 
-### 🗺️ Interactive Map Experience
-- **Real-time bar discovery** with Mapbox integration
-- **Interactive pin hover effects** with detailed bar information
-- **Dynamic route visualization** with animated paths
-- **Custom neon-styled markers** with cyberpunk aesthetics
-- **Responsive map controls** with geolocation support
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
+![Mapbox GL JS](https://img.shields.io/badge/Mapbox%20GL%20JS-3-000000?logo=mapbox&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?logo=firebase&logoColor=black)
 
-### 🎯 Smart Route Planning
-- **Intelligent route optimization** using nearest neighbor algorithm
-- **Drag-and-drop bar reordering** for custom routes
-- **Real-time distance calculations** and estimated durations
-- **Start/end location customization** with address search
-- **Radius-based filtering** to focus on walkable areas
-
-### 🎨 Modern UI/UX
-- **Cyberpunk-inspired design** with neon gradients and glowing effects
-- **Smooth animations** and micro-interactions
-- **Responsive design** that works on all devices
-- **Dark theme** with customizable color schemes
-- **Accessibility features** for inclusive user experience
-
-### 🔐 User Management
-- **Firebase Authentication** with email/password
-- **User profile management** with saved preferences
-- **Secure data storage** with Firestore
-- **Public/private crawl sharing** options
-
-### 💾 Data Management
-- **Save and load routes** with detailed metadata
-- **Export functionality** for sharing with friends
-- **Crawl history** with timestamps and descriptions
-- **Offline caching** for better performance
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Mapbox API key
-- Firebase project
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/bar-crawl-route-app.git
-   cd bar-crawl-route-app
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment setup**
-   Create a `.env` file in the root directory:
-   ```env
-   VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
-   VITE_FIREBASE_API_KEY=your_firebase_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   ```
-
-4. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   Navigate to `http://localhost:5173`
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **React 18** - Modern UI framework with hooks
-- **TypeScript** - Type-safe JavaScript development
-- **Vite** - Fast build tool and dev server
-- **TailwindCSS** - Utility-first CSS framework
-- **Framer Motion** - Smooth animations and transitions
-
-### Maps & Location
-- **Mapbox GL JS** - Interactive vector maps
-- **Turf.js** - Geospatial analysis library
-- **Mapbox Directions API** - Route optimization
-
-### Backend & Database
-- **Firebase Authentication** - User management
-- **Firestore** - NoSQL cloud database
-- **Firebase Hosting** - Static site hosting
-
-### UI Components
-- **React Icons** - Icon library
-- **Custom CSS** - Cyberpunk styling with CSS Grid/Flexbox
-- **Responsive Design** - Mobile-first approach
-
-## 📱 How to Use
-
-### 1. **Search for Bars**
-   - Enter your location or use current GPS
-   - Adjust search radius (0.5 - 5 miles)
-   - Browse bars with ratings and distances
-
-### 2. **Select Your Route**
-   - Click bars to add them to your route
-   - Drag and drop to reorder stops
-   - Use the optimize button for the best walking path
-
-### 3. **Customize Your Experience**
-   - Set start and end locations
-   - Add notes and estimated times
-   - Choose public or private sharing
-
-### 4. **Save & Share**
-   - Save your route with a custom name
-   - Share with friends via link
-   - Export for offline use
-
-## 🎨 Design Features
-
-### Cyberpunk Aesthetic
-- **Neon color palette** with cyan, magenta, and yellow
-- **Glowing effects** and animated borders
-- **Dark backgrounds** with gradient overlays
-- **Futuristic typography** and iconography
-
-### Interactive Elements
-- **Hover animations** on all clickable elements
-- **Loading states** with custom spinners
-- **Smooth transitions** between pages
-- **Micro-interactions** for better UX
-
-## 🔧 Development
-
-### Project Structure
-```
-src/
-├── components/          # Reusable UI components
-├── pages/              # Page components
-├── hooks/              # Custom React hooks
-├── services/           # API and data services
-├── styles/             # CSS and styling
-├── types/              # TypeScript type definitions
-├── utils/              # Utility functions
-└── context/            # React context providers
-```
-
-### Key Components
-- `MapContainer` - Main map interface with interactive pins
-- `Sidebar` - Bar list and route management
-- `Route` - Route planning and optimization
-- `SaveCrawlModal` - Save and share functionality
-
-### Available Scripts
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-```
-
-## 🌟 Key Features in Detail
-
-### Interactive Map Pins
-- **Hover effects** with detailed popups
-- **Selection states** with visual feedback
-- **Custom markers** with neon styling
-- **Real-time updates** as you modify routes
-
-### Route Optimization
-- **Nearest neighbor algorithm** for efficient paths
-- **Walking distance calculations** in real-time
-- **Estimated duration** based on bar count
-- **Alternative route suggestions**
-
-### Data Persistence
-- **Firebase integration** for user data
-- **Offline caching** for better performance
-- **Real-time synchronization** across devices
-- **Backup and restore** functionality
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+</div>
 
 ---
 
-**Made with ❤️ for the bar crawl community**
+BarHop is a web app for planning a night out. Drop a pin, discover the bars around
+you on an interactive map, let the app build the shortest walkable route between
+your stops, decide the lineup together with friends, and follow the crawl live as
+a group. Built with React, TypeScript, and Mapbox GL JS.
 
-*Plan your next adventure with style!* 🍻
+## Showcase
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="public/Home_Page.png" alt="Interactive map of nearby bars with a shortlist sidebar" width="100%" />
+      <p align="center"><strong>Discover</strong> — find bars on a live, interactive map.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="public/Route_Page.png" alt="Optimized walking route between bars with distance and time" width="100%" />
+      <p align="center"><strong>Plan</strong> — an optimized walking route, with distance and time.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="public/Friend_Vote.png" alt="Friends voting on which bars to include" width="100%" />
+      <p align="center"><strong>Vote</strong> — the group decides the lineup together.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="public/Live_Crawl.png" alt="Live crawl view with real-time squad tracking" width="100%" />
+      <p align="center"><strong>Crawl live</strong> — track the whole crew in real time.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="public/Crawl_recap.png" alt="Shareable end-of-night recap card" width="100%" />
+      <p align="center"><strong>Recap</strong> — a shareable card to end the night.</p>
+    </td>
+    <td width="50%" valign="top"></td>
+  </tr>
+</table>
+
+## Features
+
+- **Interactive map discovery** — browse nearby bars on a Mapbox basemap with a
+  radius filter, ratings, and live open/closed status.
+- **Route optimization** — turn a set of stops into the shortest walkable path,
+  with drag-and-drop reordering and real-time distance and duration estimates.
+- **Plan together** — share a single link so the whole group can vote on the
+  lineup; no account is required to vote, and the top picks build the route.
+- **Live multiplayer crawl** — start a crawl and the group follows the same route
+  in real time, with current-stop sync and check-ins backed by Firestore.
+- **Shareable recap** — every crawl ends with an exportable recap card of stops,
+  distance, and timing.
+- **Accounts and saved crawls** — Firebase email/password auth with verified
+  sign-up, plus saved and shareable crawls.
+
+## Tech Stack
+
+| Area | Technologies |
+| --- | --- |
+| Frontend | React 19, TypeScript, Vite, Framer Motion |
+| Maps & geo | Mapbox GL JS, Mapbox Directions, Turf.js |
+| Backend | Firebase Authentication, Cloud Firestore |
+| Hosting | Vercel (serverless functions + static hosting) |
+| Styling | Hand-authored CSS, custom GLSL swirl background (Three.js) |
+
+## Engineering Highlights
+
+- **Secured third-party API access.** Billed Mapbox and Places requests are
+  proxied through authenticated, rate-limited Vercel serverless functions so keys
+  are never exposed to the client.
+- **Real-time collaboration.** Live Crawl and group voting are built on Firestore
+  listeners, keeping every participant's view in sync.
+- **Route optimization.** A nearest-neighbour solver orders stops into an
+  efficient walking path and surfaces total distance and time before you leave.
+- **SEO and discoverability.** Server-readable metadata, JSON-LD structured data
+  (`WebApplication`, `Organization`, `FAQPage`), `robots.txt`, and a sitemap.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or newer
+- A Mapbox access token
+- A Firebase project (Authentication + Firestore)
+
+### Installation
+
+```bash
+# 1. Clone
+git clone https://github.com/y-wani/bar-crawl.git
+cd bar-crawl
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment
+cp .env.example .env
+# then fill in your Mapbox token and Firebase config in .env
+
+# 4. Start the dev server
+npm run dev
+```
+
+The app runs at `http://localhost:5173`.
+
+### Environment variables
+
+Copy `.env.example` to `.env` and provide your own values:
+
+```env
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_token
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
+## Scripts
+
+```bash
+npm run dev        # Start the development server
+npm run build      # Type-check and build for production
+npm run preview    # Preview the production build locally
+npm run lint       # Run ESLint
+```
+
+## Project Structure
+
+```
+src/
+├── components/     # Reusable UI components
+├── pages/          # Route-level pages (Landing, Home, Route, LiveCrawl, ...)
+├── routes/         # App router and route guards
+├── hooks/          # Custom React hooks
+├── services/       # Firebase and data services
+├── context/        # React context providers
+├── styles/         # Component and page styles
+├── types/          # Shared TypeScript types
+└── utils/          # Utility helpers
+api/                # Vercel serverless functions (authenticated API proxy)
+public/             # Static assets and screenshots
+```
+
+## License
+
+This repository is published for portfolio and demonstration purposes. Please
+contact the author before reusing the code or assets.
