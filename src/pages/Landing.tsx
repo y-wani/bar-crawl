@@ -4,6 +4,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import SwirlBackground from "../components/SwirlBackground";
 import ScrollCue from "../components/landing/ScrollCue";
+import FeatureRow from "../components/landing/FeatureRow";
+import { features } from "../components/landing/featureData";
 import "../styles/Landing.css";
 
 const Landing: React.FC = () => {
@@ -30,7 +32,18 @@ const Landing: React.FC = () => {
       </section>
 
       <main className="landing-sections">
-        {/* Feature rows, How it works, FAQ, and Final CTA added in later tasks. */}
+        <section className="features" aria-label="What you can do with BarHop">
+          {features.map((f, i) => (
+            <FeatureRow
+              key={f.headline}
+              headline={f.headline}
+              body={f.body}
+              imgSrc={f.imgSrc}
+              imgAlt={f.imgAlt}
+              reverse={i % 2 === 1}
+            />
+          ))}
+        </section>
       </main>
 
       <footer className="landing-footer landing-footer--bottom">
