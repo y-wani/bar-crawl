@@ -476,6 +476,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 80px; }
   }
   .bh-vote, .bh-recap { padding: 80px 24px; }
   .bh-vote .bh-split, .bh-recap .bh-split { grid-template-columns: 1fr; gap: 36px; }
+  /* show the "Decide as a crew" copy first, image below it */
+  .bh-vote .bh-drift { order: 2; }
   .bh-cards { padding: 20px 24px 80px; }
 }
 
