@@ -31,7 +31,7 @@ const FeatureRow: React.FC<FeatureRowProps> = ({
       <motion.div
         className="feature-row__text"
         initial={reduce ? false : { opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
+        whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
@@ -42,7 +42,7 @@ const FeatureRow: React.FC<FeatureRowProps> = ({
       <motion.div
         className="feature-row__media"
         initial={reduce ? false : { opacity: 0, clipPath: "inset(0 100% 0 0)" }}
-        whileInView={{ opacity: 1, clipPath: "inset(0 0% 0 0)" }}
+        whileInView={reduce ? undefined : { opacity: 1, clipPath: "inset(0 0% 0 0)" }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
