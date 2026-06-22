@@ -169,19 +169,35 @@ const LaserEffect: React.FC = () => {
 };
 
 /**
- * Full-screen swirl background with initial laser burst.
+ * Swirl background with initial laser burst.
+ *
+ * By default it pins to the viewport (`position: fixed`) behind the whole page,
+ * which is how the auth pages use it. Pass `contained` to make it fill its
+ * nearest positioned ancestor instead — used by the landing hero so the swirl
+ * stays in the hero and fades into the dark sections below.
  */
-const SwirlBackground: React.FC = () => (
+const SwirlBackground: React.FC<{ contained?: boolean }> = ({ contained = false }) => (
   <div
-    style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      zIndex: -1,
-      pointerEvents: 'none',
-    }}
+    style={
+      contained
+        ? {
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 0,
+            pointerEvents: 'none',
+          }
+        : {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: -1,
+            pointerEvents: 'none',
+          }
+    }
   >
     <Canvas gl={{ antialias: true }} camera={{ position: [0, 0, 1], fov: 75 }}>
       {/* Laser rays on open */}
