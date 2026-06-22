@@ -160,3 +160,63 @@
     align-items: center;
   }
 }
+
+/* ===================================================================
+   Scrolling landing page (added 2026-06-22)
+   =================================================================== */
+html { scroll-behavior: smooth; }
+
+.landing-hero {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  color: #fff;
+}
+
+.scroll-cue {
+  position: absolute;
+  bottom: max(2rem, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+.scroll-cue__chev { font-size: 1.4rem; line-height: 1; color: #ecb256; }
+
+.landing-sections { position: relative; z-index: 1; }
+
+.section-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  margin: 0 0 2.5rem;
+  text-shadow: 0 0 18px rgba(236, 178, 86, 0.25);
+}
+
+/* Bottom legal footer (overrides the absolute hero-pinned .landing-footer) */
+.landing-footer--bottom {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  justify-content: center;
+  padding: 2rem 1rem 3rem;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .section-title { font-size: 2rem; }
+}

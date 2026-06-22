@@ -2,17 +2,15 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-// import { useTheme } from "../theme/useTheme";
 import SwirlBackground from "../components/SwirlBackground";
-import "../styles/Landing.css"; // We'll create this file next
+import ScrollCue from "../components/landing/ScrollCue";
+import "../styles/Landing.css";
 
 const Landing: React.FC = () => {
- // const { setTheme } = useTheme();
-
   return (
     <>
       <SwirlBackground />
-      <div className="landing-container">
+      <section className="landing-hero">
         <div className="landing-brand">BarHop</div>
         <div className="landing-content">
           <h1 className="landing-title">Your Night, Your Route.</h1>
@@ -28,12 +26,18 @@ const Landing: React.FC = () => {
             </Link>
           </div>
         </div>
-        <footer className="landing-footer">
-          <Link to="/privacy">Privacy Policy</Link>
-          <span>·</span>
-          <Link to="/terms">Terms &amp; Conditions</Link>
-        </footer>
-      </div>
+        <ScrollCue />
+      </section>
+
+      <main className="landing-sections">
+        {/* Feature rows, How it works, FAQ, and Final CTA added in later tasks. */}
+      </main>
+
+      <footer className="landing-footer landing-footer--bottom">
+        <Link to="/privacy">Privacy Policy</Link>
+        <span>&middot;</span>
+        <Link to="/terms">Terms &amp; Conditions</Link>
+      </footer>
     </>
   );
 };
