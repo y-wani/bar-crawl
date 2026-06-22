@@ -7,6 +7,7 @@ import ScrollCue from "../components/landing/ScrollCue";
 import FeatureRow from "../components/landing/FeatureRow";
 import { features } from "../components/landing/featureData";
 import HowItWorks from "../components/landing/HowItWorks";
+import FaqSection from "../components/landing/FaqSection";
 import "../styles/Landing.css";
 
 const Landing: React.FC = () => {
@@ -46,6 +47,7 @@ const Landing: React.FC = () => {
           ))}
         </section>
         <HowItWorks />
+        <FaqSection />
       </main>
 
       <footer className="landing-footer landing-footer--bottom">
