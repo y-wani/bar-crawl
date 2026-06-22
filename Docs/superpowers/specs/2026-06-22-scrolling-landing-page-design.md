@@ -58,18 +58,23 @@ Motion library: `framer-motion` (already a dependency). Scroll-linked effects us
 ### Hero (unchanged + scroll cue)
 Existing hero. Add an animated chevron / "See how it works ↓" cue at the bottom.
 
-### Feature highlights — 4 alternating rows
-Each row uses a screenshot the user will add to `public/` (graceful placeholder
-until provided). Image side alternates (`reverse` prop).
+### Feature highlights — 5 alternating rows
+Each row uses a real screenshot already in `public/`. Image side alternates
+(`reverse` prop). Narrative arc: discover → route → vote → live → recap.
 
 1. **Find every bar on one map** — Explore bars and pubs around you on a live
-   interactive map — no more juggling tabs. (screenshot: map view)
+   interactive map and build your shortlist. (`/Home_Page.png`)
 2. **The smartest route, instantly** — Pick your stops and BarHop orders them
-   into the perfect walkable crawl. (screenshot: route view)
-3. **Crawl together, live** — Start a Live Crawl and your whole group sees the
-   current stop in real time. (screenshot: Live Crawl)
-4. **Save it. Share it. One link.** — Save your favorite crawls and send the
-   whole night to friends with a single link. (screenshot: saved/share view)
+   into the perfect walkable crawl — with distance and walking time. (`/Route_Page.png`)
+3. **Let the group decide** — Invite friends to vote on the lineup so everyone's
+   in before you head out. (`/Friend_Vote.png`)
+4. **Crawl together, live** — Start a Live Crawl and your whole group sees the
+   current stop, check-ins, and what's next in real time. (`/Live_Crawl.png`)
+5. **Share the recap** — End the night with an auto-generated recap card you can
+   share or download. (`/Crawl_recap.png`)
+
+All five screenshots are landscape desktop captures, so rows use a consistent
+landscape image frame (rounded corners, subtle neon border/glow).
 
 ### How it works — 3 steps (sticky progress line)
 Section pins to the viewport while a vertical gold line fills top→bottom with
@@ -126,7 +131,8 @@ style and gold/purple neon aesthetic.
 - Landing page scrolls and presents all four sections below an unchanged hero.
 - Scroll effects are smooth on desktop and degrade cleanly on mobile and under
   reduced-motion.
-- Feature rows accept user-provided screenshots from `public/` with placeholders
-  until then.
+- Feature rows display the five real screenshots already in `public/`
+  (`Home_Page.png`, `Route_Page.png`, `Friend_Vote.png`, `Live_Crawl.png`,
+  `Crawl_recap.png`).
 - `npm run build` passes; no console errors on the page.
 - Visible FAQ text matches the JSON-LD already in `index.html`.
