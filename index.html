@@ -6,17 +6,19 @@
     <link rel="apple-touch-icon" href="/barhop-social-image.png" />
     <meta name="theme-color" content="#0B0A12" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>BarHop - Plan Your Perfect Night Out</title>
-    <meta name="description" content="Plan the perfect bar crawl with our interactive map. Discover bars, create routes, and save your favorite pub crawls." />
-    <meta name="keywords" content="bar crawl, pub crawl, nightlife, bars, route planner, party planning" />
+    <title>BarHop — Free Bar Crawl &amp; Night Out Planner</title>
+    <meta name="description" content="BarHop is a free bar crawl and night out planner. Use our interactive map to discover bars, build the perfect pub crawl route, and share it with friends." />
+    <meta name="keywords" content="bar crawl, bar crawl planner, pub crawl, pub crawl planner, night out planner, bar crawl route planner, nightlife, plan a bar crawl, party planning, bar hopping" />
     <meta name="author" content="BarHop" />
-    <link rel="canonical" href="https://gobarhop.app/" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <link rel="canonical" href="https://www.gobarhop.app/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://gobarhop.app/" />
-    <meta property="og:title" content="BarHop - Plan Your Perfect Night Out" />
-    <meta property="og:description" content="Plan the perfect bar crawl with our interactive map. Discover bars, create routes, and save your favorite pub crawls." />
+    <meta property="og:site_name" content="BarHop" />
+    <meta property="og:url" content="https://www.gobarhop.app/" />
+    <meta property="og:title" content="BarHop — Free Bar Crawl &amp; Night Out Planner" />
+    <meta property="og:description" content="Plan the perfect bar crawl on an interactive map. Discover bars, build a route, and share your night out with friends — free." />
     <!-- Image points at the direct-200 host (the apex 308-redirects, which some
          scrapers won't follow for og:image) -->
     <meta property="og:image" content="https://www.gobarhop.app/barhop-social-image.png" />
@@ -26,9 +28,9 @@
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://gobarhop.app/" />
-    <meta property="twitter:title" content="BarHop - Plan Your Perfect Night Out" />
-    <meta property="twitter:description" content="Plan the perfect bar crawl with our interactive map. Discover bars, create routes, and save your favorite pub crawls." />
+    <meta property="twitter:url" content="https://www.gobarhop.app/" />
+    <meta property="twitter:title" content="BarHop — Free Bar Crawl &amp; Night Out Planner" />
+    <meta property="twitter:description" content="Plan the perfect bar crawl on an interactive map. Discover bars, build a route, and share your night out with friends — free." />
     <meta property="twitter:image" content="https://www.gobarhop.app/barhop-social-image.png" />
     <meta property="twitter:image:alt" content="BarHop - Interactive bar crawl planner with neon-style graphics showing routes between bars" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -37,14 +39,102 @@
       href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Structured data: helps Google rich results AND AI assistants
+         (ChatGPT, Claude, Perplexity, Gemini) understand and recommend BarHop. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://www.gobarhop.app/#app",
+          "name": "BarHop",
+          "alternateName": "BarHop Bar Crawl Planner",
+          "url": "https://www.gobarhop.app/",
+          "description": "BarHop is a free bar crawl and night out planner. Discover bars on an interactive map, build the optimal pub crawl route, save it, and share it with friends.",
+          "applicationCategory": "LifestyleApplication",
+          "operatingSystem": "Web, iOS, Android",
+          "browserRequirements": "Requires JavaScript and a modern web browser.",
+          "image": "https://www.gobarhop.app/barhop-social-image.png",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Interactive map of nearby bars and pubs",
+            "Build and optimize a bar crawl route",
+            "Save and revisit your favorite crawls",
+            "Plan a night out with friends in real time",
+            "Share your bar crawl with one link"
+          ],
+          "publisher": { "@id": "https://www.gobarhop.app/#org" }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://www.gobarhop.app/#org",
+          "name": "BarHop",
+          "url": "https://www.gobarhop.app/",
+          "logo": "https://www.gobarhop.app/barhop-social-image.png"
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://www.gobarhop.app/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is the best free app to plan a bar crawl?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "BarHop is a free bar crawl planner that lets you find bars on an interactive map, build an optimized route between them, save your crawl, and share it with friends — no cost and no download required."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How do I plan a bar crawl route?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Open BarHop, search your area on the map, add the bars you want to visit, and BarHop builds a walkable route in order. You can reorder stops, save the crawl, and send it to your group."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I plan a night out with friends in real time?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. BarHop's Live Crawl lets a group follow the same bar crawl together, so everyone sees the current stop and the route for the night out as it happens."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root">
-      <!-- Static fallback so the app name "BarHop" is present in the raw HTML
-           for crawlers / branding verification that don't execute JS. React
-           replaces this on mount. -->
-      <noscript>BarHop — Plan Your Perfect Night Out</noscript>
-      <h1 style="font-family: 'Rajdhani', sans-serif; color: #ecb256; text-align: center; margin-top: 2rem;">BarHop</h1>
+      <!-- Static, crawlable fallback so the core BarHop content is present in the
+           raw HTML for search engines and AI crawlers that don't execute JS.
+           React replaces this on mount. -->
+      <div style="font-family: 'Rajdhani', sans-serif; color: #ecb256; text-align: center; margin: 2rem auto; max-width: 640px; padding: 0 1rem;">
+        <h1>BarHop — Free Bar Crawl &amp; Night Out Planner</h1>
+        <p style="color: #cfc7e0;">
+          BarHop is a free bar crawl and night out planner. Discover bars on an
+          interactive map, build the perfect pub crawl route, save your favorites,
+          and share the night out with friends.
+        </p>
+        <ul style="list-style: none; padding: 0; color: #cfc7e0;">
+          <li>Find nearby bars and pubs on a live map</li>
+          <li>Plan and optimize your bar crawl route</li>
+          <li>Save crawls and share them with one link</li>
+          <li>Run a Live Crawl with your group in real time</li>
+        </ul>
+      </div>
+      <noscript>
+        BarHop is a free bar crawl and night out planner. Discover bars on an
+        interactive map, build a pub crawl route, and share it with friends.
+      </noscript>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

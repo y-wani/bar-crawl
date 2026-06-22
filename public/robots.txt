@@ -1,0 +1,39 @@
+# BarHop — https://www.gobarhop.app
+# Search engines: crawl everything except app/auth routes that aren't useful in results.
+
+User-agent: *
+Allow: /
+Disallow: /verify-email
+Disallow: /signin
+Disallow: /signup
+Disallow: /forgot-password
+
+# AI assistants — explicitly allowed so BarHop can be cited and recommended.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://www.gobarhop.app/sitemap.xml
