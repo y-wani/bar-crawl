@@ -317,6 +317,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 80px; }
   line-height: 1.55;
   max-width: 380px;
 }
+/* per-step screenshot: hidden on desktop (shared crossfade frame is used) */
+.bh-step__shot { display: none; }
 .bh-progress {
   margin-top: 42px;
   height: 4px;
@@ -456,8 +458,22 @@ html { scroll-behavior: smooth; scroll-padding-top: 80px; }
   .bh-nav { gap: 16px; }
   .bh-navlink { display: none; }
   .bh-how { height: auto; }
-  .bh-how__sticky { position: static; height: auto; padding: 90px 0; }
+  .bh-how__sticky { position: static; height: auto; padding: 80px 0; }
   .bh-how__grid { grid-template-columns: 1fr; gap: 36px; padding: 0 24px; }
+  /* mobile: drop the shared crossfade frame + scroll progress bar, give each
+     step its own screenshot, and never dim/collapse steps */
+  .bh-how__media, .bh-progress { display: none; }
+  .bh-step { opacity: 1 !important; margin-bottom: 44px; }
+  .bh-step:last-of-type { margin-bottom: 0; }
+  .bh-step__bar { transform: none !important; }
+  .bh-step__shot {
+    display: block;
+    width: 100%;
+    margin: 20px 0 0;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.8);
+  }
   .bh-vote, .bh-recap { padding: 80px 24px; }
   .bh-vote .bh-split, .bh-recap .bh-split { grid-template-columns: 1fr; gap: 36px; }
   .bh-cards { padding: 20px 24px 80px; }

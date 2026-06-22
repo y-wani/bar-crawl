@@ -113,7 +113,9 @@ const Landing: React.FC = () => {
           });
         }
 
-        if (pin && steps.length) {
+        // The pinned step/screenshot sync is a desktop-only affordance; on
+        // mobile the section stacks and each step shows its own screenshot.
+        if (pin && steps.length && window.innerWidth > 860) {
           const rect = pin.getBoundingClientRect();
           const total = pin.offsetHeight - vh;
           let prog = total > 0 ? -rect.top / total : 0;
@@ -289,6 +291,7 @@ const Landing: React.FC = () => {
                   Drop a pin, set your radius. Every bar nearby — ranked by distance or hype, with
                   live open/closed status.
                 </p>
+                <img className="bh-step__shot" src="/Home_Page.png" alt="Discover bars on the map" loading="lazy" />
               </div>
 
               <div data-step className="bh-step">
@@ -301,6 +304,7 @@ const Landing: React.FC = () => {
                   Pick your stops and let BarHop optimize the walk. Drag to reorder, then lock it in —
                   less walking, more drinking.
                 </p>
+                <img className="bh-step__shot" src="/Route_Page.png" alt="Optimize your route" loading="lazy" />
               </div>
 
               <div data-step className="bh-step">
@@ -313,6 +317,7 @@ const Landing: React.FC = () => {
                   Start the crawl and track the whole squad on one map. &ldquo;Omw,&rdquo; &ldquo;next
                   round&rsquo;s on me&rdquo; — nobody gets left behind.
                 </p>
+                <img className="bh-step__shot" src="/Live_Crawl.png" alt="Live squad tracking" loading="lazy" />
               </div>
 
               <div className="bh-progress">
@@ -320,7 +325,7 @@ const Landing: React.FC = () => {
               </div>
             </div>
 
-            <div className="bh-frame">
+            <div className="bh-frame bh-how__media">
               <div className="bh-frame__bar">
                 <span className="bh-dot bh-dot--r" />
                 <span className="bh-dot bh-dot--y" />
