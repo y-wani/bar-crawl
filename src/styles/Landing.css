@@ -267,3 +267,103 @@ html { scroll-behavior: smooth; }
   .feature-row--reverse .feature-row__media { order: initial; }
   .feature-row__headline { font-size: 1.6rem; }
 }
+
+/* How it works (sticky progress line) */
+.how { position: relative; height: 220vh; }
+.how__sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+.how__track { position: relative; padding-left: 2.75rem; }
+.how__line {
+  position: absolute;
+  left: 0.6rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.how__line-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: top;
+  background: linear-gradient(#ecb256, #ff69b4);
+  box-shadow: 0 0 14px rgba(236, 178, 86, 0.6);
+}
+.how__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+.how__step { position: relative; }
+.how__dot {
+  position: absolute;
+  left: -2.75rem;
+  top: 0.45rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ecb256;
+  box-shadow: 0 0 14px rgba(236, 178, 86, 0.8);
+  transform-origin: center;
+}
+.how__step-content h3 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.6rem;
+  color: #fff;
+  margin: 0 0 0.4rem;
+}
+.how__step-content p {
+  font-family: 'Poppins', sans-serif;
+  color: #d8d2e6;
+  margin: 0;
+}
+
+/* Static fallback (reduced motion) */
+.how--static { padding: 5rem 1.5rem; }
+.how-static {
+  list-style: none;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.how-static li { display: flex; gap: 1rem; align-items: flex-start; }
+.how-static__num {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ecb256;
+  color: #0b0a12;
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+}
+.how-static h3 {
+  font-family: 'Rajdhani', sans-serif;
+  color: #fff;
+  margin: 0 0 0.25rem;
+}
+.how-static p { font-family: 'Poppins', sans-serif; color: #d8d2e6; margin: 0; }
+
+@media (max-width: 768px) {
+  .how { height: auto; }
+  .how__sticky { position: static; height: auto; padding: 4rem 1.5rem; }
+}
