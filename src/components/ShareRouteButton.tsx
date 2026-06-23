@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FiShare2,
   FiDownload,
@@ -7,6 +7,27 @@ import {
   FiCheck,
 } from "react-icons/fi";
 import "../styles/ShareRouteButton.css";
+
+// Once-per-device flag introducing the share options. localStorage can throw
+// in private mode, so any failure is treated as "already seen": never nag,
+// never crash the page.
+const TUTORIAL_KEY = "barhop_share_tutorial_seen";
+
+const hasSeenTutorial = (): boolean => {
+  try {
+    return localStorage.getItem(TUTORIAL_KEY) !== null;
+  } catch {
+    return true;
+  }
+};
+
+const markTutorialSeen = (): void => {
+  try {
+    localStorage.setItem(TUTORIAL_KEY, "1");
+  } catch {
+    // ignore — nothing else we can do
+  }
+};
 
 interface ShareRouteButtonProps {
   route?: GeoJSON.Feature<GeoJSON.LineString> | null;
@@ -33,10 +54,26 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // First time the button appears with a usable route, introduce it: expand
+  // the menu so all options are visible and point a coachmark at it.
+  useEffect(() => {
+    if (isVisible && route && !hasSeenTutorial()) {
+      setShowTutorial(true);
+      setIsExpanded(true);
+    }
+  }, [isVisible, route]);
 
   if (!isVisible || !route) {
     return null;
   }
+
+  const dismissTutorial = (collapse = true) => {
+    setShowTutorial(false);
+    if (collapse) setIsExpanded(false);
+    markTutorialSeen();
+  };
 
   const generateGoogleMapsUrl = () => {
     const hasEnoughPoints =
@@ -73,6 +110,7 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
   };
 
   const handleShareToGoogleMaps = () => {
+    if (showTutorial) dismissTutorial(false);
     const url = generateGoogleMapsUrl();
     if (url) {
       window.open(url, "_blank");
@@ -80,6 +118,7 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
   };
 
   const handleCopyRoute = async () => {
+    if (showTutorial) dismissTutorial(false);
     const url = generateGoogleMapsUrl();
     if (!url) return;
     try {
@@ -92,6 +131,7 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
   };
 
   const handleDownloadRoute = () => {
+    if (showTutorial) dismissTutorial(false);
     const googleMapsUrl = generateGoogleMapsUrl();
     // Use a QR code generator API to create a QR code for the Google Maps URL
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
@@ -205,49 +245,78 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
   };
 
   return (
-    <div
-      className={`share-route-button-container ${isExpanded ? "expanded" : ""}`}
-    >
-      <div
-        className="share-route-button-main"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <FiShare2 size={20} />
-        <span className="share-route-button-label">Share Route</span>
-      </div>
-
-      {isExpanded && (
-        <div className="share-route-button-options">
-          <button
-            className="share-route-option"
-            onClick={handleShareToGoogleMaps}
-            title="Open in Google Maps"
-          >
-            <FiMapPin size={16} />
-            <span>Google Maps</span>
-          </button>
-
-          <button
-            className={`share-route-option ${
-              copiedToClipboard ? "copied" : ""
-            }`}
-            onClick={handleCopyRoute}
-            title="Copy route to clipboard"
-          >
-            {copiedToClipboard ? <FiCheck size={16} /> : <FiCopy size={16} />}
-            <span>{copiedToClipboard ? "Copied!" : "Copy Link"}</span>
-          </button>
-
-          <button
-            className="share-route-option"
-            onClick={handleDownloadRoute}
-            title="Download route as a printable file"
-          >
-            <FiDownload size={16} />
-            <span>Download</span>
-          </button>
-        </div>
+    <>
+      {showTutorial && (
+        <div
+          className="share-tutorial-backdrop"
+          onClick={() => dismissTutorial()}
+        />
       )}
-    </div>
+      <div
+        className={`share-route-button-container ${isExpanded ? "expanded" : ""}`}
+      >
+        <div
+          className="share-route-button-main"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <FiShare2 size={20} />
+          <span className="share-route-button-label">Share Route</span>
+        </div>
+
+        {isExpanded && (
+          <div className="share-route-button-options">
+            <button
+              className="share-route-option"
+              onClick={handleShareToGoogleMaps}
+              title="Open in Google Maps"
+            >
+              <FiMapPin size={16} />
+              <span>Google Maps</span>
+            </button>
+
+            <button
+              className={`share-route-option ${
+                copiedToClipboard ? "copied" : ""
+              }`}
+              onClick={handleCopyRoute}
+              title="Copy route to clipboard"
+            >
+              {copiedToClipboard ? <FiCheck size={16} /> : <FiCopy size={16} />}
+              <span>{copiedToClipboard ? "Copied!" : "Copy Link"}</span>
+            </button>
+
+            <button
+              className="share-route-option"
+              onClick={handleDownloadRoute}
+              title="Download route as a printable file"
+            >
+              <FiDownload size={16} />
+              <span>Download</span>
+            </button>
+          </div>
+        )}
+
+        {showTutorial && (
+          <div
+            className="share-tutorial-callout"
+            role="dialog"
+            aria-label="Share route tip"
+          >
+            <h4>Share your route 🎉</h4>
+            <p>
+              Open it straight in Google Maps, copy a link to send friends, or
+              download a printable QR mission sheet.
+            </p>
+            <button
+              type="button"
+              className="share-tutorial-got-it"
+              onClick={() => dismissTutorial()}
+            >
+              Got it
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
