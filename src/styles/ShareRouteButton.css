@@ -113,9 +113,19 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  /* The route drawer becomes a bottom sheet (z-index: 25) that covers the
+     map's bottom-left, so move the control into the visible top strip and
+     lift it above the sheet. Options open downward toward the map center. */
   .share-route-button-container {
-    bottom: 80px;
+    top: var(--space-3);
+    bottom: auto;
     left: 12px;
+    flex-direction: column;
+    z-index: 26;
+  }
+
+  .share-route-button-options {
+    flex-direction: column;
   }
 
   .share-route-button-main {
