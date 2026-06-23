@@ -128,8 +128,15 @@
     flex-direction: column;
   }
 
+  /* Icon-only on mobile: the centered ETA/distance bar shares the top strip,
+     so collapse the pill to a compact circular icon to avoid any overlap. */
+  .share-route-button-label {
+    display: none;
+  }
+
   .share-route-button-main {
-    padding: 0.5rem 1rem;
+    padding: 0.6rem;
+    border-radius: var(--radius-pill);
   }
 }
 

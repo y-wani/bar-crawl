@@ -299,7 +299,7 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
         {showTutorial && (
           <div
             className="share-tutorial-callout"
-            role="dialog"
+            role="note"
             aria-label="Share route tip"
           >
             <h4>Share your route 🎉</h4>
