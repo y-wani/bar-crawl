@@ -34,6 +34,7 @@ import PageTransition from "../components/motion/PageTransition";
 import LocationTutorial from "../components/LocationTutorial";
 import LocationPermission from "../components/LocationPermission";
 import { useLocationPermission } from "../hooks/useLocationPermission";
+import { useInitialCenter, DEFAULT_CENTER } from "../hooks/useInitialCenter";
 import {
   fetchNearbyBars,
   isGooglePlacesEnabled,
@@ -115,11 +116,15 @@ const Home: React.FC = () => {
   const [bars, setBars] = useState<AppBat[]>([]);
   const [selectedBarIds, setSelectedBarIds] = useState<Set<string>>(new Set());
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([
-    -83.0007, 39.9612,
-  ]);
+  // Where the map opens: cached precise coords → IP city → Columbus default.
+  // The first bar fetch waits on `initialCenter.resolved` so we never fetch
+  // the default and then immediately refetch the visitor's real city.
+  const initialCenter = useInitialCenter();
+  const [mapCenter, setMapCenter] = useState<[number, number]>(
+    initialCenter.center
+  );
   const [searchRadius, setSearchRadius] = useState<number>(1);
-  const [searchedLocation, setSearchedLocation] = useState("Columbus, Ohio");
+  const [searchedLocation, setSearchedLocation] = useState(initialCenter.label);
   const [isLoading, setIsLoading] = useState(true);
   const [showOnlyInRadius, setShowOnlyInRadius] = useState(false);
 
@@ -139,6 +144,22 @@ const Home: React.FC = () => {
   // Guards the one-shot position re-request when permission is granted
   // but no coordinates are available (expired stored location)
   const autoLocateAttempted = useRef(false);
+
+  // Adopt the resolved centre once /api/geo answers. Skipped if the visitor
+  // already moved the map, searched, or had precise coords to begin with —
+  // a late geo answer must never yank them back to their IP city.
+  useEffect(() => {
+    if (!initialCenter.resolved || hasInitiallyFetched.current) return;
+    if (hasManualSearch || userLocation) return;
+    setMapCenter(initialCenter.center);
+    setSearchedLocation(initialCenter.label);
+  }, [
+    initialCenter.resolved,
+    initialCenter.center,
+    initialCenter.label,
+    hasManualSearch,
+    userLocation,
+  ]);
 
   // Bars inside the user-drawn polygon (all bars when nothing is drawn)
   const polygonFilteredBars = useMemo(() => {
@@ -512,14 +533,12 @@ const Home: React.FC = () => {
         return;
       }
 
-      // Show once: respect stored consent marker
-      const consentSet = localStorage.getItem("locationUserConsent") === "true";
-      if (
-        !consentSet &&
-        (locationPermission === "prompt" || locationPermission === "unknown")
-      ) {
-        setShowLocationPermission(true);
-      }
+      // Deliberately nothing here for first-time visitors. The permission
+      // modal used to auto-open over an unpainted map, which blocked every
+      // new user before they saw a single bar. Location is now opt-in via the
+      // crosshair button in MapSearchControl (handleUseLocationClick), which
+      // iOS Safari — roughly half our traffic — also honours far more
+      // reliably than a geolocation call fired on page load.
     };
 
     handleLocationPermission();
@@ -604,46 +623,51 @@ const Home: React.FC = () => {
     }
   };
 
-  // Load cached data immediately on component mount
+  // Load bars for the resolved centre. Gated on `resolved` so a visitor in
+  // London doesn't pay for a Columbus fetch before their own city's.
   useEffect(() => {
+    if (!initialCenter.resolved) return;
+
     const loadInitialBars = async () => {
       if (hasInitiallyFetched.current) return;
 
-      debug("🚀 Loading initial bars...");
+      debug("🚀 Loading initial bars for", initialCenter.label);
       setIsLoading(true);
 
       try {
-        // Try to load default location cache first
-        const defaultCache = await getDefaultLocationCache();
+        const onDefault =
+          initialCenter.center[0] === DEFAULT_CENTER[0] &&
+          initialCenter.center[1] === DEFAULT_CENTER[1];
 
-        if (defaultCache.isFromCache && defaultCache.bars.length > 0) {
-          debug(
-            `🎯 Loaded ${defaultCache.bars.length} bars from default cache`
-          );
-          setBars(defaultCache.bars);
-          hasInitiallyFetched.current = true;
-          
-          // Set timeout to show map after bars are loaded
-          
-          return;
+        // The default-location cache is Columbus-specific, so it only helps
+        // when we actually fell back to Columbus.
+        if (onDefault) {
+          const defaultCache = await getDefaultLocationCache();
+          if (defaultCache.isFromCache && defaultCache.bars.length > 0) {
+            debug(
+              `🎯 Loaded ${defaultCache.bars.length} bars from default cache`
+            );
+            setBars(defaultCache.bars);
+            hasInitiallyFetched.current = true;
+            return;
+          }
         }
 
-        // If no cache, fetch fresh data
-        debug("📡 No cache found, fetching fresh data...");
-        await fetchBarsInArea(mapCenter, true, false); // Force fresh fetch, no cache
-
-        // Set timeout to show map after bars are loaded
-        
+        // Cache-first for this centre (getCachedBars inside fetchBarsInArea);
+        // only a genuine miss reaches the billed Places proxy.
+        debug("📡 Fetching bars for resolved centre...");
+        await fetchBarsInArea(initialCenter.center, false, true);
       } catch (error) {
         console.error("Error loading initial bars:", error);
-        
       } finally {
         setIsLoading(false);
       }
     };
 
     loadInitialBars();
-  }, []); // Empty dependency array for one-time initial load
+    // Runs once per resolved centre; hasInitiallyFetched guards re-entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCenter.resolved]);
 
   // const selectedBars = useMemo(
   //   () => bars.filter((bar) => selectedBarIds.has(bar.id)),
@@ -755,8 +779,13 @@ const Home: React.FC = () => {
         />
       </div>
 
+      {/* Held back until the map has actually painted bars. With the
+          permission modal no longer auto-opening, an ungated tutorial would
+          simply become the new thing blocking a new user's first view. */}
       <LocationTutorial
-        isVisible={showTutorial && !showLocationPermission}
+        isVisible={
+          showTutorial && !showLocationPermission && !isLoading && bars.length > 0
+        }
         onClose={() => {
           setShowTutorial(false);
           // Mark tutorial as seen in localStorage so it never shows again
