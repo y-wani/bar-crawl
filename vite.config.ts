@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -33,6 +34,11 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1000,
   },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'api/**/*.test.ts'],
+  },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     '__dirname': JSON.stringify(''),
@@ -45,4 +51,4 @@ export default defineConfig({
       'path': 'rollup-plugin-node-polyfills/polyfills/path',
     },
   },
-})
+} as any)
