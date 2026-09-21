@@ -235,8 +235,11 @@ const Landing: React.FC = () => {
         <SwirlBackground contained />
         <div className="bh-hero__fade" />
         <div className="bh-hero__content">
-          <h1 className="bh-hero__title">Your Night, Your Route.</h1>
-          <p className="bh-hero__subtitle">Discover, plan, and share the ultimate bar crawl.</p>
+          <h1 className="bh-hero__title">The Best Route. The Whole Crew.</h1>
+          <p className="bh-hero__subtitle">
+            BarHop maps the bars, builds the shortest walking route, and keeps
+            everyone together on the night — free.
+          </p>
           <div className="bh-cta-row">
             <Link to="/signup" className="bh-btn bh-btn--light bh-btn--lg">Get Started for Free</Link>
             <Link to="/signin" className="bh-btn bh-btn--ghost bh-btn--lg">I have an account</Link>
