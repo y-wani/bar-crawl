@@ -170,14 +170,27 @@ The nudge is framed on what is actually true, not on an expiry we impose:
 must also return `payload.firebase.sign_in_provider`, so the proxy can tell an
 anonymous caller from a real one.
 
-Anonymous uids get a tighter daily Places-search budget than real accounts
-(exact numbers TBD at implementation against current usage, but materially
-lower — enough for a genuine trial, not enough to be a free API).
+A signed-in user currently gets **10/min, 80/day** for Places nearby search
+(`api/proxy.ts:745-746`). Anonymous callers get:
+
+| | minute | day |
+|---|---|---|
+| Real account (unchanged) | 10 | 80 |
+| **Anonymous** | **5** | **15** |
+
+15/day is enough for a genuine trial — search a few areas, adjust the radius,
+build a route — while being ~5× lower than a real account, so signing up is a
+visible upgrade rather than a formality.
 
 ### 7.2 Global anonymous ceiling
 
 A counter doc `rateLimits/_anonGlobal` tracking anonymous Places calls per UTC
-day. Past the ceiling, anonymous callers receive cached results only, plus a
+day, ceiling **500**. With cache-on-load, a typical engaged guest makes 0–2
+live calls, so 500 covers roughly 250 engaged guests per day — comfortably
+above the best traffic day on record (66 visitors) while bounding worst-case
+spend if a post goes front-page.
+
+Past the ceiling, anonymous callers receive cached results only, plus a
 distinct response code the client renders as "sign up to keep searching."
 Real accounts are unaffected — a spike degrades the guest experience, never the
 experience of people who already committed.
@@ -301,11 +314,22 @@ Retention work, landing page redesign, SEO city pages, P2P/hosting-cost
 experiments, test harness (this repo has none — verification for this work will
 be manual, as it was for `4831105`).
 
-## 14. Open questions
+## 14. Resolved decisions
 
-1. Exact per-uid and global cap numbers — set at implementation against
-   observed usage.
-2. Whether the 30-day server doc also backs a pre-signup share link, or stays
-   purely a durability layer.
-3. Seed list composition — needs a look at Vercel geography beyond the
-   US/UK/CA/DE/FR split already observed.
+All three previously-open questions are now decided.
+
+**1. Cap numbers — decided.** Anonymous: 5/min, 15/day. Global anonymous
+ceiling: 500/UTC day. Anchored against the existing 10/min, 80/day for real
+accounts. See §7.1 and §7.2. Revisit once there is a month of guest data; these
+are starting values chosen to be safe, not optimal.
+
+**2. Pre-signup share link — decided: no, not in Phase 1.** The 30-day server
+doc stays purely a durability layer. Sharing a crawl before signup would need
+public read rules and its own abuse surface, and nobody has asked for it. It
+can be added later on top of the same doc if a real need appears.
+
+**3. Seed list — decided: US + UK + Canada only.** Observed traffic is US 76%,
+UK 8%, CA 4%, DE 4%, FR 4%. Seed the top ~25 US metros, ~6 UK cities, and
+Toronto + Vancouver. Germany and France are ~1 visitor each at current volume
+and bring language and data-quality complications that aren't worth a one-time
+Places spend yet. They can be added when they justify it.
