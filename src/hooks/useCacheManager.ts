@@ -8,23 +8,12 @@ import {
 } from '../services/barCacheService';
 import type { AppBat } from '../pages/Home';
 import { fetchNearbyBars, isGooglePlacesEnabled } from '../services/placesService';
+import { SEED_METROS, DEFAULT_SEED_METRO } from '../data/seedMetros';
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 // Dev logging stub — swap for console.log when debugging
 const debug = (..._args: unknown[]) => {};
-
-// Popular locations to pre-cache
-const POPULAR_LOCATIONS = [
-  { name: "Columbus, Ohio", lat: 39.9612, lng: -83.0007 },
-  { name: "New York, NY", lat: 40.7128, lng: -74.0060 },
-  { name: "Los Angeles, CA", lat: 34.0522, lng: -118.2437 },
-  { name: "Chicago, IL", lat: 41.8781, lng: -87.6298 },
-  { name: "Miami, FL", lat: 25.7617, lng: -80.1918 },
-  { name: "Austin, TX", lat: 30.2672, lng: -97.7431 },
-  { name: "Portland, OR", lat: 45.5152, lng: -122.6784 },
-  { name: "Nashville, TN", lat: 36.1627, lng: -86.7816 }
-];
 
 // Calculate distance between two points
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -116,7 +105,7 @@ export const useCacheManager = () => {
       
       if (!defaultCache.isFromCache) {
         debug("📍 Caching default location (Columbus, Ohio)...");
-        const defaultLocation = POPULAR_LOCATIONS[0];
+        const defaultLocation = DEFAULT_SEED_METRO;
         const bars = await fetchBarsForLocation(defaultLocation.lat, defaultLocation.lng, defaultLocation.name);
         
         if (bars.length > 0) {
@@ -127,8 +116,8 @@ export const useCacheManager = () => {
       
       // Background caching of other popular locations
       setTimeout(async () => {
-        for (let i = 1; i < Math.min(4, POPULAR_LOCATIONS.length); i++) {
-          const location = POPULAR_LOCATIONS[i];
+        for (let i = 1; i < Math.min(4, SEED_METROS.length); i++) {
+          const location = SEED_METROS[i];
           
           try {
             debug(`🌍 Background caching ${location.name}...`);
@@ -161,7 +150,7 @@ export const useCacheManager = () => {
       
       try {
         // Refresh default location
-        const defaultLocation = POPULAR_LOCATIONS[0];
+        const defaultLocation = DEFAULT_SEED_METRO;
         const bars = await fetchBarsForLocation(defaultLocation.lat, defaultLocation.lng, defaultLocation.name);
         
         if (bars.length > 0) {
