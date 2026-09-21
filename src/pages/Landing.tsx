@@ -258,8 +258,8 @@ const Landing: React.FC = () => {
             No more <span className="bh-strike">&ldquo;so where are we going?&rdquo;</span> group chats.
           </p>
           <p className="bh-hook__sub">
-            One link. Everyone votes. BarHop builds the route and keeps the whole crew moving
-            together — all night.
+            Pick your bars, and BarHop orders them into the shortest walk
+            between them. Everyone sees the same plan, and each other, all night.
           </p>
         </div>
       </section>
