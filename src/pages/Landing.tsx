@@ -235,7 +235,7 @@ const Landing: React.FC = () => {
         <SwirlBackground contained />
         <div className="bh-hero__fade" />
         <div className="bh-hero__content">
-          <h1 className="bh-hero__title">The Best Route. The Whole Crew.</h1>
+          <h1 className="bh-hero__title">The Best Route. Together.</h1>
           <p className="bh-hero__subtitle">
             BarHop maps the bars, builds the shortest walking route, and keeps
             everyone together on the night — free.
