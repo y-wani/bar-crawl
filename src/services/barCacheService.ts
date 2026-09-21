@@ -25,6 +25,7 @@ interface CachedBarArea {
   bars: AppBat[];
   fetchedAt: Timestamp;
   location: string; // Human readable location name
+  seeded?: boolean;
 }
 
 interface CacheSearchResult {
@@ -37,7 +38,11 @@ interface CacheSearchResult {
 // collection holds Mapbox results with generated ratings. Keeping them
 // separate means switching data sources never serves mismatched cache.
 const COLLECTION_NAME = isGooglePlacesEnabled ? 'barCacheV5' : 'barCache';
-const CACHE_EXPIRY_HOURS = 24; // Cache expires after 24 hours
+// User-driven searches expire daily. Seeded metro areas last far longer: bar
+// listings don't change day to day, and re-seeding 33 metros nightly would
+// reintroduce the per-visitor Places cost that seeding exists to remove.
+const CACHE_EXPIRY_HOURS = 24;
+const SEEDED_CACHE_EXPIRY_HOURS = 24 * 30;
 const SEARCH_RADIUS_MILES = 2; // Search within 2 miles for cached data
 
 // Helper function to calculate distance between two points
@@ -54,11 +59,10 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 // Check if cache is still valid
-const isCacheValid = (fetchedAt: Timestamp): boolean => {
-  const now = new Date();
-  const cacheTime = fetchedAt.toDate();
-  const hoursDiff = (now.getTime() - cacheTime.getTime()) / (1000 * 60 * 60);
-  return hoursDiff < CACHE_EXPIRY_HOURS;
+export const isCacheValid = (fetchedAt: Timestamp, seeded = false): boolean => {
+  const hoursDiff =
+    (Date.now() - fetchedAt.toDate().getTime()) / (1000 * 60 * 60);
+  return hoursDiff < (seeded ? SEEDED_CACHE_EXPIRY_HOURS : CACHE_EXPIRY_HOURS);
 };
 
 // Get cached bars for a location
@@ -90,7 +94,7 @@ export const getCachedBars = async (
         cacheData.centerLng
       );
       
-      if (distance <= searchRadius && isCacheValid(cacheData.fetchedAt)) {
+      if (distance <= searchRadius && isCacheValid(cacheData.fetchedAt, cacheData.seeded === true)) {
         debug(`✅ Found valid cache within ${distance.toFixed(2)} miles`);
         const cacheAge = (new Date().getTime() - cacheData.fetchedAt.toDate().getTime()) / (1000 * 60 * 60);
         
@@ -123,18 +127,20 @@ export const cacheBars = async (
   centerLng: number,
   bars: AppBat[],
   location: string = "Unknown Location",
-  radius: number = 2
+  radius: number = 2,
+  seeded: boolean = false
 ): Promise<void> => {
   try {
     debug(`💾 Caching ${bars.length} bars for ${location}`);
-    
+
     const cacheData: CachedBarArea = {
       centerLat,
       centerLng,
       radius,
       bars,
       fetchedAt: serverTimestamp() as Timestamp,
-      location
+      location,
+      seeded
     };
     
     await addDoc(collection(db, COLLECTION_NAME), cacheData);
@@ -182,7 +188,7 @@ export const cleanupOldCache = async (): Promise<void> => {
     
     querySnapshot.docs.forEach((doc) => {
       const cacheData = doc.data() as CachedBarArea;
-      if (!isCacheValid(cacheData.fetchedAt)) {
+      if (!isCacheValid(cacheData.fetchedAt, cacheData.seeded === true)) {
         toDelete.push(doc.id);
       }
     });
