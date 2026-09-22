@@ -710,16 +710,23 @@ const Route: React.FC = () => {
   // has to follow — otherwise a refresh restores the pre-drag order.
   useEffect(() => {
     if (draggableBars.length < 2) return;
+    // Never persist a half-initialised crawl. draggableBars is populated by the
+    // init effect BEFORE setStartCoordinates has propagated, so an unguarded
+    // write lands with startCoordinates: undefined and clobbers the anchors
+    // that were saved before the refresh — after which the restore falls
+    // through to geolocation forever. Home has already stored the crawl
+    // without anchors by this point, so skipping here loses nothing.
+    if (!startCoordinates) return;
     const crawl = {
       selectedBars: draggableBars,
       mapCenter,
       searchRadius,
       crawlName: effectiveState?.crawlName,
-      // Persist the anchors too. Route only takes its "restore saved start/end"
-      // branch when startCoordinates is present; without them a refresh
-      // silently re-derives the start from geolocation and throws away the
-      // addresses the visitor typed.
-      startCoordinates: startCoordinates ?? undefined,
+      // Route only takes its "restore saved start/end" branch when
+      // startCoordinates is present; without these a refresh silently
+      // re-derives the start from geolocation and throws away the addresses
+      // the visitor typed.
+      startCoordinates,
       endCoordinates: endCoordinates ?? undefined,
     };
     writeGuestCrawl(crawl);
