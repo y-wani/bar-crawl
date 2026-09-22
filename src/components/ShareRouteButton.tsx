@@ -7,6 +7,8 @@ import {
   FiCheck,
 } from "react-icons/fi";
 import "../styles/ShareRouteButton.css";
+import { toast } from "./Toaster";
+import { buildRoutePdf, routePdfFilename } from "../utils/routePdf";
 
 // Once-per-device flag introducing the share options. localStorage can throw
 // in private mode, so any failure is treated as "already seen": never nag,
@@ -54,6 +56,10 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  // Building the PDF pulls jsPDF over the network on first use, so the button
+  // needs a busy state — otherwise it looks dead on a slow connection and gets
+  // clicked repeatedly.
+  const [downloading, setDownloading] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
   // First time the button appears with a usable route, introduce it: expand
@@ -130,118 +136,57 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
     }
   };
 
-  const handleDownloadRoute = () => {
+  // Export the crawl as a PDF.
+  //
+  // Was a Blob({ type: 'text/html' }) download, which on iOS landed in Files
+  // and opened badly or not at all — and a phone in a bar is where this gets
+  // opened. jsPDF is imported here rather than at module scope so it only
+  // downloads when somebody actually exports.
+  const handleDownloadRoute = async () => {
     if (showTutorial) dismissTutorial(false);
-    const googleMapsUrl = generateGoogleMapsUrl();
-    // Use a QR code generator API to create a QR code for the Google Maps URL
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-      googleMapsUrl
-    )}`;
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const googleMapsUrl = generateGoogleMapsUrl();
 
-    const stopsList =
-      bars.length > 0
-        ? bars
-            .map(
-              (bar, index) => `
-          <div class="bar-stop">
-            <div class="stop-header">
-              <span class="stop-number">${index + 1}</span>
-              <div class="stop-info">
-                <h2>${bar.name}</h2>
-                ${bar.address ? `<p class="address">${bar.address}</p>` : ""}
-              </div>
-            </div>
-            <div class="stop-content">
-               <div class="challenge">
-                <strong>⭐ Mission:</strong> Try the house special or ask the bartender for their recommendation!
-               </div>
-               <div class="ratings">
-                <strong>Your Rating:</strong>
-                <span class="stars">☆ ☆ ☆ ☆ ☆</span>
-               </div>
-               <div class="notes">
-                <strong>Notes & Memories:</strong>
-                <div class="notes-box"></div>
-               </div>
-            </div>
-          </div>
-        `
-            )
-            .join("")
-        : "<div>No stops added to route.</div>";
-
-    const printableContent = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>Your Epic Bar Crawl Mission</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&family=Poppins:wght@400;600&display=swap');
-          body { font-family: 'Poppins', sans-serif; margin: 0; padding: 25px; background-color: #f4f7f6; color: #333; }
-          .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-          .header { text-align: center; border-bottom: 2px dashed #ddd; padding-bottom: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 20px; }
-          .header-text h1 { font-family: 'Rajdhani', sans-serif; color: #1a1a2e; margin: 0; font-size: 2.5em; }
-          .header-text p { margin: 5px 0 0 0; color: #666; }
-          .qr-code img { border-radius: 5px; }
-          .bar-stop { margin-bottom: 20px; }
-          .stop-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
-          .stop-number { font-size: 1.5em; font-weight: bold; color: #1a1208; background-color: #ecb256; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-          .stop-info h2 { margin: 0; font-size: 1.4em; color: #1a1a2e; }
-          .address { margin: 2px 0 0 0; color: #555; font-size: 0.9em; }
-          .stop-content { border-left: 3px solid #ecb256; padding-left: 20px; margin-left: 20px; }
-          .challenge, .ratings, .notes { margin-bottom: 10px; }
-          .stars { letter-spacing: 3px; cursor: pointer; color: #ddd; font-size: 1.5em; }
-          .notes-box { border: 1px solid #ddd; border-radius: 5px; height: 60px; margin-top: 5px; }
-          .safety, .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px dashed #ddd; }
-          h3 { font-family: 'Rajdhani', sans-serif; color: #1a1a2e; }
-          .safety ul { list-style: none; padding: 0; text-align: left; max-width: 400px; margin: 10px auto; }
-          .safety li { margin-bottom: 8px; }
-          .footer { font-size: 0.8em; color: #aaa; }
-          @media print {
-            body { margin: 0; padding: 0; background-color: #fff; }
-            .container { box-shadow: none; border-radius: 0; }
+      // Fetch the QR as a data URL. Best-effort: an offline or slow qrserver
+      // must not block the sheet, so a failure just drops the QR.
+      let qrDataUrl: string | undefined;
+      if (googleMapsUrl) {
+        try {
+          const res = await fetch(
+            `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+              googleMapsUrl
+            )}`
+          );
+          if (res.ok) {
+            const blob = await res.blob();
+            qrDataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
           }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-             <div class="qr-code">
-              <img src="${qrCodeUrl}" alt="Google Maps Route QR Code">
-            </div>
-            <div class="header-text">
-              <h1>Your Bar Crawl Mission</h1>
-              <p>Scan the QR code for live navigation!</p>
-            </div>
-          </div>
-          <div class="stops-list">${stopsList}</div>
-          <div class="safety">
-            <h3>🛡️ Safety Briefing 🛡️</h3>
-            <ul>
-              <li><strong>Pace Yourself:</strong> It's a marathon, not a sprint. Drink water!</li>
-              <li><strong>Buddy System:</strong> Never leave a friend behind.</li>
-              <li><strong>Plan Your Ride:</strong> Have a designated driver or rideshare app ready.</li>
-              <li><strong>Know Your Limits:</strong> Drink responsibly and have fun.</li>
-            </ul>
-          </div>
-          <div class="footer">
-            <p>Generated by BarHop - Your Ultimate Nightlife Planner</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+        } catch {
+          /* no QR, still a usable sheet */
+        }
+      }
 
-    const blob = new Blob([printableContent], { type: "text/html" });
-    const url_blob = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url_blob;
-    a.download = "bar-crawl-mission.html";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url_blob);
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      buildRoutePdf(doc, {
+        stops: bars.map((bar) => ({ name: bar.name, address: bar.address })),
+        mapsUrl: googleMapsUrl || undefined,
+        qrDataUrl,
+      });
+      doc.save(routePdfFilename('bar-crawl'));
+    } catch (err) {
+      console.error('Failed to build the route PDF:', err);
+      toast.error("Couldn't build the PDF — try again");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -288,10 +233,11 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
             <button
               className="share-route-option"
               onClick={handleDownloadRoute}
-              title="Download route as a printable file"
+              disabled={downloading}
+              title="Download the stop order as a PDF"
             >
               <FiDownload size={16} />
-              <span>Download</span>
+              <span>{downloading ? "Building…" : "PDF"}</span>
             </button>
           </div>
         )}
@@ -305,7 +251,7 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
             <h4>Share your route 🎉</h4>
             <p>
               Open it straight in Google Maps, copy a link to send friends, or
-              download a printable QR mission sheet.
+              download a PDF of the stop order to keep on your phone.
             </p>
             <button
               type="button"
