@@ -156,6 +156,12 @@ const Home: React.FC = () => {
   // Track last fetch location and cached areas to prevent unnecessary fetches
   const lastFetchCenter = useRef<[number, number] | null>(null);
   const fetchedAreas = useRef<Set<string>>(new Set());
+  // Areas with a fetch currently in flight. fetchedAreas is only populated
+  // AFTER a fetch resolves, so two calls for the same area that start before
+  // the first finishes both sail past it, both bill Google, and both write a
+  // duplicate cache doc. Observed in production: two barCacheV5 docs 121ms
+  // apart with identical coordinates to 15 decimal places.
+  const inFlightAreas = useRef<Set<string>>(new Set());
   const hasInitiallyFetched = useRef(false);
   // Guards the one-shot position re-request when permission is granted
   // but no coordinates are available (expired stored location)
@@ -288,9 +294,19 @@ const Home: React.FC = () => {
         return;
       }
 
+      // Set synchronously, before the first await, so a second call for the
+      // same area cannot slip through the gap. forceRefetch deliberately does
+      // NOT bypass this: a forced refetch still must not run twice at once.
+      if (inFlightAreas.current.has(areaKey)) {
+        debug("⏭️ Skipping fetch - this area is already being fetched");
+        return;
+      }
+      inFlightAreas.current.add(areaKey);
+
       debug("🔍 Fetching bars for area:", centerCoords, "Key:", areaKey);
       setIsLoading(true);
 
+      try {
       // Try cache first if enabled
       if (useCache && !forceRefetch) {
         try {
@@ -461,7 +477,11 @@ const Home: React.FC = () => {
       });
 
       setIsLoading(false);
-
+      } finally {
+        // Must release on every exit path, including the cache-hit early
+        // return and any throw, or the area is locked out for the session.
+        inFlightAreas.current.delete(areaKey);
+      }
     },
     [mapCenter, searchRadius, user] // eslint-disable-line react-hooks/exhaustive-deps
   );
