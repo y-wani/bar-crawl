@@ -472,6 +472,11 @@ const searchPlaceByText = async (
 // ---------------------------------------------------------------------------
 const CACHE_COLLECTION = "barCacheV5";
 const CACHE_EXPIRY_HOURS = 24;
+// Seeded metro docs (seeded: true) get a 30-day window instead of 24 hours, so
+// the one-time paid seeding run keeps paying off. This rule is intentionally
+// duplicated from src/services/barCacheService.ts's isCacheValid — the
+// serverless function can't import from src/, so keep the two in sync.
+const SEEDED_CACHE_EXPIRY_HOURS = 24 * 30;
 const CACHE_RADIUS_MILES = 2;
 const readBarCache = async (lat: number, lng: number): Promise<Bar[] | null> => {
   try {
@@ -487,7 +492,9 @@ const readBarCache = async (lat: number, lng: number): Promise<Bar[] | null> => 
       if (typeof cLat !== "number" || typeof cLng !== "number") continue;
       if (milesBetween(lat, lng, cLat, cLng) > CACHE_RADIUS_MILES) continue;
       const fetchedMs = typeof d.fetchedAt === "number" ? d.fetchedAt : 0;
-      if (now - fetchedMs < CACHE_EXPIRY_HOURS * 3600 * 1000) {
+      const expiryHours =
+        d.seeded === true ? SEEDED_CACHE_EXPIRY_HOURS : CACHE_EXPIRY_HOURS;
+      if (now - fetchedMs < expiryHours * 3600 * 1000) {
         return Array.isArray(d.bars) ? (d.bars as Bar[]) : null;
       }
     }
