@@ -149,6 +149,14 @@ const searchNearbyOnce = async (metro, includedPrimaryTypes, rankPreference) => 
 // Runs all PLACES_PASSES for one metro (mirroring fetchNearbyBars in
 // api/proxy.ts), dedupes by place id, and reports how many calls were
 // actually made so the summary doesn't just assume one-per-metro.
+//
+// Only throws (and drops the metro entirely) when ALL passes fail. When
+// SOME but not all passes fail, the metro is still written — partial data
+// beats no data — but `failedPasses` is returned so the caller can flag it:
+// seeded docs are honoured for 30 days (SEEDED_CACHE_EXPIRY_HOURS in
+// barCacheService.ts), so a transient failure here isn't a 24h blip like it
+// would be on the live proxy path, it's a month of thin data unless it's
+// made visible.
 const fetchMetroBars = async (metro) => {
   const results = await Promise.allSettled(
     PLACES_PASSES.map((pass) => searchNearbyOnce(metro, pass.types, pass.rank))
@@ -156,22 +164,27 @@ const fetchMetroBars = async (metro) => {
   const callsMade = results.length; // every pass is a real request, made whether it then resolved or rejected
   const seen = new Set();
   const places = [];
+  const failedPasses = [];
   let anySucceeded = false;
-  for (const result of results) {
-    if (result.status !== 'fulfilled') continue;
-    anySucceeded = true;
-    for (const p of result.value) {
-      if (p.id && !seen.has(p.id)) {
-        seen.add(p.id);
-        places.push(p);
+  results.forEach((result, i) => {
+    if (result.status === 'fulfilled') {
+      anySucceeded = true;
+      for (const p of result.value) {
+        if (p.id && !seen.has(p.id)) {
+          seen.add(p.id);
+          places.push(p);
+        }
       }
+    } else {
+      const pass = PLACES_PASSES[i];
+      failedPasses.push(`${pass.types.join('/')} (${pass.rank})`);
     }
-  }
+  });
   if (!anySucceeded) {
     const firstError = results.find((r) => r.status === 'rejected');
     throw firstError?.reason ?? new Error('All Places passes failed');
   }
-  return { places, callsMade };
+  return { places, callsMade, failedPasses };
 };
 
 // Firestore REST needs explicitly typed values.
@@ -247,11 +260,36 @@ const main = async () => {
 
   const token = await getAccessToken();
   const H = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  let ok = 0, zeroBars = 0, errored = 0, totalCalls = 0;
+
+  // Write preflight: getAccessToken() only proves the OAuth token exchange
+  // works, not that this service account can actually write to
+  // barCacheV5. Without this check, a Firestore rules/IAM rejection would
+  // only surface after all ~132 Places calls have already been paid for and
+  // every metro's write then fails — the only path where money is spent and
+  // nothing is persisted. Catch that here, before any Places call.
+  const preflight = await fetch(`${FS_BASE}/${COLLECTION}/seed-preflight`, {
+    method: 'PATCH',
+    headers: H,
+    body: JSON.stringify({ fields: { preflightAt: { timestampValue: new Date().toISOString() } } }),
+  });
+  if (!preflight.ok) {
+    const body = (await preflight.text()).slice(0, 200);
+    console.error(
+      `Write preflight failed (firestore ${preflight.status}: ${body})\n` +
+      'No Places calls were made — no money was spent. Fix Firestore rules/IAM for this service account and retry.'
+    );
+    process.exit(1);
+  }
+  // Left in place on success: harmless (no `bars` field, so getCachedBars
+  // never surfaces it as a cache hit) and makes the permission state
+  // visible for next time. Not deleted — a delete call is a new failure
+  // mode for no benefit.
+
+  let ok = 0, zeroBars = 0, errored = 0, degraded = 0, totalCalls = 0;
 
   for (const metro of metros) {
     try {
-      const { places, callsMade } = await fetchMetroBars(metro);
+      const { places, callsMade, failedPasses } = await fetchMetroBars(metro);
       totalCalls += callsMade;
 
       // A place missing id/location would throw inside toAppBar after the
@@ -285,14 +323,23 @@ const main = async () => {
         method: 'PATCH', headers: H, body: JSON.stringify({ fields }),
       });
       if (!r.ok) throw new Error(`firestore ${r.status}: ${(await r.text()).slice(0, 200)}`);
-      console.log(`  ✓ ${metro.name}: ${bars.length} bars (doc ${docId}, ${callsMade} calls)`);
+      if (failedPasses.length > 0) {
+        // Written, but on incomplete data — flagged distinctly from a clean
+        // ✓ because this is now baked into the cache for 30 days, not 24h.
+        console.log(
+          `  ◐ ${metro.name}: ${bars.length} bars (doc ${docId}), but ${failedPasses.length}/${callsMade} passes FAILED: ${failedPasses.join(', ')} — partial data cached for 30 days`
+        );
+        degraded++;
+      } else {
+        console.log(`  ✓ ${metro.name}: ${bars.length} bars (doc ${docId}, ${callsMade} calls)`);
+      }
       ok++;
     } catch (err) {
       console.error(`  ✗ ${metro.name}: ${err.message}`);
       errored++;
     }
   }
-  console.log(`\nSeeded ${ok}, zero-bar ${zeroBars}, errored ${errored}, ${totalCalls} Places calls made.`);
+  console.log(`\nSeeded ${ok} (${degraded} degraded), zero-bar ${zeroBars}, errored ${errored}, ${totalCalls} Places calls made.`);
 };
 
 main().catch((e) => { console.error(e); process.exit(1); });
