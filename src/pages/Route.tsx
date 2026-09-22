@@ -31,6 +31,13 @@ import {
 import { toast } from "../components/Toaster";
 import { getCrawlById, convertSavedBarsToAppBars } from "../services/crawlService";
 import { useAuth } from "../context/useAuth";
+import {
+  readGuestCrawl,
+  writeGuestCrawl,
+} from "../services/guestCrawlStorage";
+import GuestSignupPrompt, {
+  type GuestPromptReason,
+} from "../components/GuestSignupPrompt";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useBottomSheet } from "../hooks/useBottomSheet";
 import {
@@ -284,7 +291,7 @@ const Route: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const isMobile = useIsMobile();
   // Opens fairly tall (arranging stops is the main task) but leaves a strip
   // of map visible; drag up for the full list.
@@ -296,15 +303,27 @@ const Route: React.FC = () => {
 
   const routeState = location.state as RoutePageState | null;
 
-  // Guard redirect only if no state and no crawlId param
+  // location.state dies on refresh, and a guest returning from signup arrives
+  // with none. Fall back to the stored crawl before giving up and bouncing.
+  const [restoredState, setRestoredState] = useState<RoutePageState | null>(null);
+  const effectiveState = routeState ?? restoredState;
+
   useEffect(() => {
     const crawlId = searchParams.get("crawlId");
-    if (
-      (!routeState || !routeState.selectedBars || routeState.selectedBars.length < 2) &&
-      !crawlId
-    ) {
-      navigate("/home");
+    if (crawlId) return;
+    if (routeState?.selectedBars && routeState.selectedBars.length >= 2) return;
+
+    const stored = readGuestCrawl();
+    if (stored) {
+      setRestoredState({
+        selectedBars: stored.selectedBars,
+        mapCenter: stored.mapCenter,
+        searchRadius: stored.searchRadius,
+        crawlName: stored.crawlName,
+      });
+      return;
     }
+    navigate("/home");
   }, [routeState, navigate, searchParams]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
@@ -320,10 +339,15 @@ const Route: React.FC = () => {
   const [userCoordinates, setUserCoordinates] = useState<
     [number, number] | null
   >(null);
-  const [mapCenter] = useState<[number, number]>(
-    routeState?.mapCenter || [-83.0007, 39.9612]
+  // Derived, not useState: a restored guest crawl arrives on a LATER render
+  // than the first, and a useState initializer only ever runs once — it would
+  // have frozen the Columbus fallback before the restore landed. Neither value
+  // has a setter, so nothing is lost by deriving them.
+  const mapCenter = useMemo<[number, number]>(
+    () => effectiveState?.mapCenter ?? [-83.0007, 39.9612],
+    [effectiveState?.mapCenter]
   );
-  const [searchRadius] = useState<number>(routeState?.searchRadius ?? 1);
+  const searchRadius = effectiveState?.searchRadius ?? 1;
 
   // Route metrics
   const [totalDistanceMiles, setTotalDistanceMiles] = useState<number | null>(null);
@@ -339,6 +363,7 @@ const Route: React.FC = () => {
     useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [guestPrompt, setGuestPrompt] = useState<GuestPromptReason | null>(null);
 
   const isInitialLoad = useRef(true);
   // The order the user originally picked their bars in (before any
@@ -455,21 +480,21 @@ const Route: React.FC = () => {
     const crawlId = searchParams.get("crawlId");
     const initializeFromState = async () => {
       if (
-        routeState?.selectedBars &&
-        routeState.selectedBars.length >= 2 &&
+        effectiveState?.selectedBars &&
+        effectiveState.selectedBars.length >= 2 &&
         isInitialLoad.current
       ) {
         isInitialLoad.current = false;
-        originalOrderIds.current = routeState.selectedBars.map((b) => b.id);
+        originalOrderIds.current = effectiveState.selectedBars.map((b) => b.id);
         setIsLoading({ location: true, optimizing: true, generating: true });
 
         let startCoords: [number, number];
         let endCoords: [number, number];
 
-        if (routeState.startCoordinates) {
+        if (effectiveState.startCoordinates) {
           // Restoring a saved crawl: use its saved start/end, not geolocation
-          startCoords = routeState.startCoordinates;
-          endCoords = routeState.endCoordinates ?? startCoords;
+          startCoords = effectiveState.startCoordinates;
+          endCoords = effectiveState.endCoordinates ?? startCoords;
           setUserCoordinates(startCoords);
           setStartCoordinates(startCoords);
           setEndCoordinates(endCoords);
@@ -485,8 +510,8 @@ const Route: React.FC = () => {
           // If the user's real location is far from the searched area,
           // anchor the route to the search center instead of routing
           // across states (IP-based geolocation can be way off)
-          if (calculateDistance(startCoords, routeState.mapCenter) > 25) {
-            startCoords = routeState.mapCenter;
+          if (calculateDistance(startCoords, effectiveState.mapCenter) > 25) {
+            startCoords = effectiveState.mapCenter;
             setUserCoordinates(startCoords);
             setStartCoordinates(startCoords);
             setEndCoordinates(startCoords);
@@ -498,9 +523,9 @@ const Route: React.FC = () => {
         }
 
         // Saved crawls already carry their stop order; only optimize new routes
-        const orderedBars = routeState.loadedFromSaved
-          ? routeState.selectedBars
-          : optimizeBarOrder(routeState.selectedBars, startCoords, endCoords);
+        const orderedBars = effectiveState.loadedFromSaved
+          ? effectiveState.selectedBars
+          : optimizeBarOrder(effectiveState.selectedBars, startCoords, endCoords);
         const initialBars = orderedBars.map((bar, index) => ({
           ...bar,
           order: index,
@@ -552,12 +577,12 @@ const Route: React.FC = () => {
       }
     };
 
-    if (routeState?.selectedBars?.length) {
+    if (effectiveState?.selectedBars?.length) {
       initializeFromState();
     } else if (crawlId) {
       initializeFromCrawlId();
     }
-  }, [routeState, getCurrentLocation, throttledGenerateRoute, navigate, searchParams]);
+  }, [effectiveState, getCurrentLocation, throttledGenerateRoute, navigate, searchParams]);
 
   const handleOptimizeRoute = useCallback(async () => {
     const optimizeStart = startCoordinates ?? userCoordinates;
@@ -647,7 +672,23 @@ const Route: React.FC = () => {
     setEndLocation(suggestion.place_name);
   };
 
+  // Reordering, renaming and dragging all change the crawl, so the stored copy
+  // has to follow — otherwise a refresh restores the pre-drag order.
+  useEffect(() => {
+    if (draggableBars.length < 2) return;
+    writeGuestCrawl({
+      selectedBars: draggableBars,
+      mapCenter,
+      searchRadius,
+      crawlName: effectiveState?.crawlName,
+    });
+  }, [draggableBars, mapCenter, searchRadius, effectiveState?.crawlName]);
+
   const handleSaveCrawl = () => {
+    if (!user || isGuest) {
+      setGuestPrompt("save");
+      return;
+    }
     setShowSaveModal(true);
   };
 
@@ -658,13 +699,19 @@ const Route: React.FC = () => {
   // "Plan it together": create a plan lobby (RSVP + vote) from the current
   // selection, then send the host there to share the link with friends.
   const handlePlanWithFriends = async () => {
-    if (!user || draggableBars.length < 2 || !startCoordinates) return;
+    if (draggableBars.length < 2 || !startCoordinates) return;
+    // A guest hitting `if (!user) return` would get a dead button, which is
+    // worse than a wall — they'd think the app was broken.
+    if (!user || isGuest) {
+      setGuestPrompt("plan");
+      return;
+    }
     setCreatingPlan(true);
     try {
       const planId = await createPlan({
         hostUid: user.uid,
         hostName: user.displayName ?? user.email?.split("@")[0] ?? null,
-        title: routeState?.crawlName || "Bar Crawl",
+        title: effectiveState?.crawlName || "Bar Crawl",
         candidates: draggableBars.map((bar) => ({
           barId: bar.id,
           name: bar.name,
@@ -688,7 +735,11 @@ const Route: React.FC = () => {
   };
 
   const handleStartCrawl = async () => {
-    if (!user || draggableBars.length < 2 || !startCoordinates) return;
+    if (draggableBars.length < 2 || !startCoordinates) return;
+    if (!user || isGuest) {
+      setGuestPrompt("live");
+      return;
+    }
     setStartingCrawl(true);
     try {
       // One active crawl at a time — resume if it exists
@@ -710,8 +761,8 @@ const Route: React.FC = () => {
           coordinates: bar.location.coordinates,
         })),
         crawlId:
-          routeState?.existingCrawl?.id ?? searchParams.get("crawlId") ?? null,
-        crawlName: routeState?.crawlName ?? "",
+          effectiveState?.existingCrawl?.id ?? searchParams.get("crawlId") ?? null,
+        crawlName: effectiveState?.crawlName ?? "",
         route: {
           startCoordinates,
           endCoordinates: endCoordinates ?? startCoordinates,
@@ -783,7 +834,7 @@ const Route: React.FC = () => {
     isLoading.optimizing,
   ]);
 
-  if (!routeState && !searchParams.get("crawlId")) return null;
+  if (!effectiveState && !searchParams.get("crawlId")) return null;
 
   const isBusy = isLoading.generating || isLoading.optimizing;
 
@@ -1053,7 +1104,13 @@ const Route: React.FC = () => {
         startCoordinates={startCoordinates}
         endCoordinates={endCoordinates}
         onSaveSuccess={handleSaveSuccess}
-        existingCrawl={routeState?.existingCrawl ?? null}
+        existingCrawl={effectiveState?.existingCrawl ?? null}
+      />
+
+      <GuestSignupPrompt
+        open={guestPrompt !== null}
+        reason={guestPrompt ?? "save"}
+        onClose={() => setGuestPrompt(null)}
       />
     </div>
     </PageTransition>
