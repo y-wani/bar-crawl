@@ -14,6 +14,7 @@ import {
 import { auth } from '../firebase/config';
 import { analytics } from '../utils/analytics';
 import { postJson } from '../services/apiClient';
+import { ensureAnonymousUser } from '../services/anonAuth';
 import type { AuthContextType, AuthProviderProps, User } from './types';
 
 // Create the auth context
@@ -142,9 +143,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Guest mode: an anonymous account is a signed-in Firebase user, so every
+  // "is this person logged in?" check in the app must ask isGuest too.
+  const isGuest = !!user?.isAnonymous;
+
+  // Mint an anonymous user for a visitor with no session. Gated on `loading`
+  // because auth.currentUser is null while Firebase restores an existing
+  // session from IndexedDB — minting there would sign a returning user out of
+  // their own account and into a fresh guest.
+  const ensureGuest = async (): Promise<void> => {
+    if (loading || user) return;
+    try {
+      await ensureAnonymousUser();
+    } catch (error) {
+      // A failed mint means no cache reads and no proxy calls. The page still
+      // renders; the visitor gets the signed-out experience.
+      console.error('Anonymous sign-in failed:', error);
+    }
+  };
+
   const contextValue: AuthContextType = {
     user,
     loading,
+    isGuest,
+    ensureGuest,
     signup,
     signin,
     signinWithGoogle,
