@@ -329,6 +329,8 @@ const Route: React.FC = () => {
         mapCenter: stored.mapCenter,
         searchRadius: stored.searchRadius,
         crawlName: stored.crawlName,
+        startCoordinates: stored.startCoordinates,
+        endCoordinates: stored.endCoordinates,
       });
       return;
     }
@@ -344,6 +346,8 @@ const Route: React.FC = () => {
             mapCenter: remote.mapCenter,
             searchRadius: remote.searchRadius,
             crawlName: remote.crawlName,
+            startCoordinates: remote.startCoordinates,
+            endCoordinates: remote.endCoordinates,
           });
         } else {
           navigate("/home");
@@ -711,6 +715,12 @@ const Route: React.FC = () => {
       mapCenter,
       searchRadius,
       crawlName: effectiveState?.crawlName,
+      // Persist the anchors too. Route only takes its "restore saved start/end"
+      // branch when startCoordinates is present; without them a refresh
+      // silently re-derives the start from geolocation and throws away the
+      // addresses the visitor typed.
+      startCoordinates: startCoordinates ?? undefined,
+      endCoordinates: endCoordinates ?? undefined,
     };
     writeGuestCrawl(crawl);
     // iOS ITP backstop — only guests need it; a real account saves crawls
@@ -723,6 +733,8 @@ const Route: React.FC = () => {
     mapCenter,
     searchRadius,
     effectiveState?.crawlName,
+    startCoordinates,
+    endCoordinates,
     user,
     isGuest,
   ]);

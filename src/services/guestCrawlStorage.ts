@@ -21,6 +21,11 @@ export interface GuestCrawl {
   mapCenter: [number, number];
   searchRadius: number;
   crawlName?: string;
+  /** Where the crawl starts and ends. Without these a restore falls through to
+   *  Route's getCurrentLocation() branch and silently replaces the anchors the
+   *  visitor typed with wherever they happen to be standing. */
+  startCoordinates?: [number, number];
+  endCoordinates?: [number, number];
   /** epoch ms — informational only, never used to expire the crawl */
   updatedAt: number;
 }
@@ -45,6 +50,12 @@ export const isValidGuestCrawl = (value: unknown): value is GuestCrawl => {
     return false;
   }
   if (c.crawlName !== undefined && typeof c.crawlName !== "string") return false;
+  if (c.startCoordinates !== undefined && !isCoordinatePair(c.startCoordinates)) {
+    return false;
+  }
+  if (c.endCoordinates !== undefined && !isCoordinatePair(c.endCoordinates)) {
+    return false;
+  }
   return true;
 };
 

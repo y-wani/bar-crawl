@@ -9,7 +9,7 @@
 // highest-intent moment in the product.
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
 import { useAuth } from "../context/useAuth";
@@ -48,7 +48,14 @@ const GuestSignupPrompt: React.FC<GuestSignupPromptProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signinWithGoogle } = useAuth();
+
+  // Send the current page along so PublicRoute returns them HERE after signup
+  // instead of dumping them on /home. Without it a guest who signs up from
+  // /route lands on the map with their crawl seemingly gone — the exact
+  // "your crawl survives signup" promise this phase exists to keep.
+  const returnTo = location.pathname + location.search;
 
   const handleGoogle = async () => {
     try {
@@ -87,7 +94,7 @@ const GuestSignupPrompt: React.FC<GuestSignupPromptProps> = ({
             </button>
             <button
               className="btn btn--ghost btn--full guest-prompt__email"
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate("/signup", { state: { from: returnTo } })}
             >
               Sign up with email
             </button>

@@ -38,19 +38,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   // Sign up function
-  const signup = async (email: string, password: string, displayName?: string): Promise<void> => {
+  const signup = async (
+    email: string,
+    password: string,
+    displayName?: string
+  ): Promise<{ wasGuest: boolean; collided: boolean }> => {
     try {
       // Upgrades an anonymous session in place when one exists, so the crawl
       // the guest built survives under the same uid. Falls back to a normal
       // sign-in when the email already has an account.
-      const { credential, wasGuest } = await upgradeOrCreateWithEmail(
+      const { credential, wasGuest, collided } = await upgradeOrCreateWithEmail(
         email,
         password,
         displayName
       );
-      analytics.signUp('email');
+      // A collision is a sign-IN, not a new account — counting it as a signup
+      // would inflate the very number Phase 2 exists to measure.
+      if (!collided) analytics.signUp('email');
 
-      if (displayName && credential.user) {
+      if (displayName && credential?.user) {
         // onAuthStateChanged fired before the profile update completed,
         // so sync the display name into local state manually
         setUser((prev) => (prev ? { ...prev, displayName } : prev));
@@ -58,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // wasGuest is the number that decides whether guest mode beat the cold
       // wall (spec §10). Phase 2 attaches it to the event; keeping the value
       // here means that is a one-line change.
-      void wasGuest;
+      return { wasGuest, collided };
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;
@@ -81,7 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { credential, wasGuest } = await upgradeOrCreateWithGoogle();
       // Count only first-time Google users as a sign-up. A linked guest is
       // always new, since the anonymous account had no Google identity.
-      if (wasGuest || getAdditionalUserInfo(credential)?.isNewUser) {
+      if (wasGuest || (credential && getAdditionalUserInfo(credential)?.isNewUser)) {
         analytics.signUp('google');
       }
     } catch (error) {

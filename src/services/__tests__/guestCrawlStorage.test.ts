@@ -55,6 +55,26 @@ describe("writeGuestCrawl / readGuestCrawl", () => {
     expect(readGuestCrawl()?.selectedBars.map((b) => b.id)).toEqual(["c", "a", "b"]);
   });
 
+  it("round-trips the start and end anchors", () => {
+    writeGuestCrawl({
+      ...validCrawl,
+      startCoordinates: [-83.1, 39.9],
+      endCoordinates: [-83.2, 39.8],
+    });
+    const read = readGuestCrawl();
+    expect(read?.startCoordinates).toEqual([-83.1, 39.9]);
+    expect(read?.endCoordinates).toEqual([-83.2, 39.8]);
+  });
+
+  it("still stores a crawl that has no anchors yet", () => {
+    writeGuestCrawl({
+      ...validCrawl,
+      startCoordinates: undefined,
+      endCoordinates: undefined,
+    });
+    expect(readGuestCrawl()?.selectedBars).toHaveLength(2);
+  });
+
   it("never expires a stored crawl, however old", () => {
     const ancient = {
       ...validCrawl,
@@ -106,5 +126,22 @@ describe("isValidGuestCrawl", () => {
     expect(
       isValidGuestCrawl({ ...validCrawl, mapCenter: [1], updatedAt: Date.now() })
     ).toBe(false);
+  });
+
+  it("rejects malformed anchors but accepts absent ones", () => {
+    expect(
+      isValidGuestCrawl({
+        ...validCrawl,
+        startCoordinates: ["a", "b"],
+        updatedAt: Date.now(),
+      })
+    ).toBe(false);
+    expect(
+      isValidGuestCrawl({
+        ...validCrawl,
+        startCoordinates: undefined,
+        updatedAt: Date.now(),
+      })
+    ).toBe(true);
   });
 });

@@ -1,19 +1,21 @@
 // src/pages/SignUp.tsx
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
 import SwirlBackground from '../components/SwirlBackground';
 import PageTransition from '../components/motion/PageTransition';
 import { springPanel } from '../components/motion/variants';
 import { useInviteIntent } from '../hooks/useInviteIntent';
+import { toast } from '../components/Toaster';
 import '../styles/Auth.css';
 import { FcGoogle } from 'react-icons/fc';
 
 const SignUp: React.FC = () => {
   const { signup, signinWithGoogle } = useAuth();
   const { isInvite, from } = useInviteIntent();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -89,8 +91,22 @@ const SignUp: React.FC = () => {
     setLoading(true);
     
     try {
-      await signup(formData.email, formData.password, formData.name);
-      // Navigation will be handled by PublicRoute automatically
+      const { collided } = await signup(
+        formData.email,
+        formData.password,
+        formData.name
+      );
+      if (collided) {
+        // They already had an account and we signed them into it. Saying so
+        // matters: silence here reads as a form that did nothing, and the
+        // visitor clicks again — which is how a stale anonymous session turns
+        // into a confusing "email already in use" on the second attempt.
+        toast.success('Welcome back — signed you into your existing account');
+      }
+      // Navigate explicitly rather than waiting on PublicRoute's redirect, so
+      // the form is never left sitting there looking dead. `from` returns a
+      // guest to the crawl they were building.
+      navigate(from || '/home', { replace: true });
     } catch (error: unknown) {
       let errorMessage = 'Failed to create account. Please try again.';
       
@@ -98,6 +114,16 @@ const SignUp: React.FC = () => {
         const errorCode = error.code as string;
         if (errorCode === 'auth/email-already-in-use') {
           errorMessage = 'An account with this email already exists.';
+        } else if (
+          errorCode === 'auth/wrong-password' ||
+          errorCode === 'auth/invalid-credential' ||
+          errorCode === 'auth/invalid-login-credentials'
+        ) {
+          // Reached by the guest-upgrade collision path: the email already has
+          // an account but the password typed here isn't its password. The
+          // generic "failed to create account" was actively misleading.
+          errorMessage =
+            'That email already has an account, and the password doesn\'t match. Sign in instead — your crawl will still be here.';
         } else if (errorCode === 'auth/invalid-email') {
           errorMessage = 'Please enter a valid email address.';
         } else if (errorCode === 'auth/weak-password') {
@@ -131,6 +157,10 @@ const SignUp: React.FC = () => {
     setLoading(true);
     try {
       await signinWithGoogle();
+      // Same reason as the email path: navigate explicitly so the form can
+      // never sit there looking like the click did nothing, and so a guest
+      // returns to the crawl they were building.
+      navigate(from || '/home', { replace: true });
     } catch (error) {
       setErrors({ general: 'Google sign-in failed. Please try again.' });
       console.error('Google sign-in error:', error);

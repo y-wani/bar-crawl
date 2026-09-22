@@ -656,6 +656,10 @@ const Home: React.FC = () => {
   // London doesn't pay for a Columbus fetch before their own city's.
   useEffect(() => {
     if (!initialCenter.resolved) return;
+    // A guest's anonymous uid is minted AFTER /api/geo resolves the centre, so
+    // without waiting here the first fetch hit fetchBarsInArea's `!user` guard
+    // and never retried — the map sat empty until the visitor searched by hand.
+    if (!user) return;
 
     const loadInitialBars = async () => {
       if (hasInitiallyFetched.current) return;
@@ -694,9 +698,10 @@ const Home: React.FC = () => {
     };
 
     loadInitialBars();
-    // Runs once per resolved centre; hasInitiallyFetched guards re-entry.
+    // Runs once per resolved centre AND once a uid exists; hasInitiallyFetched
+    // guards re-entry so the arrival of `user` can't trigger a second fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCenter.resolved]);
+  }, [initialCenter.resolved, user]);
 
   // The order the user clicked the bars in — Set keeps insertion order, and
   // /route treats this as "my order". Mirrors Sidebar's construction; using

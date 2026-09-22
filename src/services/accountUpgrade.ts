@@ -48,7 +48,9 @@ const guestToUpgrade = (): FirebaseUser | null => {
 };
 
 export interface UpgradeResult {
-  credential: UserCredential;
+  /** null when the caller was already signed into a real account and no new
+   *  credential was minted. */
+  credential: UserCredential | null;
   /** The session started as a guest — the metric that decides whether guest
    *  mode beat the cold wall (spec §10). */
   wasGuest: boolean;
@@ -70,6 +72,13 @@ export const upgradeOrCreateWithEmail = async (
 ): Promise<UpgradeResult> => {
   const guest = guestToUpgrade();
   if (!guest) {
+    // Already holding a real account. This happens when a collision on an
+    // earlier click signed them in and the form was submitted again before the
+    // redirect landed — creating an account here would fail with
+    // email-already-in-use and read as a broken form.
+    if (auth.currentUser) {
+      return { credential: null, wasGuest: false, collided: true };
+    }
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     if (displayName) await updateProfile(credential.user, { displayName });
     return { credential, wasGuest: false, collided: false };

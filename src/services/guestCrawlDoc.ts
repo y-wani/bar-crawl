@@ -27,8 +27,14 @@ export const saveGuestCrawlDoc = async (
 ): Promise<void> => {
   try {
     const expiresMs = Date.now() + GUEST_CRAWL_TTL_DAYS * 24 * 60 * 60 * 1000;
+    // Firestore rejects an explicit `undefined` outright ("Unsupported field
+    // value"), and the optional fields (crawlName, start/end coordinates) are
+    // undefined for most crawls — so drop the keys rather than sending them.
+    const defined = Object.fromEntries(
+      Object.entries(crawl).filter(([, v]) => v !== undefined)
+    );
     await setDoc(doc(db, COLLECTION, uid), {
-      ...crawl,
+      ...defined,
       expiresAt: expiresMs,
       // Firestore TTL policies only accept a timestamp field. Kept alongside
       // the epoch-ms copy that isGuestDocExpired reads, so the client and the
