@@ -13,6 +13,11 @@ import { FiPlay } from "react-icons/fi";
 import { Sidebar } from "../components/Sidebar";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
+import { writeGuestCrawl } from "../services/guestCrawlStorage";
+import { ApiError } from "../services/apiClient";
+import GuestSignupPrompt, {
+  type GuestPromptReason,
+} from "../components/GuestSignupPrompt";
 import {
   getActiveSessionForMember,
   type CrawlSession,
@@ -85,13 +90,23 @@ const calculateDistance = (
 };
 
 const Home: React.FC = () => {
-  const { user, signout } = useAuth();
+  const { user, signout, loading: authLoading, isGuest, ensureGuest } = useAuth();
   const navigate = useNavigate();
+
+  // A guest needs a Firebase uid before ANY cache read: firestore.rules
+  // requires request.auth != null on barCacheV5, so a tokenless visitor would
+  // see an empty map. Gated on authLoading so a returning signed-in user is
+  // never overwritten by a fresh anonymous account mid-restore.
+  useEffect(() => {
+    if (authLoading || user) return;
+    void ensureGuest();
+  }, [authLoading, user, ensureGuest]);
 
   // Resume entry: surface an in-progress crawl so the user can jump back in
   const [activeSession, setActiveSession] = useState<CrawlSession | null>(null);
   useEffect(() => {
-    if (!user) return;
+    // A guest can never own a crawlSession, and the query would just be denied.
+    if (!user || isGuest) return;
     let cancelled = false;
     (async () => {
       const active = await getActiveSessionForMember(user.uid);
@@ -100,7 +115,7 @@ const Home: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, isGuest]);
 
   // Initialize cache management
   useCacheManager();
@@ -115,6 +130,7 @@ const Home: React.FC = () => {
 
   const [bars, setBars] = useState<AppBat[]>([]);
   const [selectedBarIds, setSelectedBarIds] = useState<Set<string>>(new Set());
+  const [guestPrompt, setGuestPrompt] = useState<GuestPromptReason | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   // Where the map opens: cached precise coords → IP city → Columbus default.
   // The first bar fetch waits on `initialCenter.resolved` so we never fetch
@@ -241,6 +257,10 @@ const Home: React.FC = () => {
       forceRefetch = false,
       useCache = true
     ) => {
+      // No uid yet means no cache read and no proxy call — both would fail.
+      // The mint effect above re-runs this once a user exists.
+      if (!user) return;
+
       let centerCoords: [number, number];
 
       // Determine center coordinates for distance calculation
@@ -329,6 +349,15 @@ const Home: React.FC = () => {
           );
           allBars.push(...placesBars);
         } catch (error) {
+          // A guest who has exhausted the shared daily pool is not an error
+          // state — it is the moment to ask for the account. The "search"
+          // reason exists so the copy talks about searches running out rather
+          // than claiming their crawl is at risk, which would not be true.
+          if (error instanceof ApiError && error.code === "GUEST_QUOTA") {
+            setIsLoading(false);
+            setGuestPrompt("search");
+            return;
+          }
           console.error("Error fetching bars from Google Places:", error);
         }
       } else {
@@ -434,7 +463,7 @@ const Home: React.FC = () => {
       setIsLoading(false);
 
     },
-    [mapCenter, searchRadius] // eslint-disable-line react-hooks/exhaustive-deps
+    [mapCenter, searchRadius, user] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // --- UPDATED: Geocode search to use the new fetch function ---
@@ -669,10 +698,22 @@ const Home: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCenter.resolved]);
 
-  // const selectedBars = useMemo(
-  //   () => bars.filter((bar) => selectedBarIds.has(bar.id)),
-  //   [bars, selectedBarIds]
-  // );
+  // The order the user clicked the bars in — Set keeps insertion order, and
+  // /route treats this as "my order". Mirrors Sidebar's construction; using
+  // bars.filter here would silently store list order instead.
+  const selectedBars = useMemo(() => {
+    const barById = new Map(bars.map((bar) => [bar.id, bar]));
+    return Array.from(selectedBarIds)
+      .map((id) => barById.get(id))
+      .filter((bar): bar is AppBat => Boolean(bar));
+  }, [bars, selectedBarIds]);
+
+  // Keep the guest's crawl on the device as they build it (spec §6.1). Also
+  // fixes refresh-loses-your-crawl for signed-in users, which was a live bug.
+  useEffect(() => {
+    if (selectedBars.length < 2) return;
+    writeGuestCrawl({ selectedBars, mapCenter, searchRadius });
+  }, [selectedBars, mapCenter, searchRadius]);
 
   const handleToggleBar = (barId: string) =>
     setSelectedBarIds((prev) => {
@@ -799,6 +840,12 @@ const Home: React.FC = () => {
         onLocationDenied={handleLocationDenied}
         onSkip={handleLocationSkip}
         getUserLocation={getUserLocation}
+      />
+
+      <GuestSignupPrompt
+        open={guestPrompt !== null}
+        reason={guestPrompt ?? "search"}
+        onClose={() => setGuestPrompt(null)}
       />
     </div>
     </PageTransition>

@@ -55,13 +55,30 @@ const appCheckJwks = createRemoteJWKSet(
   new URL("https://firebaseappcheck.googleapis.com/v1/jwks")
 );
 
-const verifyIdToken = async (token: string): Promise<string> => {
+export interface CallerIdentity {
+  uid: string;
+  isAnonymous: boolean;
+}
+
+// Firebase puts the sign-in method in a `firebase.sign_in_provider` claim.
+// Anything other than the literal "anonymous" is treated as a real account:
+// a verified token with an odd shape is far more likely to be a legitimate
+// session than an attacker, and guessing wrong throttles a paying user.
+export const isAnonymousProvider = (payload: Record<string, unknown>): boolean => {
+  const firebase = payload.firebase as { sign_in_provider?: unknown } | undefined;
+  return firebase?.sign_in_provider === "anonymous";
+};
+
+const verifyIdToken = async (token: string): Promise<CallerIdentity> => {
   const { payload } = await jwtVerify(token, idTokenJwks, {
     issuer: `https://securetoken.google.com/${PROJECT_ID}`,
     audience: PROJECT_ID,
   });
   if (!payload.sub) throw new Error("ID token missing subject");
-  return payload.sub;
+  return {
+    uid: payload.sub,
+    isAnonymous: isAnonymousProvider(payload as Record<string, unknown>),
+  };
 };
 
 const verifyAppCheckToken = async (token: string): Promise<void> => {
@@ -231,7 +248,7 @@ const verifyAppCheck = async (
 const verifyAuth = async (
   req: VercelRequest,
   res: VercelResponse
-): Promise<string | null> => {
+): Promise<CallerIdentity | null> => {
   const header = req.headers.authorization || "";
   const match = header.match(/^Bearer (.+)$/i);
   if (!match) {
@@ -284,6 +301,61 @@ const enforceRateLimit = async (
   } catch (err) {
     console.error("rate-limit failed:", err);
     return true; // fail open; the Cloud quota cap is the hard backstop
+  }
+};
+
+// Per-uid limits. Real-account numbers are exactly what shipped before guest
+// mode; anonymous numbers come from spec §7.1. The 5x gap on nearby search is
+// deliberate — a guest gets a genuine trial, and signing up is a visible
+// upgrade rather than a formality.
+export interface ActionLimits {
+  minute: number;
+  day: number;
+}
+const LIMITS: Record<
+  "nearby" | "text" | "clean",
+  Record<"real" | "anon", ActionLimits>
+> = {
+  nearby: { real: { minute: 10, day: 80 }, anon: { minute: 5, day: 15 } },
+  // text + clean are spec-silent. Both are reachable by a guest through the
+  // bar-list importer and `clean` spends Gemini, so they get roughly the same
+  // 4-5x ratio as nearby rather than being left wide open.
+  text: { real: { minute: 60, day: 300 }, anon: { minute: 12, day: 60 } },
+  clean: { real: { minute: 8, day: 40 }, anon: { minute: 2, day: 8 } },
+};
+export const limitsFor = (
+  action: "nearby" | "text" | "clean",
+  isAnonymous: boolean
+): ActionLimits => LIMITS[action][isAnonymous ? "anon" : "real"];
+
+// Global ceiling on anonymous BILLED Places calls per UTC day (spec §7.2).
+// With cache-on-load a typical engaged guest makes 0-2 live calls, so 500
+// covers roughly 250 engaged guests/day — well above the best traffic day on
+// record (66 visitors) while bounding worst-case spend.
+export const ANON_GLOBAL_DAILY_CEILING = 500;
+const ANON_GLOBAL_DOC = "rateLimits/_anonGlobal";
+
+// False when the guest ceiling is spent for the day. Counts only calls about
+// to hit Google — a cache hit costs nothing and does not consume the pool.
+//
+// Fails OPEN, matching enforceRateLimit: a Firestore blip should not take
+// guest mode down, and the Cloud quota cap plus the billing alert are the
+// hard backstop for spend.
+const reserveAnonGlobalCall = async (): Promise<boolean> => {
+  try {
+    const key = new Date().toISOString().slice(0, 10); // UTC day
+    const data = (await fsGet(ANON_GLOBAL_DOC)) ?? {};
+    const count =
+      data["nearby__day__key"] === key ? Number(data["nearby__day__count"] ?? 0) : 0;
+    if (count >= ANON_GLOBAL_DAILY_CEILING) return false;
+    await fsPatch(ANON_GLOBAL_DOC, {
+      "nearby__day__key": key,
+      "nearby__day__count": count + 1,
+    });
+    return true;
+  } catch (err) {
+    console.error("anon global cap failed:", err);
+    return true;
   }
 };
 
@@ -768,8 +840,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
   if (!(await verifyAppCheck(req, res))) return;
-  const uid = await verifyAuth(req, res);
-  if (!uid) return;
+  const caller = await verifyAuth(req, res);
+  if (!caller) return;
+  const { uid, isAnonymous } = caller;
 
   const body = readBody<Body>(req);
   const { minute, day } = buckets();
@@ -777,12 +850,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     switch (body.action) {
       case "nearby": {
+        const nearbyLimits = limitsFor("nearby", isAnonymous);
         const ok = await enforceRateLimit(
           uid,
           "placesNearby",
           [
-            { ...minute, limit: 10 },
-            { ...day, limit: 80 },
+            { ...minute, limit: nearbyLimits.minute },
+            { ...day, limit: nearbyLimits.day },
           ],
           res
         );
@@ -807,6 +881,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(200).json({ bars: cached, cached: true });
           return;
         }
+        // Cache miss — this is the call that costs money. Guests draw from a
+        // shared daily pool; real accounts are never blocked by it.
+        if (isAnonymous && !(await reserveAnonGlobalCall())) {
+          res.status(429).json({
+            error: "Guest searches are used up for today",
+            code: "GUEST_QUOTA",
+          });
+          return;
+        }
         const radius = radiusMeters as number;
         const bars = await fetchNearbyBars(lat, lng, radius);
         await writeBarCache(lat, lng, bars, radius / 1609);
@@ -815,12 +898,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case "text": {
+        const textLimits = limitsFor("text", isAnonymous);
         const ok = await enforceRateLimit(
           uid,
           "placesText",
           [
-            { ...minute, limit: 60 },
-            { ...day, limit: 300 },
+            { ...minute, limit: textLimits.minute },
+            { ...day, limit: textLimits.day },
           ],
           res
         );
@@ -852,12 +936,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case "clean": {
+        const cleanLimits = limitsFor("clean", isAnonymous);
         const ok = await enforceRateLimit(
           uid,
           "aiClean",
           [
-            { ...minute, limit: 8 },
-            { ...day, limit: 40 },
+            { ...minute, limit: cleanLimits.minute },
+            { ...day, limit: cleanLimits.day },
           ],
           res
         );
@@ -877,6 +962,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       case "sendVerificationEmail": {
+        // An anonymous account has no email — this could only waste an
+        // Identity Toolkit call.
+        if (isAnonymous) {
+          res.status(403).json({ error: "Create an account first" });
+          return;
+        }
         const ok = await enforceRateLimit(
           uid,
           "verifyEmail",

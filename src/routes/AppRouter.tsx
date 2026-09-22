@@ -31,22 +31,11 @@ const AnimatedRoutes: React.FC = () => {
     <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
         <RouterRoute path="/" element={<Landing />} />
-        <RouterRoute
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <RouterRoute
-          path="/route"
-          element={
-            <ProtectedRoute>
-              <Route />
-            </ProtectedRoute>
-          }
-        />
+        {/* Open to guests (spec §4.2). An anonymous Firebase user is minted
+            on /home so the billed proxy still gets a token and per-uid limits
+            still bind; save, live, plan and saved-crawls stay gated below. */}
+        <RouterRoute path="/home" element={<Home />} />
+        <RouterRoute path="/route" element={<Route />} />
         <RouterRoute
           path="/live"
           element={

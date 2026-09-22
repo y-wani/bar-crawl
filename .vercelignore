@@ -1,0 +1,2 @@
+api/**/*.test.ts
+api/__tests__

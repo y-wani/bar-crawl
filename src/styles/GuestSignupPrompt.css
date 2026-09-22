@@ -1,0 +1,40 @@
+/* Uses the shared .modal-overlay / .modal-panel classes from
+   src/styles/system/modal.css and the .btn family from
+   src/styles/system/buttons.css — this file only adds the prompt's own
+   layout. Token names are the real ones from src/styles/tokens.css; note
+   there is no --text-muted in this system. */
+.guest-prompt {
+  max-width: 380px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.guest-prompt__title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.guest-prompt__body {
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.guest-prompt__google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.guest-prompt__dismiss {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  padding: var(--space-1);
+}

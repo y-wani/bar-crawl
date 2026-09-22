@@ -10,6 +10,11 @@ export interface User extends Omit<FirebaseUser, 'displayName'> {
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
+  /** True when the current session is an anonymous (guest) account. */
+  isGuest: boolean;
+  /** Mint an anonymous user if nobody is signed in. No-op while loading, and
+   *  a no-op when a real or anonymous user already exists. */
+  ensureGuest: () => Promise<void>;
   signup: (email: string, password: string, displayName?: string) => Promise<void>;
   signin: (email: string, password: string) => Promise<void>;
   signinWithGoogle: () => Promise<void>;

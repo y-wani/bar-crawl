@@ -1,9 +1,6 @@
 import React, { createContext, useEffect, useState } from 'react';
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
   signOut,
   onAuthStateChanged,
   updateProfile as updateFirebaseProfile,
@@ -14,6 +11,11 @@ import {
 import { auth } from '../firebase/config';
 import { analytics } from '../utils/analytics';
 import { postJson } from '../services/apiClient';
+import { ensureAnonymousUser } from '../services/anonAuth';
+import {
+  upgradeOrCreateWithEmail,
+  upgradeOrCreateWithGoogle,
+} from '../services/accountUpgrade';
 import type { AuthContextType, AuthProviderProps, User } from './types';
 
 // Create the auth context
@@ -38,16 +40,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Sign up function
   const signup = async (email: string, password: string, displayName?: string): Promise<void> => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Upgrades an anonymous session in place when one exists, so the crawl
+      // the guest built survives under the same uid. Falls back to a normal
+      // sign-in when the email already has an account.
+      const { credential, wasGuest } = await upgradeOrCreateWithEmail(
+        email,
+        password,
+        displayName
+      );
       analytics.signUp('email');
 
-      // Update profile with display name if provided
-      if (displayName && userCredential.user) {
-        await updateFirebaseProfile(userCredential.user, { displayName });
+      if (displayName && credential.user) {
         // onAuthStateChanged fired before the profile update completed,
         // so sync the display name into local state manually
         setUser((prev) => (prev ? { ...prev, displayName } : prev));
       }
+      // wasGuest is the number that decides whether guest mode beat the cold
+      // wall (spec §10). Phase 2 attaches it to the event; keeping the value
+      // here means that is a one-line change.
+      void wasGuest;
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;
@@ -67,11 +78,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Sign in with Google
   const signinWithGoogle = async (): Promise<void> => {
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const result = await signInWithPopup(auth, provider);
-      // Count only first-time Google users as a sign-up
-      if (getAdditionalUserInfo(result)?.isNewUser) {
+      const { credential, wasGuest } = await upgradeOrCreateWithGoogle();
+      // Count only first-time Google users as a sign-up. A linked guest is
+      // always new, since the anonymous account had no Google identity.
+      if (wasGuest || getAdditionalUserInfo(credential)?.isNewUser) {
         analytics.signUp('google');
       }
     } catch (error) {
@@ -142,9 +152,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Guest mode: an anonymous account is a signed-in Firebase user, so every
+  // "is this person logged in?" check in the app must ask isGuest too.
+  const isGuest = !!user?.isAnonymous;
+
+  // Mint an anonymous user for a visitor with no session. Gated on `loading`
+  // because auth.currentUser is null while Firebase restores an existing
+  // session from IndexedDB — minting there would sign a returning user out of
+  // their own account and into a fresh guest.
+  const ensureGuest = async (): Promise<void> => {
+    if (loading || user) return;
+    try {
+      await ensureAnonymousUser();
+    } catch (error) {
+      // A failed mint means no cache reads and no proxy calls. The page still
+      // renders; the visitor gets the signed-out experience.
+      console.error('Anonymous sign-in failed:', error);
+    }
+  };
+
   const contextValue: AuthContextType = {
     user,
     loading,
+    isGuest,
+    ensureGuest,
     signup,
     signin,
     signinWithGoogle,
