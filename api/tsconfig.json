@@ -11,5 +11,6 @@
     "noEmit": true,
     "resolveJsonModule": true
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": ["__tests__"]
 }

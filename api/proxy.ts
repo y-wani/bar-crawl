@@ -55,13 +55,30 @@ const appCheckJwks = createRemoteJWKSet(
   new URL("https://firebaseappcheck.googleapis.com/v1/jwks")
 );
 
-const verifyIdToken = async (token: string): Promise<string> => {
+export interface CallerIdentity {
+  uid: string;
+  isAnonymous: boolean;
+}
+
+// Firebase puts the sign-in method in a `firebase.sign_in_provider` claim.
+// Anything other than the literal "anonymous" is treated as a real account:
+// a verified token with an odd shape is far more likely to be a legitimate
+// session than an attacker, and guessing wrong throttles a paying user.
+export const isAnonymousProvider = (payload: Record<string, unknown>): boolean => {
+  const firebase = payload.firebase as { sign_in_provider?: unknown } | undefined;
+  return firebase?.sign_in_provider === "anonymous";
+};
+
+const verifyIdToken = async (token: string): Promise<CallerIdentity> => {
   const { payload } = await jwtVerify(token, idTokenJwks, {
     issuer: `https://securetoken.google.com/${PROJECT_ID}`,
     audience: PROJECT_ID,
   });
   if (!payload.sub) throw new Error("ID token missing subject");
-  return payload.sub;
+  return {
+    uid: payload.sub,
+    isAnonymous: isAnonymousProvider(payload as Record<string, unknown>),
+  };
 };
 
 const verifyAppCheckToken = async (token: string): Promise<void> => {
@@ -231,7 +248,7 @@ const verifyAppCheck = async (
 const verifyAuth = async (
   req: VercelRequest,
   res: VercelResponse
-): Promise<string | null> => {
+): Promise<CallerIdentity | null> => {
   const header = req.headers.authorization || "";
   const match = header.match(/^Bearer (.+)$/i);
   if (!match) {
@@ -768,8 +785,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
   if (!(await verifyAppCheck(req, res))) return;
-  const uid = await verifyAuth(req, res);
-  if (!uid) return;
+  const caller = await verifyAuth(req, res);
+  if (!caller) return;
+  const { uid, isAnonymous } = caller;
 
   const body = readBody<Body>(req);
   const { minute, day } = buckets();
