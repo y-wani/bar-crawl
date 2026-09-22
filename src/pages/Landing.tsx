@@ -226,7 +226,7 @@ const Landing: React.FC = () => {
         <nav className="bh-nav">
           <a href="#how" className="bh-navlink">How it works</a>
           <a href="#features" className="bh-navlink">Features</a>
-          <Link to="/signup" className="bh-btn bh-btn--light bh-btn--sm">Get Started</Link>
+          <Link to="/home" className="bh-btn bh-btn--light bh-btn--sm">Get Started</Link>
         </nav>
       </header>
 
@@ -241,7 +241,7 @@ const Landing: React.FC = () => {
             everyone together on the night — free.
           </p>
           <div className="bh-cta-row">
-            <Link to="/signup" className="bh-btn bh-btn--light bh-btn--lg">Get Started for Free</Link>
+            <Link to="/home" className="bh-btn bh-btn--light bh-btn--lg">Plan a Crawl — No Signup</Link>
             <Link to="/signin" className="bh-btn bh-btn--ghost bh-btn--lg">I have an account</Link>
           </div>
         </div>
@@ -416,10 +416,11 @@ const Landing: React.FC = () => {
         <div data-reveal className="bh-final__inner">
           <h2 className="bh-final__title">Round up the squad.</h2>
           <p className="bh-final__sub">
-            Your next crawl is four taps away. No app to download, no card to enter.
+            Your next crawl is four taps away. No account to create, no app to
+            download, no card to enter.
           </p>
           <div className="bh-cta-row">
-            <Link to="/signup" className="bh-btn bh-btn--light bh-btn--xl">Get Started for Free</Link>
+            <Link to="/home" className="bh-btn bh-btn--light bh-btn--xl">Plan a Crawl — No Signup</Link>
             <Link to="/signin" className="bh-btn bh-btn--ghost bh-btn--xl">I have an account</Link>
           </div>
         </div>
