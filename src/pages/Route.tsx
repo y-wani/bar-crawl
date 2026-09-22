@@ -35,6 +35,10 @@ import {
   readGuestCrawl,
   writeGuestCrawl,
 } from "../services/guestCrawlStorage";
+import {
+  loadGuestCrawlDoc,
+  saveGuestCrawlDoc,
+} from "../services/guestCrawlDoc";
 import GuestSignupPrompt, {
   type GuestPromptReason,
 } from "../components/GuestSignupPrompt";
@@ -323,8 +327,29 @@ const Route: React.FC = () => {
       });
       return;
     }
+    // localStorage can be evicted by Safari ITP after 7 idle days. Try the
+    // server copy before giving up on the crawl entirely.
+    if (user) {
+      let cancelled = false;
+      void loadGuestCrawlDoc(user.uid).then((remote) => {
+        if (cancelled) return;
+        if (remote) {
+          setRestoredState({
+            selectedBars: remote.selectedBars,
+            mapCenter: remote.mapCenter,
+            searchRadius: remote.searchRadius,
+            crawlName: remote.crawlName,
+          });
+        } else {
+          navigate("/home");
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     navigate("/home");
-  }, [routeState, navigate, searchParams]);
+  }, [routeState, navigate, searchParams, user]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [draggableBars, setDraggableBars] = useState<DraggableBarItem[]>([]);
@@ -676,13 +701,26 @@ const Route: React.FC = () => {
   // has to follow — otherwise a refresh restores the pre-drag order.
   useEffect(() => {
     if (draggableBars.length < 2) return;
-    writeGuestCrawl({
+    const crawl = {
       selectedBars: draggableBars,
       mapCenter,
       searchRadius,
       crawlName: effectiveState?.crawlName,
-    });
-  }, [draggableBars, mapCenter, searchRadius, effectiveState?.crawlName]);
+    };
+    writeGuestCrawl(crawl);
+    // iOS ITP backstop — only guests need it; a real account saves crawls
+    // properly through barCrawls.
+    if (user && isGuest) {
+      void saveGuestCrawlDoc(user.uid, { ...crawl, updatedAt: Date.now() });
+    }
+  }, [
+    draggableBars,
+    mapCenter,
+    searchRadius,
+    effectiveState?.crawlName,
+    user,
+    isGuest,
+  ]);
 
   const handleSaveCrawl = () => {
     if (!user || isGuest) {

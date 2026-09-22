@@ -36,6 +36,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // ----- Guest crawl durability (spec §6.1 layer 2) -----
+    // One doc per uid, named by that uid. Purely a durability backstop for
+    // Safari ITP eviction, NOT a sharing surface, so access is owner-only
+    // (spec §14.2 rules out a pre-signup share link in Phase 1).
+    match /guestCrawls/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // ----- Live crawl sessions -----
     // Group-ready: access is gated on membership (memberUids array).
     match /crawlSessions/{sessionId} {
