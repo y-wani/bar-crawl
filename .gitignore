@@ -43,3 +43,6 @@ example-*.tsx
 # Demo recordings + ephemeral demo state
 demo-output/
 scripts/.demo-ids.json
+
+# Vitest JSON report cache (written by the rtk vitest wrapper)
+.vitest/

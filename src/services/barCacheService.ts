@@ -1,14 +1,15 @@
 // src/services/barCacheService.ts
 
-import { 
-  collection, 
+import {
+  collection,
   addDoc,
-  query, 
-  getDocs, 
+  query,
+  getDocs,
   serverTimestamp,
   orderBy,
+  where,
   limit,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { AppBat } from '../pages/Home';
@@ -65,53 +66,90 @@ export const isCacheValid = (fetchedAt: Timestamp, seeded = false): boolean => {
   return hoursDiff < (seeded ? SEEDED_CACHE_EXPIRY_HOURS : CACHE_EXPIRY_HOURS);
 };
 
+// Walk a list of cached areas and return the first one that is both within
+// searchRadius and still valid (respecting the seeded 30-day window). Shared
+// by both the recent-50 pass and the seeded-fallback pass in getCachedBars
+// so the proximity+expiry logic exists in exactly one place.
+export const findCachedMatch = (
+  areas: CachedBarArea[],
+  centerLat: number,
+  centerLng: number,
+  searchRadius: number
+): CacheSearchResult | null => {
+  for (const cacheData of areas) {
+    // Check if this cached area is close enough
+    const distance = calculateDistance(
+      centerLat,
+      centerLng,
+      cacheData.centerLat,
+      cacheData.centerLng
+    );
+
+    if (distance <= searchRadius && isCacheValid(cacheData.fetchedAt, cacheData.seeded === true)) {
+      debug(`✅ Found valid cache within ${distance.toFixed(2)} miles`);
+      const cacheAge = (new Date().getTime() - cacheData.fetchedAt.toDate().getTime()) / (1000 * 60 * 60);
+
+      return {
+        bars: cacheData.bars,
+        isFromCache: true,
+        cacheAge: cacheAge
+      };
+    }
+  }
+
+  return null;
+};
+
 // Get cached bars for a location
 export const getCachedBars = async (
-  centerLat: number, 
+  centerLat: number,
   centerLng: number,
   searchRadius: number = SEARCH_RADIUS_MILES
 ): Promise<CacheSearchResult> => {
   try {
     debug(`🔍 Searching cache for bars near (${centerLat}, ${centerLng})`);
-    
+
     // Query Firestore for nearby cached areas
     const cacheQuery = query(
       collection(db, COLLECTION_NAME),
       orderBy('fetchedAt', 'desc'),
       limit(50) // Get recent caches
     );
-    
+
     const querySnapshot = await getDocs(cacheQuery);
-    
-    for (const doc of querySnapshot.docs) {
-      const cacheData = doc.data() as CachedBarArea;
-      
-      // Check if this cached area is close enough
-      const distance = calculateDistance(
-        centerLat, 
-        centerLng, 
-        cacheData.centerLat, 
-        cacheData.centerLng
-      );
-      
-      if (distance <= searchRadius && isCacheValid(cacheData.fetchedAt, cacheData.seeded === true)) {
-        debug(`✅ Found valid cache within ${distance.toFixed(2)} miles`);
-        const cacheAge = (new Date().getTime() - cacheData.fetchedAt.toDate().getTime()) / (1000 * 60 * 60);
-        
-        return {
-          bars: cacheData.bars,
-          isFromCache: true,
-          cacheAge: cacheAge
-        };
-      }
-    }
-    
+    const recentMatch = findCachedMatch(
+      querySnapshot.docs.map((doc) => doc.data() as CachedBarArea),
+      centerLat,
+      centerLng,
+      searchRadius
+    );
+    if (recentMatch) return recentMatch;
+
+    // Seeded metros (seeded: true) can be pushed out of the recent-50 window
+    // by ordinary user traffic well before their 30-day window is up. Fall
+    // back to a query restricted to seeded docs. Equality filter + limit,
+    // NO orderBy — that only needs the automatic single-field index, unlike
+    // orderBy which would require a hand-created composite index.
+    const seededQuery = query(
+      collection(db, COLLECTION_NAME),
+      where('seeded', '==', true),
+      limit(50)
+    );
+    const seededSnapshot = await getDocs(seededQuery);
+    const seededMatch = findCachedMatch(
+      seededSnapshot.docs.map((doc) => doc.data() as CachedBarArea),
+      centerLat,
+      centerLng,
+      searchRadius
+    );
+    if (seededMatch) return seededMatch;
+
     debug("❌ No valid cache found");
     return {
       bars: [],
       isFromCache: false
     };
-    
+
   } catch (error) {
     console.error("Error fetching cached bars:", error);
     return {

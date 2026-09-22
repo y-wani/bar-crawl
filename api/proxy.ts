@@ -478,6 +478,30 @@ const CACHE_EXPIRY_HOURS = 24;
 // serverless function can't import from src/, so keep the two in sync.
 const SEEDED_CACHE_EXPIRY_HOURS = 24 * 30;
 const CACHE_RADIUS_MILES = 2;
+// Walk a list of cache documents and return the first one that is both
+// within CACHE_RADIUS_MILES and still valid (respecting the seeded 30-day
+// window). Shared by both the recent-50 pass and the seeded-fallback pass in
+// readBarCache so the proximity+expiry logic exists in exactly one place.
+const scanCacheDocs = (
+  docs: Record<string, unknown>[],
+  lat: number,
+  lng: number
+): Bar[] | null => {
+  const now = Date.now();
+  for (const d of docs) {
+    const cLat = d.centerLat;
+    const cLng = d.centerLng;
+    if (typeof cLat !== "number" || typeof cLng !== "number") continue;
+    if (milesBetween(lat, lng, cLat, cLng) > CACHE_RADIUS_MILES) continue;
+    const fetchedMs = typeof d.fetchedAt === "number" ? d.fetchedAt : 0;
+    const expiryHours =
+      d.seeded === true ? SEEDED_CACHE_EXPIRY_HOURS : CACHE_EXPIRY_HOURS;
+    if (now - fetchedMs < expiryHours * 3600 * 1000) {
+      return Array.isArray(d.bars) ? (d.bars as Bar[]) : null;
+    }
+  }
+  return null;
+};
 const readBarCache = async (lat: number, lng: number): Promise<Bar[] | null> => {
   try {
     const docs = await fsRunQuery({
@@ -485,19 +509,27 @@ const readBarCache = async (lat: number, lng: number): Promise<Bar[] | null> => 
       orderBy: [{ field: { fieldPath: "fetchedAt" }, direction: "DESCENDING" }],
       limit: 50,
     });
-    const now = Date.now();
-    for (const d of docs) {
-      const cLat = d.centerLat;
-      const cLng = d.centerLng;
-      if (typeof cLat !== "number" || typeof cLng !== "number") continue;
-      if (milesBetween(lat, lng, cLat, cLng) > CACHE_RADIUS_MILES) continue;
-      const fetchedMs = typeof d.fetchedAt === "number" ? d.fetchedAt : 0;
-      const expiryHours =
-        d.seeded === true ? SEEDED_CACHE_EXPIRY_HOURS : CACHE_EXPIRY_HOURS;
-      if (now - fetchedMs < expiryHours * 3600 * 1000) {
-        return Array.isArray(d.bars) ? (d.bars as Bar[]) : null;
-      }
-    }
+    const recentMatch = scanCacheDocs(docs, lat, lng);
+    if (recentMatch) return recentMatch;
+
+    // Seeded metros (seeded: true) can be pushed out of the recent-50 window
+    // by ordinary user traffic well before their 30-day window is up. Fall
+    // back to a query restricted to seeded docs. Equality filter + limit,
+    // NO orderBy — that only needs the automatic single-field index, unlike
+    // orderBy which would require a hand-created composite index.
+    const seededDocs = await fsRunQuery({
+      from: [{ collectionId: CACHE_COLLECTION }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: "seeded" },
+          op: "EQUAL",
+          value: { booleanValue: true },
+        },
+      },
+      limit: 50,
+    });
+    const seededMatch = scanCacheDocs(seededDocs, lat, lng);
+    if (seededMatch) return seededMatch;
   } catch (err) {
     console.error("readBarCache failed:", err);
   }
