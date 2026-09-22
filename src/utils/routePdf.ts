@@ -36,12 +36,31 @@ export interface RoutePdfInput {
 const PAGE_W = 210;
 const PAGE_H = 297;
 const MARGIN = 18;
-const CONTENT_W = PAGE_W - MARGIN * 2;
+
+// The header has to be tall enough for its TALLEST element, which is the QR
+// plus its caption — not the title. Sizing it to the title is what pushed the
+// QR down across the divider and into the first stop.
+const QR_SIZE = 26;
+const QR_X = PAGE_W - MARGIN - QR_SIZE;
+const QR_TOP = MARGIN;
+const QR_CAPTION_Y = QR_TOP + QR_SIZE + 4; // 48
+const HEADER_RULE_Y = QR_CAPTION_Y + 7; // clears the caption with room to breathe
+const FIRST_STOP_Y = HEADER_RULE_Y + 14;
+
+// Reserved strip at the bottom so a stop can never collide with the footer.
+const FOOTER_H = 26;
+const CONTENT_BOTTOM = PAGE_H - MARGIN - FOOTER_H;
+
+const DISC_R = 5;
+const DISC_X = MARGIN + DISC_R;
+const TEXT_X = MARGIN + 15;
+const TEXT_W = PAGE_W - MARGIN - TEXT_X;
 
 const INK = [26, 26, 46] as const; // deep ink, matches the app's display colour
 const AMBER = [236, 178, 86] as const; // the whiskey-amber accent
+const AMBER_SOFT = [244, 214, 165] as const; // the connector rail
 const MUTED = [110, 110, 120] as const;
-const RULE = [220, 220, 228] as const;
+const RULE = [224, 224, 232] as const;
 
 /**
  * Draw the crawl sheet into a jsPDF document.
@@ -51,13 +70,12 @@ const RULE = [220, 220, 228] as const;
  */
 export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType => {
   const { stops, mapsUrl, qrDataUrl, title = "Your Bar Crawl" } = input;
-  let y = MARGIN;
 
   // ---- Header -------------------------------------------------------------
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...INK);
-  doc.text(title, MARGIN, y + 6);
+  doc.text(title, MARGIN, MARGIN + 9);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -68,71 +86,96 @@ export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType =
     month: "long",
     year: "numeric",
   });
-  doc.text(`${stops.length} stops · ${dateLine}`, MARGIN, y + 13);
+  doc.text(`${stops.length} stops · ${dateLine}`, MARGIN, MARGIN + 16);
 
-  // QR sits top-right so it survives being folded in half.
+  // Short accent bar under the title — picks up the app's amber without
+  // needing the brand font, which isn't embedded.
+  doc.setDrawColor(...AMBER);
+  doc.setLineWidth(1.4);
+  doc.line(MARGIN, MARGIN + 21, MARGIN + 24, MARGIN + 21);
+
+  // QR sits top-right so it survives the sheet being folded in half.
   if (qrDataUrl) {
     try {
-      doc.addImage(qrDataUrl, "PNG", PAGE_W - MARGIN - 28, y - 2, 28, 28);
+      doc.addImage(qrDataUrl, "PNG", QR_X, QR_TOP, QR_SIZE, QR_SIZE);
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
-      doc.text("Scan for directions", PAGE_W - MARGIN - 28, y + 30);
+      doc.setTextColor(...MUTED);
+      doc.text("Scan for directions", QR_X + QR_SIZE / 2, QR_CAPTION_Y, {
+        align: "center",
+      });
     } catch {
       /* a broken QR must never cost the whole sheet */
     }
   }
 
-  y += 22;
   doc.setDrawColor(...RULE);
   doc.setLineWidth(0.4);
-  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
-  y += 10;
+  doc.line(MARGIN, HEADER_RULE_Y, PAGE_W - MARGIN, HEADER_RULE_Y);
 
   // ---- Stops --------------------------------------------------------------
   // The point of the sheet: the order, big enough to read in bad light.
+  let discY = FIRST_STOP_Y;
+  let prevDiscY: number | null = null;
+
   stops.forEach((stop, i) => {
-    // Rough height of this block, so a stop is never split across a page.
-    const addressLines = stop.address
-      ? doc.splitTextToSize(stop.address, CONTENT_W - 14)
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    const addressLines: string[] = stop.address
+      ? doc.splitTextToSize(stop.address, TEXT_W)
       : [];
-    const blockH = 12 + addressLines.length * 5 + 10;
-    if (y + blockH > PAGE_H - MARGIN) {
+    // disc + name, then each address line, then the scribble rule.
+    const blockH = 9 + addressLines.length * 4.8 + 7;
+
+    if (discY + blockH > CONTENT_BOTTOM) {
       doc.addPage();
-      y = MARGIN;
+      discY = MARGIN + DISC_R;
+      prevDiscY = null; // never draw a rail across a page break
     }
 
-    // Numbered amber disc
+    // The rail between discs reads as the route itself running down the page.
+    if (prevDiscY !== null) {
+      doc.setDrawColor(...AMBER_SOFT);
+      doc.setLineWidth(1);
+      doc.line(DISC_X, prevDiscY + DISC_R + 1.5, DISC_X, discY - DISC_R - 1.5);
+    }
+
     doc.setFillColor(...AMBER);
-    doc.circle(MARGIN + 4, y + 1, 4.6, "F");
+    doc.circle(DISC_X, discY, DISC_R, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(...INK);
-    doc.text(String(i + 1), MARGIN + 4, y + 2.6, { align: "center" });
+    doc.text(String(i + 1), DISC_X, discY + 1.7, { align: "center" });
 
-    doc.setFontSize(14);
+    doc.setFontSize(13.5);
     doc.setTextColor(...INK);
-    doc.text(stop.name, MARGIN + 13, y + 3);
-    y += 8;
+    doc.text(stop.name, TEXT_X, discY + 1.6);
 
+    let lineY = discY + 8;
     if (addressLines.length) {
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
+      doc.setFontSize(9.5);
       doc.setTextColor(...MUTED);
-      addressLines.forEach((line: string) => {
-        doc.text(line, MARGIN + 13, y + 2);
-        y += 5;
+      addressLines.forEach((line) => {
+        doc.text(line, TEXT_X, lineY);
+        lineY += 4.8;
       });
     }
 
-    // Space to scribble — the paper version of the old notes box.
-    y += 3;
+    // Space to scribble — the paper version of the old notes box. Indented to
+    // the text column so it reads as belonging to the stop, not dividing them.
     doc.setDrawColor(...RULE);
-    doc.line(MARGIN + 13, y, PAGE_W - MARGIN, y);
-    y += 9;
+    doc.setLineWidth(0.3);
+    doc.line(TEXT_X, lineY + 1.5, PAGE_W - MARGIN, lineY + 1.5);
+
+    prevDiscY = discY;
+    discY = lineY + 13;
   });
 
   // ---- Footer -------------------------------------------------------------
   const footerY = PAGE_H - MARGIN;
   doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.4);
   doc.line(MARGIN, footerY - 14, PAGE_W - MARGIN, footerY - 14);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -146,10 +189,11 @@ export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType =
   doc.text("Made with BarHop — gobarhop.app", MARGIN, footerY - 3);
 
   if (mapsUrl) {
+    const label = "Open in Google Maps";
     doc.setTextColor(...AMBER);
-    doc.textWithLink("Open in Google Maps", PAGE_W - MARGIN - 38, footerY - 3, {
-      url: mapsUrl,
-    });
+    // Right-align by measuring, so the link can't drift off the page edge.
+    const w = doc.getTextWidth(label);
+    doc.textWithLink(label, PAGE_W - MARGIN - w, footerY - 3, { url: mapsUrl });
   }
 
   return doc;

@@ -3,14 +3,20 @@ import { buildRoutePdf, routePdfFilename } from "../routePdf";
 import type { jsPDF as JsPdfType } from "jspdf";
 
 // A recording stand-in for jsPDF. The real library is 381KB and only needed at
-// runtime; what matters here is WHAT we draw and in what order, not how it is
-// rasterised.
+// runtime; what matters here is WHAT we draw and WHERE, not how it rasterises.
+// Coordinates are recorded so layout collisions can be asserted — the QR
+// overflowing into the first stop was a real shipped bug.
 const makeDoc = () => {
   const text: string[] = [];
+  const texts: { s: string; x: number; y: number }[] = [];
+  const circles: { x: number; y: number; r: number }[] = [];
+  const images: { x: number; y: number; w: number; h: number }[] = [];
   const calls: string[] = [];
   const doc = {
-    text: vi.fn((t: string | string[]) => {
-      text.push(Array.isArray(t) ? t.join(" ") : t);
+    text: vi.fn((t: string | string[], x: number, y: number) => {
+      const s = Array.isArray(t) ? t.join(" ") : t;
+      text.push(s);
+      texts.push({ s, x, y });
       calls.push("text");
       return doc;
     }),
@@ -21,13 +27,27 @@ const makeDoc = () => {
     setFillColor: vi.fn(() => doc),
     setLineWidth: vi.fn(() => doc),
     line: vi.fn(() => doc),
-    circle: vi.fn(() => { calls.push("circle"); return doc; }),
+    circle: vi.fn((x: number, y: number, r: number) => {
+      circles.push({ x, y, r });
+      calls.push("circle");
+      return doc;
+    }),
     addPage: vi.fn(() => { calls.push("addPage"); return doc; }),
-    addImage: vi.fn(() => { calls.push("addImage"); return doc; }),
-    textWithLink: vi.fn((t: string) => { text.push(t); calls.push("link"); return doc; }),
+    addImage: vi.fn((_d: string, _f: string, x: number, y: number, w: number, h: number) => {
+      images.push({ x, y, w, h });
+      calls.push("addImage");
+      return doc;
+    }),
+    textWithLink: vi.fn((t: string, x: number, y: number) => {
+      text.push(t);
+      texts.push({ s: t, x, y });
+      calls.push("link");
+      return doc;
+    }),
+    getTextWidth: vi.fn((t: string) => t.length * 1.6),
     splitTextToSize: vi.fn((t: string) => [t]),
   };
-  return { doc: doc as unknown as JsPdfType, text, calls };
+  return { doc: doc as unknown as JsPdfType, text, texts, circles, images, calls };
 };
 
 const stops = [
@@ -36,7 +56,9 @@ const stops = [
   { name: "Late Bar", address: "9 Canal Rd" },
 ];
 
-describe("buildRoutePdf", () => {
+const QR = "data:image/png;base64,AAAA";
+
+describe("buildRoutePdf content", () => {
   it("writes every stop name", () => {
     const { doc, text } = makeDoc();
     buildRoutePdf(doc, { stops });
@@ -46,7 +68,6 @@ describe("buildRoutePdf", () => {
   it("numbers the stops in route order", () => {
     const { doc, text } = makeDoc();
     buildRoutePdf(doc, { stops });
-    // The order on the page is the whole point of the sheet.
     const positions = stops.map((s) => text.indexOf(s.name));
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
     expect(text).toContain("1");
@@ -67,9 +88,81 @@ describe("buildRoutePdf", () => {
     expect(text).toContain("Nameless");
   });
 
+  it("links out to Google Maps when a url is given", () => {
+    const { doc, text } = makeDoc();
+    buildRoutePdf(doc, { stops, mapsUrl: "https://maps.google.com/?q=x" });
+    expect(text).toContain("Open in Google Maps");
+  });
+});
+
+describe("buildRoutePdf layout", () => {
+  // The shipped bug: the header was sized to the title, so the QR and its
+  // caption ran past the divider and collided with stop 1.
+  it("keeps the first stop clear of the QR block", () => {
+    const { doc, circles, images, texts } = makeDoc();
+    buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    const qr = images[0];
+    const caption = texts.find((t) => t.s === "Scan for directions")!;
+    const firstDisc = circles[0];
+    expect(qr).toBeDefined();
+    expect(caption).toBeDefined();
+    // Caption sits under the QR, and the first stop disc starts below both.
+    expect(caption.y).toBeGreaterThan(qr.y + qr.h);
+    expect(firstDisc.y - firstDisc.r).toBeGreaterThan(caption.y);
+  });
+
+  it("centres the caption on the QR rather than left-aligning it", () => {
+    const { doc, images, texts } = makeDoc();
+    buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    const qr = images[0];
+    const caption = texts.find((t) => t.s === "Scan for directions")!;
+    expect(caption.x).toBeCloseTo(qr.x + qr.w / 2, 1);
+  });
+
+  it("keeps the QR inside the right margin", () => {
+    const { doc, images } = makeDoc();
+    buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    const qr = images[0];
+    expect(qr.x + qr.w).toBeLessThanOrEqual(210 - 18 + 0.01);
+  });
+
+  it("stacks the stop discs down the page in order, evenly", () => {
+    const { doc, circles } = makeDoc();
+    buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    expect(circles).toHaveLength(3);
+    const gaps = [circles[1].y - circles[0].y, circles[2].y - circles[1].y];
+    expect(gaps[0]).toBeGreaterThan(0);
+    // Same-shaped stops should be evenly spaced.
+    expect(Math.abs(gaps[0] - gaps[1])).toBeLessThan(0.01);
+    expect(circles.every((c) => c.x === circles[0].x)).toBe(true);
+  });
+
+  it("never lets a stop run into the footer strip", () => {
+    const { doc, circles } = makeDoc();
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      name: `Bar ${i + 1}`,
+      address: `${i + 1} Some Street`,
+    }));
+    buildRoutePdf(doc, { stops: many });
+    // 297 page - 18 margin - 26 footer strip
+    for (const c of circles) expect(c.y).toBeLessThanOrEqual(297 - 18 - 26);
+  });
+
+  it("adds a page rather than running stops off the bottom", () => {
+    const { doc, calls } = makeDoc();
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      name: `Bar ${i + 1}`,
+      address: `${i + 1} Some Street`,
+    }));
+    buildRoutePdf(doc, { stops: many });
+    expect(calls).toContain("addPage");
+  });
+});
+
+describe("buildRoutePdf resilience", () => {
   it("draws the QR when one is supplied", () => {
     const { doc, calls } = makeDoc();
-    buildRoutePdf(doc, { stops, qrDataUrl: "data:image/png;base64,AAAA" });
+    buildRoutePdf(doc, { stops, qrDataUrl: QR });
     expect(calls).toContain("addImage");
   });
 
@@ -85,33 +178,16 @@ describe("buildRoutePdf", () => {
     (doc.addImage as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error("bad image data");
     });
-    expect(() =>
-      buildRoutePdf(doc, { stops, qrDataUrl: "data:image/png;base64,broken" })
-    ).not.toThrow();
+    expect(() => buildRoutePdf(doc, { stops, qrDataUrl: QR })).not.toThrow();
     expect(text).toContain("The Crown");
-  });
-
-  it("adds a page rather than running stops off the bottom", () => {
-    const { doc, calls } = makeDoc();
-    const many = Array.from({ length: 30 }, (_, i) => ({
-      name: `Bar ${i + 1}`,
-      address: `${i + 1} Some Street`,
-    }));
-    buildRoutePdf(doc, { stops: many });
-    expect(calls).toContain("addPage");
-  });
-
-  it("links out to Google Maps when a url is given", () => {
-    const { doc, text } = makeDoc();
-    buildRoutePdf(doc, { stops, mapsUrl: "https://maps.google.com/?q=x" });
-    expect(text).toContain("Open in Google Maps");
   });
 });
 
 describe("routePdfFilename", () => {
   it("ends in .pdf and carries the date", () => {
-    const name = routePdfFilename("Friday Night");
-    expect(name).toMatch(/^friday-night-\d{4}-\d{2}-\d{2}\.pdf$/);
+    expect(routePdfFilename("Friday Night")).toMatch(
+      /^friday-night-\d{4}-\d{2}-\d{2}\.pdf$/
+    );
   });
 
   it("strips characters that break a download", () => {
