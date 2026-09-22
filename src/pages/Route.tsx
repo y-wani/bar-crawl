@@ -316,6 +316,11 @@ const Route: React.FC = () => {
     const crawlId = searchParams.get("crawlId");
     if (crawlId) return;
     if (routeState?.selectedBars && routeState.selectedBars.length >= 2) return;
+    // Restore exactly once. This effect depends on `user`, which arrives on a
+    // later render for a guest, and a second setRestoredState would hand the
+    // init effect a fresh object identity — re-optimising the stops and firing
+    // a duplicate Mapbox Directions call for no reason.
+    if (restoredState) return;
 
     const stored = readGuestCrawl();
     if (stored) {
@@ -349,7 +354,7 @@ const Route: React.FC = () => {
       };
     }
     navigate("/home");
-  }, [routeState, navigate, searchParams, user]);
+  }, [routeState, navigate, searchParams, user, restoredState]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [draggableBars, setDraggableBars] = useState<DraggableBarItem[]>([]);
