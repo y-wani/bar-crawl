@@ -291,8 +291,8 @@ const Landing: React.FC = () => {
                 </div>
                 <div data-stepbar className="bh-step__bar" />
                 <p className="bh-step__body">
-                  Drop a pin, set your radius. Every bar nearby — ranked by distance or hype, with
-                  live open/closed status.
+                  Drop a pin, set your radius. Every bar nearby — ranked by distance or rating, so
+                  you can build the night in seconds.
                 </p>
                 <img className="bh-step__shot" src="/Home_Page.png" alt="Discover bars on the map" loading="lazy" />
               </div>
