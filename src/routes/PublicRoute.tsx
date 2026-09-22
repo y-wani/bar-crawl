@@ -12,7 +12,7 @@ const PublicRoute: React.FC<PublicRouteProps> = ({
   children,
   redirectTo = '/home'
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -20,15 +20,17 @@ const PublicRoute: React.FC<PublicRouteProps> = ({
     return <LoadingSpinner message="Checking authentication..." />;
   }
 
-  // If user is authenticated, send them on — back to wherever a ProtectedRoute
-  // bounced them from (e.g. a shared join link), else the default home page.
-  if (user) {
+  // A guest must be able to REACH the signup form. They are technically signed
+  // in, so the old `if (user)` redirect would bounce them back to /home and
+  // trap them in guest mode with no way out. Only a real account gets sent on
+  // — back to wherever a ProtectedRoute bounced them from (e.g. a shared join
+  // link), else the default home page.
+  //
+  // The unverified-email detour is gone for the same reason as ProtectedRoute
+  // (spec §9): verification never protected these surfaces, and bouncing
+  // someone to an inbox mid-funnel is the most expensive friction we have.
+  if (user && !isGuest) {
     const from = (location.state as { from?: string } | null)?.from;
-    // Unverified email/password users still need to verify first; carry the
-    // intended destination through so they land there once verified.
-    if (!user.emailVerified) {
-      return <Navigate to="/verify-email" replace state={from ? { from } : undefined} />;
-    }
     return <Navigate to={from || redirectTo} replace />;
   }
 

@@ -10,9 +10,9 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  redirectTo = '/signin'
+  redirectTo = '/signup'
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -20,10 +20,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <LoadingSpinner message="Checking authentication..." />;
   }
 
-  // If user is not authenticated, redirect to signin — but remember where
-  // they were headed (e.g. a shared /live?join=… link) so we can return them
-  // there once they sign in (see PublicRoute).
-  if (!user) {
+  // A guest IS a signed-in Firebase user, so `!user` alone would wave them
+  // straight through to /live. These routes need a real account. Guests go to
+  // signup rather than signin — they have nothing to sign in to. The intended
+  // destination is remembered either way (e.g. a shared /live?join=… link) so
+  // PublicRoute can return them there afterwards.
+  if (!user || isGuest) {
     return (
       <Navigate
         to={redirectTo}
@@ -33,21 +35,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Signed in but email not verified (email/password sign-ups; Google users
-  // are verified automatically) — gate the app behind verification, keeping
-  // the intended destination so we can return them here afterwards.
-  if (!user.emailVerified) {
-    return (
-      <Navigate
-        to="/verify-email"
-        replace
-        state={{ from: location.pathname + location.search }}
-      />
-    );
-  }
-
-  // If user is authenticated, render the protected content
+  // Email verification is deliberately NOT a gate here (spec §9). Starting a
+  // live crawl is the highest-intent moment in the product — route built,
+  // account created, possibly already standing outside the bar — and bouncing
+  // someone to an inbox there is the most expensive friction in the funnel.
+  // It never protected this surface anyway: the invite link controls who joins
+  // a session, not the email address. Verification is retained where it does
+  // real work — password reset and account recovery.
   return <>{children}</>;
 };
 
-export default ProtectedRoute; 
+export default ProtectedRoute;
