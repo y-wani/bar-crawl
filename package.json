@@ -13,6 +13,7 @@
     "demo:seed": "node scripts/demo-seed.mjs",
     "demo:play": "node scripts/demo-play.mjs",
     "demo": "node scripts/demo-seed.mjs && node scripts/demo-play.mjs",
+    "seed:metros": "node --env-file=.env scripts/seed-metro-cache.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
