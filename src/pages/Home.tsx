@@ -14,6 +14,10 @@ import { Sidebar } from "../components/Sidebar";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
 import { writeGuestCrawl } from "../services/guestCrawlStorage";
+import { ApiError } from "../services/apiClient";
+import GuestSignupPrompt, {
+  type GuestPromptReason,
+} from "../components/GuestSignupPrompt";
 import {
   getActiveSessionForMember,
   type CrawlSession,
@@ -126,6 +130,7 @@ const Home: React.FC = () => {
 
   const [bars, setBars] = useState<AppBat[]>([]);
   const [selectedBarIds, setSelectedBarIds] = useState<Set<string>>(new Set());
+  const [guestPrompt, setGuestPrompt] = useState<GuestPromptReason | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   // Where the map opens: cached precise coords → IP city → Columbus default.
   // The first bar fetch waits on `initialCenter.resolved` so we never fetch
@@ -344,6 +349,15 @@ const Home: React.FC = () => {
           );
           allBars.push(...placesBars);
         } catch (error) {
+          // A guest who has exhausted the shared daily pool is not an error
+          // state — it is the moment to ask for the account. The "search"
+          // reason exists so the copy talks about searches running out rather
+          // than claiming their crawl is at risk, which would not be true.
+          if (error instanceof ApiError && error.code === "GUEST_QUOTA") {
+            setIsLoading(false);
+            setGuestPrompt("search");
+            return;
+          }
           console.error("Error fetching bars from Google Places:", error);
         }
       } else {
@@ -826,6 +840,12 @@ const Home: React.FC = () => {
         onLocationDenied={handleLocationDenied}
         onSkip={handleLocationSkip}
         getUserLocation={getUserLocation}
+      />
+
+      <GuestSignupPrompt
+        open={guestPrompt !== null}
+        reason={guestPrompt ?? "search"}
+        onClose={() => setGuestPrompt(null)}
       />
     </div>
     </PageTransition>

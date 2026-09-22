@@ -10,9 +10,14 @@ import { getToken } from "firebase/app-check";
 
 class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Machine-readable code from the server, e.g. "GUEST_QUOTA". Optional, so
+   *  existing two-argument call sites keep working. Note: no constructor
+   *  parameter properties — tsconfig.app.json sets erasableSyntaxOnly. */
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
     this.name = "ApiError";
   }
 }
@@ -52,13 +57,15 @@ export const postJson = async <T>(
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
+    let code: string | undefined;
     try {
       const data = await res.json();
       if (data?.error) message = data.error;
+      if (typeof data?.code === "string") code = data.code;
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, code);
   }
 
   return (await res.json()) as T;
