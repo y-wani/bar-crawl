@@ -318,8 +318,11 @@ const SignUp: React.FC = () => {
               Sign In
             </Link>
           </p>
-          <Link to="/" className="back-link">
-            &larr; Back to Landing
+          {/* Honour `from` so someone who came here from a half-built crawl
+              and decided not to register lands back on that crawl, not on the
+              marketing page. Going to "/" was how a guest lost their route. */}
+          <Link to={from || '/'} className="back-link">
+            &larr; {from ? 'Back to my crawl' : 'Back to Landing'}
           </Link>
         </div>
         </motion.div>

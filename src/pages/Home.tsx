@@ -13,7 +13,7 @@ import { FiPlay } from "react-icons/fi";
 import { Sidebar } from "../components/Sidebar";
 import { MapContainer, type MapBounds } from "../components/MapContainer";
 import { useAuth } from "../context/useAuth";
-import { writeGuestCrawl } from "../services/guestCrawlStorage";
+import { readGuestCrawl, writeGuestCrawl } from "../services/guestCrawlStorage";
 import { ApiError } from "../services/apiClient";
 import GuestSignupPrompt, {
   type GuestPromptReason,
@@ -131,6 +131,24 @@ const Home: React.FC = () => {
   const [bars, setBars] = useState<AppBat[]>([]);
   const [selectedBarIds, setSelectedBarIds] = useState<Set<string>>(new Set());
   const [guestPrompt, setGuestPrompt] = useState<GuestPromptReason | null>(null);
+  // A crawl already built on /route. Home only ever WROTE this, never read it,
+  // so anyone who reached /home after building a crawl — e.g. backing out of
+  // signup — saw an empty map and had no route back to their own work. The
+  // crawl was never actually lost, just unreachable, which to the person
+  // looking at the screen is the same thing.
+  const [savedGuestCrawl, setSavedGuestCrawl] = useState<{
+    stops: number;
+    name?: string;
+  } | null>(null);
+  useEffect(() => {
+    const stored = readGuestCrawl();
+    if (stored) {
+      setSavedGuestCrawl({
+        stops: stored.selectedBars.length,
+        name: stored.crawlName,
+      });
+    }
+  }, []);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   // Where the map opens: cached precise coords → IP city → Columbus default.
   // The first bar fetch waits on `initialCenter.resolved` so we never fetch
@@ -815,6 +833,34 @@ const Home: React.FC = () => {
               <FiPlay className="resume-crawl-icon" />
             </motion.button>
           )}
+
+          {/* No live session, but a crawl was built earlier and is sitting in
+              storage. /route restores it from there, so this is just the way
+              back to it. Only shown when nothing is selected here, so it never
+              competes with a crawl being built right now. */}
+          {!activeSession?.id &&
+            savedGuestCrawl &&
+            savedGuestCrawl.stops >= 2 &&
+            selectedBarIds.size === 0 && (
+              <motion.button
+                className="resume-crawl-banner"
+                initial={{ opacity: 0, y: -16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                onClick={() => navigate("/route")}
+              >
+                <span className="resume-crawl-pulse" />
+                <span className="resume-crawl-text">
+                  <strong>Your crawl is still here</strong>
+                  <span>
+                    {savedGuestCrawl.name
+                      ? `${savedGuestCrawl.name} — tap to pick it back up`
+                      : `${savedGuestCrawl.stops} stops — tap to pick it back up`}
+                  </span>
+                </span>
+                <FiPlay className="resume-crawl-icon" />
+              </motion.button>
+            )}
         </AnimatePresence>
 
         <MapSearchControl
