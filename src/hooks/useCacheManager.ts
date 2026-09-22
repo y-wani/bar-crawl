@@ -116,9 +116,10 @@ export const useCacheManager = () => {
       
       // Background caching of other popular locations
       setTimeout(async () => {
-        for (let i = 1; i < Math.min(4, SEED_METROS.length); i++) {
+        for (let i = 0; i < Math.min(4, SEED_METROS.length); i++) {
           const location = SEED_METROS[i];
-          
+          if (location.name === DEFAULT_SEED_METRO.name) continue;
+
           try {
             debug(`🌍 Background caching ${location.name}...`);
             const bars = await fetchBarsForLocation(location.lat, location.lng, location.name);
