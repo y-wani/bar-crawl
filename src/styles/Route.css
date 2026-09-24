@@ -241,6 +241,22 @@
   cursor: not-allowed;
 }
 
+/* Saved state. The button is disabled here, but it must NOT read as disabled
+   — it's a confirmation, and the whole point is that someone doesn't wonder
+   whether the save worked and do it again. So it keeps full contrast and goes
+   green, the one place green appears outside checked-in stops on the map. */
+.btn-save-route.is-saved,
+.btn-save-route.is-saved:disabled {
+  opacity: 1;
+  cursor: default;
+  color: #2ecc71;
+  background: rgba(46, 204, 113, 0.12);
+  border-color: rgba(46, 204, 113, 0.35);
+}
+.btn-save-route.is-saved svg {
+  color: #2ecc71;
+}
+
 .btn-optimize-route {
   color: var(--text-primary);
   background: transparent;

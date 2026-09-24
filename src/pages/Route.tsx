@@ -20,6 +20,7 @@ import {
   FiZap,
   FiPlay,
   FiSave,
+  FiCheck,
   FiFolder,
   FiUsers,
 } from "react-icons/fi";
@@ -399,6 +400,10 @@ const Route: React.FC = () => {
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [guestPrompt, setGuestPrompt] = useState<GuestPromptReason | null>(null);
+  // Which crawl (if any) the current stop order has been saved as, so the
+  // button can say so and nobody saves the same night twice.
+  const [savedCrawlId, setSavedCrawlId] = useState<string | null>(null);
+  const savedSignature = useRef<string | null>(null);
 
   const isInitialLoad = useRef(true);
   // The order the user originally picked their bars in (before any
@@ -758,6 +763,20 @@ const Route: React.FC = () => {
     if (consumePendingAction() === "save") setShowSaveModal(true);
   }, [user, isGuest, draggableBars.length]);
 
+  // Identity of the crawl as currently arranged. Stop order and the two
+  // anchors are what a saved crawl actually consists of, so a change to any of
+  // them means what's on screen is no longer what was saved.
+  const crawlSignature = useMemo(
+    () =>
+      JSON.stringify({
+        ids: draggableBars.map((b) => b.id),
+        start: startCoordinates,
+        end: endCoordinates,
+      }),
+    [draggableBars, startCoordinates, endCoordinates]
+  );
+  const isSaved = savedCrawlId !== null && savedSignature.current === crawlSignature;
+
   const handleSaveCrawl = () => {
     if (!user || isGuest) {
       setGuestPrompt("save");
@@ -855,8 +874,14 @@ const Route: React.FC = () => {
     }
   };
 
-  const handleSaveSuccess = () => {
-    toast.success("Crawl saved successfully!");
+  const handleSaveSuccess = (crawlId: string) => {
+    setSavedCrawlId(crawlId);
+    // Pin the shape that was saved. If the crawl changes afterwards the tick
+    // has to come back off — a "Saved" badge that keeps claiming a stale
+    // version is worse than no badge, because it stops someone re-saving work
+    // they have genuinely changed.
+    savedSignature.current = crawlSignature;
+    toast.success("Crawl saved — find it under Saved Crawls");
   };
 
   const handleCloseSaveModal = () => {
@@ -1037,16 +1062,26 @@ const Route: React.FC = () => {
                 )}
               </button>
               <button
-                className="btn-save-route"
+                className={`btn-save-route${isSaved ? " is-saved" : ""}`}
                 onClick={handleSaveCrawl}
-                disabled={draggableBars.length < 2}
+                disabled={draggableBars.length < 2 || isSaved}
                 title={
                   draggableBars.length < 2
                     ? "Need at least 2 bars to save"
-                    : "Save this crawl"
+                    : isSaved
+                      ? "Already saved — it's in your Saved Crawls"
+                      : "Save this crawl"
                 }
               >
-                <FiSave size={16} /> Save
+                {isSaved ? (
+                  <>
+                    <FiCheck size={16} /> Saved
+                  </>
+                ) : (
+                  <>
+                    <FiSave size={16} /> Save
+                  </>
+                )}
               </button>
             </div>
             <div className="location-section">
