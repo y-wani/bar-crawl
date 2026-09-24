@@ -1,6 +1,7 @@
 // src/utils/routePdf.ts
 //
-// Builds the printable crawl sheet as a real PDF.
+// Builds the printable crawl sheet as a real PDF, styled to match the app's
+// "refined nightlife" language: deep ink, one whiskey-amber accent.
 //
 // This replaced a Blob({ type: "text/html" }) download. The HTML version was
 // effectively useless on iOS — it landed in Files, opened awkwardly if at all,
@@ -12,6 +13,16 @@
 // produce a blurry image of a page, several megabytes, with no selectable text
 // and no working links. Drawing keeps it a few hundred KB, sharp at any zoom,
 // and the addresses stay copy-pasteable.
+//
+// THEME NOTE: the header band is ink, the body stays light. A fully dark sheet
+// looks right on a screen and terrible on paper — this is a thing people
+// print — so the brand lives in the header, the accent and the rail, and the
+// stop list stays legible in one ink cartridge.
+//
+// TYPE NOTE: Rajdhani/Poppins are not embedded. jsPDF ships 14 standard fonts
+// and embedding a subset would add hundreds of KB to a lazily-loaded chunk for
+// a document that is mostly addresses. Helvetica carries it; the brand comes
+// from colour, weight and layout.
 //
 // jsPDF is imported dynamically by the caller so it never enters the main
 // bundle — it downloads only when somebody actually exports a sheet.
@@ -37,30 +48,41 @@ const PAGE_W = 210;
 const PAGE_H = 297;
 const MARGIN = 18;
 
-// The header has to be tall enough for its TALLEST element, which is the QR
-// plus its caption — not the title. Sizing it to the title is what pushed the
-// QR down across the divider and into the first stop.
-const QR_SIZE = 26;
-const QR_X = PAGE_W - MARGIN - QR_SIZE;
-const QR_TOP = MARGIN;
-const QR_CAPTION_Y = QR_TOP + QR_SIZE + 4; // 48
-const HEADER_RULE_Y = QR_CAPTION_Y + 7; // clears the caption with room to breathe
-const FIRST_STOP_Y = HEADER_RULE_Y + 14;
+// --- Header band ---------------------------------------------------------
+// Height is driven by the QR card, the tallest thing in the band. Sizing the
+// header to the title is what made the QR hang below its own divider.
+const QR = 24; // qr image
+const QR_PAD = 4; // white card padding around it
+const QR_CARD = QR + QR_PAD * 2; // 32
+const BAND_TOP = 0;
+const BAND_PAD = 14;
+// Card + its caption, so the caption can never spill out of the band the way
+// the old header let the QR spill past its own divider.
+const BAND_H = BAND_PAD + QR_CARD + 7 + 7; // 60
+const QR_CARD_X = PAGE_W - MARGIN - QR_CARD;
+const QR_CARD_Y = BAND_TOP + BAND_PAD;
 
-// Reserved strip at the bottom so a stop can never collide with the footer.
+const FIRST_STOP_Y = BAND_H + 20;
+
+// Reserved strip so a stop can never collide with the footer.
 const FOOTER_H = 26;
 const CONTENT_BOTTOM = PAGE_H - MARGIN - FOOTER_H;
 
-const DISC_R = 5;
+const DISC_R = 5.2;
 const DISC_X = MARGIN + DISC_R;
-const TEXT_X = MARGIN + 15;
+const TEXT_X = MARGIN + 16;
 const TEXT_W = PAGE_W - MARGIN - TEXT_X;
 
-const INK = [26, 26, 46] as const; // deep ink, matches the app's display colour
-const AMBER = [236, 178, 86] as const; // the whiskey-amber accent
-const AMBER_SOFT = [244, 214, 165] as const; // the connector rail
-const MUTED = [110, 110, 120] as const;
-const RULE = [224, 224, 232] as const;
+// Brand tokens, lifted from src/styles/tokens.css.
+const INK = [11, 10, 18] as const; // --bg-base  #0b0a12
+const INK_SOFT = [36, 33, 52] as const; // a lift off the band for the hairline
+const AMBER = [236, 178, 86] as const; // --accent   #ecb256
+const AMBER_SOFT = [246, 224, 190] as const; // the connector rail
+const ON_ACCENT = [26, 18, 8] as const; // --text-on-accent
+const BODY = [32, 30, 44] as const; // stop names on white
+const MUTED = [122, 120, 136] as const;
+const RULE = [228, 226, 234] as const;
+const WHITE = [255, 255, 255] as const;
 
 /**
  * Draw the crawl sheet into a jsPDF document.
@@ -71,47 +93,56 @@ const RULE = [224, 224, 232] as const;
 export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType => {
   const { stops, mapsUrl, qrDataUrl, title = "Your Bar Crawl" } = input;
 
-  // ---- Header -------------------------------------------------------------
+  // ---- Header band --------------------------------------------------------
+  doc.setFillColor(...INK);
+  doc.rect(0, BAND_TOP, PAGE_W, BAND_H, "F");
+
+  // Amber hairline along the bottom of the band — the app's single accent.
+  doc.setFillColor(...AMBER);
+  doc.rect(0, BAND_H - 1.2, PAGE_W, 1.2, "F");
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.setTextColor(...INK);
-  doc.text(title, MARGIN, MARGIN + 9);
+  doc.setFontSize(24);
+  doc.setTextColor(...WHITE);
+  doc.text(title, MARGIN, BAND_TOP + 30);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.setTextColor(...MUTED);
+  doc.setTextColor(...AMBER);
   const dateLine = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-  doc.text(`${stops.length} stops · ${dateLine}`, MARGIN, MARGIN + 16);
+  doc.text(
+    `${stops.length} ${stops.length === 1 ? "stop" : "stops"}  ·  ${dateLine}`,
+    MARGIN,
+    BAND_TOP + 39
+  );
 
-  // Short accent bar under the title — picks up the app's amber without
-  // needing the brand font, which isn't embedded.
-  doc.setDrawColor(...AMBER);
-  doc.setLineWidth(1.4);
-  doc.line(MARGIN, MARGIN + 21, MARGIN + 24, MARGIN + 21);
-
-  // QR sits top-right so it survives the sheet being folded in half.
+  // QR on a white card: scanners want dark-on-light, and the card keeps it
+  // readable against the ink band.
   if (qrDataUrl) {
     try {
-      doc.addImage(qrDataUrl, "PNG", QR_X, QR_TOP, QR_SIZE, QR_SIZE);
+      doc.setFillColor(...WHITE);
+      doc.roundedRect(QR_CARD_X, QR_CARD_Y, QR_CARD, QR_CARD, 2.5, 2.5, "F");
+      doc.addImage(qrDataUrl, "PNG", QR_CARD_X + QR_PAD, QR_CARD_Y + QR_PAD, QR, QR);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
-      doc.setTextColor(...MUTED);
-      doc.text("Scan for directions", QR_X + QR_SIZE / 2, QR_CAPTION_Y, {
-        align: "center",
-      });
+      doc.setTextColor(...AMBER);
+      // Sits inside the ink band, under the card — the band is tall enough for
+      // both, which is the whole reason its height comes from the QR.
+      doc.text(
+        "Scan for directions",
+        QR_CARD_X + QR_CARD / 2,
+        QR_CARD_Y + QR_CARD + 5,
+        { align: "center" }
+      );
     } catch {
       /* a broken QR must never cost the whole sheet */
     }
   }
-
-  doc.setDrawColor(...RULE);
-  doc.setLineWidth(0.4);
-  doc.line(MARGIN, HEADER_RULE_Y, PAGE_W - MARGIN, HEADER_RULE_Y);
 
   // ---- Stops --------------------------------------------------------------
   // The point of the sheet: the order, big enough to read in bad light.
@@ -124,19 +155,23 @@ export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType =
     const addressLines: string[] = stop.address
       ? doc.splitTextToSize(stop.address, TEXT_W)
       : [];
-    // disc + name, then each address line, then the scribble rule.
-    const blockH = 9 + addressLines.length * 4.8 + 7;
+    const blockH = 9 + addressLines.length * 4.8 + 8;
 
     if (discY + blockH > CONTENT_BOTTOM) {
       doc.addPage();
-      discY = MARGIN + DISC_R;
+      // Thin ink strip on continuation pages so they still read as the sheet.
+      doc.setFillColor(...INK);
+      doc.rect(0, 0, PAGE_W, 8, "F");
+      doc.setFillColor(...AMBER);
+      doc.rect(0, 8 - 0.9, PAGE_W, 0.9, "F");
+      discY = 8 + 14;
       prevDiscY = null; // never draw a rail across a page break
     }
 
     // The rail between discs reads as the route itself running down the page.
     if (prevDiscY !== null) {
       doc.setDrawColor(...AMBER_SOFT);
-      doc.setLineWidth(1);
+      doc.setLineWidth(1.1);
       doc.line(DISC_X, prevDiscY + DISC_R + 1.5, DISC_X, discY - DISC_R - 1.5);
     }
 
@@ -144,14 +179,14 @@ export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType =
     doc.circle(DISC_X, discY, DISC_R, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.setTextColor(...INK);
-    doc.text(String(i + 1), DISC_X, discY + 1.7, { align: "center" });
+    doc.setTextColor(...ON_ACCENT);
+    doc.text(String(i + 1), DISC_X, discY + 1.8, { align: "center" });
 
-    doc.setFontSize(13.5);
-    doc.setTextColor(...INK);
-    doc.text(stop.name, TEXT_X, discY + 1.6);
+    doc.setFontSize(14);
+    doc.setTextColor(...BODY);
+    doc.text(stop.name, TEXT_X, discY + 1.8);
 
-    let lineY = discY + 8;
+    let lineY = discY + 8.5;
     if (addressLines.length) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
@@ -162,21 +197,22 @@ export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType =
       });
     }
 
-    // Space to scribble — the paper version of the old notes box. Indented to
-    // the text column so it reads as belonging to the stop, not dividing them.
+    // Space to scribble. Indented to the text column so it reads as belonging
+    // to the stop rather than dividing one stop from the next.
     doc.setDrawColor(...RULE);
     doc.setLineWidth(0.3);
-    doc.line(TEXT_X, lineY + 1.5, PAGE_W - MARGIN, lineY + 1.5);
+    doc.line(TEXT_X, lineY + 2, PAGE_W - MARGIN, lineY + 2);
 
     prevDiscY = discY;
-    discY = lineY + 13;
+    discY = lineY + 14;
   });
 
   // ---- Footer -------------------------------------------------------------
   const footerY = PAGE_H - MARGIN;
-  doc.setDrawColor(...RULE);
+  doc.setDrawColor(...INK_SOFT);
   doc.setLineWidth(0.4);
   doc.line(MARGIN, footerY - 14, PAGE_W - MARGIN, footerY - 14);
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
@@ -185,11 +221,19 @@ export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType =
     MARGIN,
     footerY - 8
   );
+
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("Made with BarHop — gobarhop.app", MARGIN, footerY - 3);
+  doc.setTextColor(...BODY);
+  doc.text("BarHop", MARGIN, footerY - 3);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...MUTED);
+  doc.text("gobarhop.app", MARGIN + 11, footerY - 3);
 
   if (mapsUrl) {
     const label = "Open in Google Maps";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
     doc.setTextColor(...AMBER);
     // Right-align by measuring, so the link can't drift off the page edge.
     const w = doc.getTextWidth(label);

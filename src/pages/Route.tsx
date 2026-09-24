@@ -42,6 +42,7 @@ import {
 import GuestSignupPrompt, {
   type GuestPromptReason,
 } from "../components/GuestSignupPrompt";
+import { consumePendingAction } from "../services/pendingAction";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useBottomSheet } from "../hooks/useBottomSheet";
 import {
@@ -745,6 +746,17 @@ const Route: React.FC = () => {
     user,
     isGuest,
   ]);
+
+  // Resume a save that was interrupted by the signup prompt. Six people made
+  // accounts in the first two days of guest mode and none saved a crawl — they
+  // pressed Save, got sent to auth, came back, and would have had to find and
+  // press Save again. This reopens the dialog they already asked for; it does
+  // not save anything on their behalf.
+  useEffect(() => {
+    if (!user || isGuest) return;
+    if (draggableBars.length < 2) return; // wait until the crawl is restored
+    if (consumePendingAction() === "save") setShowSaveModal(true);
+  }, [user, isGuest, draggableBars.length]);
 
   const handleSaveCrawl = () => {
     if (!user || isGuest) {

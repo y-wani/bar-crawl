@@ -11,6 +11,7 @@ const makeDoc = () => {
   const texts: { s: string; x: number; y: number }[] = [];
   const circles: { x: number; y: number; r: number }[] = [];
   const images: { x: number; y: number; w: number; h: number }[] = [];
+  const rects: { x: number; y: number; w: number; h: number }[] = [];
   const calls: string[] = [];
   const doc = {
     text: vi.fn((t: string | string[], x: number, y: number) => {
@@ -27,6 +28,16 @@ const makeDoc = () => {
     setFillColor: vi.fn(() => doc),
     setLineWidth: vi.fn(() => doc),
     line: vi.fn(() => doc),
+    rect: vi.fn((x: number, y: number, w: number, h: number) => {
+      rects.push({ x, y, w, h });
+      calls.push("rect");
+      return doc;
+    }),
+    roundedRect: vi.fn((x: number, y: number, w: number, h: number) => {
+      rects.push({ x, y, w, h });
+      calls.push("roundedRect");
+      return doc;
+    }),
     circle: vi.fn((x: number, y: number, r: number) => {
       circles.push({ x, y, r });
       calls.push("circle");
@@ -47,7 +58,7 @@ const makeDoc = () => {
     getTextWidth: vi.fn((t: string) => t.length * 1.6),
     splitTextToSize: vi.fn((t: string) => [t]),
   };
-  return { doc: doc as unknown as JsPdfType, text, texts, circles, images, calls };
+  return { doc: doc as unknown as JsPdfType, text, texts, circles, images, rects, calls };
 };
 
 const stops = [
@@ -97,21 +108,28 @@ describe("buildRoutePdf content", () => {
 
 describe("buildRoutePdf layout", () => {
   // The shipped bug: the header was sized to the title, so the QR and its
-  // caption ran past the divider and collided with stop 1.
-  it("keeps the first stop clear of the QR block", () => {
-    const { doc, circles, images, texts } = makeDoc();
+  // caption ran past the divider and collided with stop 1. The header band is
+  // now sized from the QR card, so everything in it stays inside it.
+  it("keeps the whole QR block inside the ink band", () => {
+    const { doc, images, texts, rects } = makeDoc();
     buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    const band = rects[0]; // the ink band is drawn first
     const qr = images[0];
     const caption = texts.find((t) => t.s === "Scan for directions")!;
-    const firstDisc = circles[0];
-    expect(qr).toBeDefined();
-    expect(caption).toBeDefined();
-    // Caption sits under the QR, and the first stop disc starts below both.
-    expect(caption.y).toBeGreaterThan(qr.y + qr.h);
-    expect(firstDisc.y - firstDisc.r).toBeGreaterThan(caption.y);
+    expect(band.y).toBe(0);
+    expect(qr.y + qr.h).toBeLessThan(band.h);
+    expect(caption.y).toBeLessThan(band.h);
   });
 
-  it("centres the caption on the QR rather than left-aligning it", () => {
+  it("keeps the first stop clear of the header band", () => {
+    const { doc, circles, rects } = makeDoc();
+    buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    const band = rects[0];
+    const firstDisc = circles[0];
+    expect(firstDisc.y - firstDisc.r).toBeGreaterThan(band.h);
+  });
+
+  it("centres the caption on the QR card rather than left-aligning it", () => {
     const { doc, images, texts } = makeDoc();
     buildRoutePdf(doc, { stops, qrDataUrl: QR });
     const qr = images[0];
@@ -119,11 +137,23 @@ describe("buildRoutePdf layout", () => {
     expect(caption.x).toBeCloseTo(qr.x + qr.w / 2, 1);
   });
 
-  it("keeps the QR inside the right margin", () => {
-    const { doc, images } = makeDoc();
+  it("puts the QR on a light card so it stays scannable on the ink band", () => {
+    const { doc, images, rects, calls } = makeDoc();
     buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    expect(calls).toContain("roundedRect");
+    const card = rects.find((r) => r.w > 0 && r.w < 60 && r.h === r.w)!;
     const qr = images[0];
-    expect(qr.x + qr.w).toBeLessThanOrEqual(210 - 18 + 0.01);
+    expect(card).toBeDefined();
+    // The QR sits fully inside its card.
+    expect(qr.x).toBeGreaterThan(card.x);
+    expect(qr.x + qr.w).toBeLessThan(card.x + card.w);
+  });
+
+  it("keeps the QR card inside the right margin", () => {
+    const { doc, rects } = makeDoc();
+    buildRoutePdf(doc, { stops, qrDataUrl: QR });
+    const card = rects.find((r) => r.w > 0 && r.w < 60 && r.h === r.w)!;
+    expect(card.x + card.w).toBeLessThanOrEqual(210 - 18 + 0.01);
   });
 
   it("stacks the stop discs down the page in order, evenly", () => {

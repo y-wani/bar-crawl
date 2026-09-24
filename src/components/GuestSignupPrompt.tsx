@@ -13,6 +13,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
 import { useAuth } from "../context/useAuth";
+import { clearPendingAction, setPendingAction } from "../services/pendingAction";
 import { toast } from "./Toaster";
 import "../styles/GuestSignupPrompt.css";
 
@@ -57,11 +58,20 @@ const GuestSignupPrompt: React.FC<GuestSignupPromptProps> = ({
   // "your crawl survives signup" promise this phase exists to keep.
   const returnTo = location.pathname + location.search;
 
+  // Remember an interrupted save so it can be resumed after auth. Only "save"
+  // is resumable: live and plan both navigate somewhere else on their own, and
+  // "search" isn't an action to finish.
+  const rememberIntent = () => {
+    if (reason === "save") setPendingAction("save");
+  };
+
   const handleGoogle = async () => {
+    rememberIntent();
     try {
       await signinWithGoogle();
       onClose();
     } catch {
+      clearPendingAction();
       toast.error("Couldn't finish sign-up — try again");
     }
   };
@@ -94,7 +104,10 @@ const GuestSignupPrompt: React.FC<GuestSignupPromptProps> = ({
             </button>
             <button
               className="btn btn--ghost btn--full guest-prompt__email"
-              onClick={() => navigate("/signup", { state: { from: returnTo } })}
+              onClick={() => {
+                rememberIntent();
+                navigate("/signup", { state: { from: returnTo } });
+              }}
             >
               Sign up with email
             </button>
