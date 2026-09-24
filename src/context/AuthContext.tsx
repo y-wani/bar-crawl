@@ -37,6 +37,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Re-read auth.currentUser into context state.
+  //
+  // Needed because account LINKING (the whole basis of guest upgrade) does not
+  // fire onAuthStateChanged: the uid is unchanged, so Firebase does not regard
+  // it as an auth-state change, even though isAnonymous just flipped to false.
+  // Anything that upgrades an account must call this or the app keeps treating
+  // the person as a guest.
+  const syncUserFromAuth = (displayName?: string): void => {
+    if (!auth.currentUser) return;
+    const mapped = mapUser(auth.currentUser);
+    setUser(displayName ? { ...mapped, displayName } : mapped);
+  };
+
   // Sign up function
   const signup = async (
     email: string,
@@ -47,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Upgrades an anonymous session in place when one exists, so the crawl
       // the guest built survives under the same uid. Falls back to a normal
       // sign-in when the email already has an account.
-      const { credential, wasGuest, collided } = await upgradeOrCreateWithEmail(
+      const { wasGuest, collided } = await upgradeOrCreateWithEmail(
         email,
         password,
         displayName
@@ -56,11 +69,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // would inflate the very number Phase 2 exists to measure.
       if (!collided) analytics.signUp('email');
 
-      if (displayName && credential?.user) {
-        // onAuthStateChanged fired before the profile update completed,
-        // so sync the display name into local state manually
-        setUser((prev) => (prev ? { ...prev, displayName } : prev));
-      }
+      // CRITICAL: linkWithCredential keeps the SAME uid, so onAuthStateChanged
+      // does not fire — from Firebase's point of view the signed-in user never
+      // changed, only its provider data did. Without re-mapping here the
+      // context holds an object whose isAnonymous is still true, and the whole
+      // app goes on treating a brand-new account as a guest: the header offers
+      // "Sign up free", ProtectedRoute bounces them off /saved-crawls, and
+      // pressing Save asks them to sign up again.
+      syncUserFromAuth(displayName);
       // wasGuest is the number that decides whether guest mode beat the cold
       // wall (spec §10). Phase 2 attaches it to the event; keeping the value
       // here means that is a one-line change.
@@ -90,6 +106,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (wasGuest || (credential && getAdditionalUserInfo(credential)?.isNewUser)) {
         analytics.signUp('google');
       }
+      // linkWithPopup has the same uid-preserving behaviour as
+      // linkWithCredential, so the same stale-guest trap applies here.
+      syncUserFromAuth();
     } catch (error) {
       console.error('Google sign-in error:', error);
       throw error;
