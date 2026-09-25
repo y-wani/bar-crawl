@@ -679,6 +679,16 @@ const Route: React.FC = () => {
     return draggableBars.some((bar, i) => bar.id !== presentOriginal[i]);
   }, [draggableBars]);
 
+  // The last step of the guest funnel before sharing: a route actually
+  // rendered. A visitor who selects stops but never reaches this has a
+  // different problem from one who reaches it and never shares, and until now
+  // the two were indistinguishable.
+  useEffect(() => {
+    if (routeData && draggableBars.length >= 2) {
+      analytics.routeGenerated(draggableBars.length);
+    }
+  }, [routeData, draggableBars.length]);
+
   // Put the stops back in the order the user originally selected them
   const handleRestoreOriginalOrder = useCallback(() => {
     const original = originalOrderIds.current;

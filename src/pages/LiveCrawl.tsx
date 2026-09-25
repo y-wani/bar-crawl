@@ -343,6 +343,15 @@ const LiveCrawl: React.FC = () => {
           user ? { uid: user.uid, displayName: myDisplayName } : undefined
         );
         flushWalkedMiles();
+        // A verified arrival at a specific stop. This is the only proof the
+        // product can offer that a group physically walked into a given bar,
+        // which is what makes paid placement sellable later — an impression
+        // is worth pennies, an arrival is not.
+        analytics.checkIn(
+          orderedStops.findIndex((s) => s.barId === currentStop.barId),
+          orderedStops.length,
+          method
+        );
         toast.success(`Checked in at ${currentStop.name}! 🍻`);
         if (heroCardRef.current) {
           party.confetti(heroCardRef.current, { count: 40 });
@@ -364,6 +373,7 @@ const LiveCrawl: React.FC = () => {
       flushWalkedMiles,
       user,
       myDisplayName,
+      orderedStops,
     ]
   );
 

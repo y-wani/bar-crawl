@@ -191,6 +191,10 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
     if (overlayRef.current) {
       party.confetti(overlayRef.current, { count: 60, spread: 30 });
     }
+    // The end of the account funnel. recap_shared already existed, but with
+    // nothing recording that the recap was merely SEEN there was no
+    // denominator for it.
+    analytics.recapViewed();
   }, []);
 
   // Render the route as a static map and inline it as a data URL (so the

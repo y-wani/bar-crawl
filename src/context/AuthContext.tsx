@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       );
       // A collision is a sign-IN, not a new account — counting it as a signup
       // would inflate the very number Phase 2 exists to measure.
-      if (!collided) analytics.signUp('email');
+      if (!collided) analytics.signUp('email', wasGuest);
 
       // CRITICAL: linkWithCredential keeps the SAME uid, so onAuthStateChanged
       // does not fire — from Firebase's point of view the signed-in user never
@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Count only first-time Google users as a sign-up. A linked guest is
       // always new, since the anonymous account had no Google identity.
       if (wasGuest || (credential && getAdditionalUserInfo(credential)?.isNewUser)) {
-        analytics.signUp('google');
+        analytics.signUp('google', wasGuest);
       }
       // linkWithPopup has the same uid-preserving behaviour as
       // linkWithCredential, so the same stale-guest trap applies here.

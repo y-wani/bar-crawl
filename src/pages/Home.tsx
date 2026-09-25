@@ -44,6 +44,7 @@ import {
   fetchNearbyBars,
   isGooglePlacesEnabled,
 } from "../services/placesService";
+import { analytics } from "../utils/analytics";
 
 export interface AppBat extends Bar {
   location: {
@@ -758,6 +759,19 @@ const Home: React.FC = () => {
     writeGuestCrawl({ selectedBars, mapCenter, searchRadius });
   }, [selectedBars, mapCenter, searchRadius]);
 
+  // The top of the guest funnel: an anonymous visitor reached /home with a
+  // working map. Everything downstream is measured against this, and without
+  // it "activation is broken" was only ever a guess — the account funnel
+  // started at sign_up and could not see the visitors who never got that far.
+  useEffect(() => {
+    if (isGuest) analytics.guestSession();
+  }, [isGuest]);
+
+  // Separates "the map worked and they still left" from "they saw nothing".
+  useEffect(() => {
+    if (bars.length > 0) analytics.barsLoaded(bars.length);
+  }, [bars.length]);
+
   const handleToggleBar = (barId: string) =>
     setSelectedBarIds((prev) => {
       const next = new Set(prev);
@@ -765,6 +779,10 @@ const Home: React.FC = () => {
         next.delete(barId);
       } else {
         next.add(barId);
+        // Reported with the size AFTER the add, so the drop-off between the
+        // first stop and the second — the moment a visit becomes a crawl — is
+        // readable straight off the event.
+        analytics.stopAdded(next.size);
       }
       return next;
     });
