@@ -1,0 +1,283 @@
+/*
+ * CrawlList — the no-map, one-stop-at-a-time night-of view.
+ *
+ * Read in a dark bar, one-handed, by someone several drinks in. That drives
+ * every decision here: one enormous piece of text, tap targets that are hard
+ * to miss, and no map, no chrome, nothing competing with the bar name.
+ */
+
+.crawl-list {
+  min-height: 100dvh;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  /* The gutter every artifact on a phone needs, plus room for the iOS home
+     indicator so "Next bar" never sits under it. */
+  padding: var(--space-4) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+  gap: var(--space-5);
+}
+
+/* ----- Header ----- */
+
+.crawl-list-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.crawl-list-brand {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.crawl-list-name {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+/* ----- Progress pips ----- */
+
+.crawl-list-progress {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.crawl-list-pip {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background-color: var(--glass-3);
+  transition: background-color var(--duration-base) var(--ease-out);
+}
+
+.crawl-list-pip.is-done {
+  background-color: var(--accent-deep);
+}
+
+.crawl-list-pip.is-current {
+  background-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* ----- The current stop ----- */
+
+.crawl-list-current {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-5) 0;
+}
+
+.crawl-list-eyebrow {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* The one thing the page exists to show. clamp() so it fills a 375px phone
+   without a long name overflowing it. */
+.crawl-list-stop-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 13vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.crawl-list-address {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.crawl-list-address svg {
+  flex-shrink: 0;
+  margin-top: 0.25em;
+  color: var(--text-tertiary);
+}
+
+.crawl-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* Buttons here are bigger than the app's default .btn--lg: this is the one
+   screen where a mis-tap actually costs something. */
+.crawl-list-actions .btn {
+  flex: 1 1 auto;
+  min-height: 56px;
+  min-width: 9rem;
+  font-size: var(--text-base);
+  text-decoration: none;
+}
+
+.crawl-list-finished {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--success);
+}
+
+/* ----- The full list ----- */
+
+.crawl-list-rest-title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.crawl-list-all {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.crawl-list-row button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  min-height: 52px;
+  background-color: var(--glass-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.crawl-list-row button:hover {
+  background-color: var(--glass-2);
+  border-color: var(--glass-border-strong);
+}
+
+.crawl-list-row.is-current button {
+  background-color: var(--accent-soft);
+  border-color: var(--accent-deep);
+}
+
+.crawl-list-row.is-done .crawl-list-row-name {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+.crawl-list-row-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--glass-3);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.crawl-list-row.is-current .crawl-list-row-num {
+  background-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.crawl-list-row.is-done .crawl-list-row-num {
+  background-color: transparent;
+  border: 1px solid var(--accent-deep);
+  color: var(--accent-deep);
+}
+
+.crawl-list-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.crawl-list-row-name {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.crawl-list-row-address {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ----- Footer: the loop's return path ----- */
+
+.crawl-list-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--glass-border);
+  text-align: center;
+}
+
+.crawl-list-footer p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.crawl-list-footer .btn {
+  text-decoration: none;
+}
+
+/* ----- Wider screens: the page is designed for a phone, so cap it rather
+   than letting a 4rem bar name stretch across a desktop monitor. ----- */
+
+@media (min-width: 640px) {
+  .crawl-list {
+    max-width: 34rem;
+    margin: 0 auto;
+    padding-top: var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crawl-list-pip {
+    transition: none;
+  }
+}

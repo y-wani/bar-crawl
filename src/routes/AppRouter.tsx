@@ -13,6 +13,7 @@ const Home = React.lazy(() => import('../pages/Home'));
 const Route = React.lazy(() => import('../pages/Route'));
 const LiveCrawl = React.lazy(() => import('../pages/LiveCrawl'));
 const PlanLobby = React.lazy(() => import('../pages/PlanLobby'));
+const CrawlList = React.lazy(() => import('../pages/CrawlList'));
 const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
@@ -36,6 +37,12 @@ const AnimatedRoutes: React.FC = () => {
             still bind; save, live, plan and saved-crawls stay gated below. */}
         <RouterRoute path="/home" element={<Home />} />
         <RouterRoute path="/route" element={<Route />} />
+        {/* A shared crawl. Ungated on purpose and deliberately NOT wrapped in
+            any guard: the whole crawl travels in the URL fragment, so this
+            renders with no account, no anonymous mint and no Firestore read.
+            It is the only page a shared link lands on, which makes it the
+            product's growth loop — a wall here would close the loop. */}
+        <RouterRoute path="/c" element={<CrawlList />} />
         <RouterRoute
           path="/live"
           element={

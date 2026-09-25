@@ -5,15 +5,23 @@ import {
   FiMapPin,
   FiCopy,
   FiCheck,
+  FiSend,
 } from "react-icons/fi";
 import "../styles/ShareRouteButton.css";
 import { toast } from "./Toaster";
 import { buildRoutePdf, routePdfFilename } from "../utils/routePdf";
+import { buildCrawlShareUrl, type SharedCrawl } from "../utils/crawlLink";
+import { analytics } from "../utils/analytics";
 
 // Once-per-device flag introducing the share options. localStorage can throw
 // in private mode, so any failure is treated as "already seen": never nag,
 // never crash the page.
 const TUTORIAL_KEY = "barhop_share_tutorial_seen";
+
+// Read once: Mobile Safari is the top browser here, so the native share sheet
+// is the primary path and the button label depends on whether it exists.
+const canNativeShare = (): boolean =>
+  typeof navigator !== "undefined" && typeof navigator.share === "function";
 
 const hasSeenTutorial = (): boolean => {
   try {
@@ -115,24 +123,71 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
     return `${baseUrl}?${params.toString()}`;
   };
 
+  // A BarHop link to this exact crawl, with the whole thing encoded in the
+  // fragment — no save, no account, no Firestore write. It opens on /c, the
+  // no-map "next bar" list, which is the one screen a recipient standing on a
+  // pavement actually wants.
+  //
+  // This is the fix for the product's most expensive defect: "Copy Link" used
+  // to copy a google.com/maps URL, so every share BarHop ever produced sent
+  // the other five people in the group to Google instead of back here. The
+  // app's only growth loop pointed at a competitor.
+  const buildBarHopLink = (): string => {
+    const crawl: SharedCrawl = {
+      stops: bars.map((bar) => ({
+        name: bar.name,
+        lng: bar.location.coordinates[0],
+        lat: bar.location.coordinates[1],
+        address: bar.address,
+      })),
+      ...(startCoordinates ? { start: startCoordinates } : {}),
+      ...(endCoordinates ? { end: endCoordinates } : {}),
+    };
+    return buildCrawlShareUrl(crawl);
+  };
+
   const handleShareToGoogleMaps = () => {
     if (showTutorial) dismissTutorial(false);
     const url = generateGoogleMapsUrl();
     if (url) {
+      analytics.shareClicked("maps");
       window.open(url, "_blank");
     }
   };
 
-  const handleCopyRoute = async () => {
+  // Send the crawl to the group. navigator.share is the real sharing mechanism
+  // on a phone and Mobile Safari is the top browser here, so it leads;
+  // clipboard is the desktop path and the fallback when the sheet is
+  // dismissed or unavailable.
+  const handleShareCrawl = async () => {
     if (showTutorial) dismissTutorial(false);
-    const url = generateGoogleMapsUrl();
-    if (!url) return;
+    if (bars.length < 2) return;
+    const url = buildBarHopLink();
+
+    if (canNativeShare()) {
+      try {
+        await navigator.share({
+          title: "Our bar crawl",
+          text: "Here's the route for tonight — stops in order:",
+          url,
+        });
+        analytics.shareClicked("native");
+        return;
+      } catch {
+        // AbortError just means they closed the sheet; falling through to the
+        // clipboard would be confusing, but so would doing nothing on a real
+        // failure. Copying is the safe outcome for both.
+      }
+    }
+
     try {
       await navigator.clipboard.writeText(url);
+      analytics.shareClicked("link");
       setCopiedToClipboard(true);
       setTimeout(() => setCopiedToClipboard(false), 2000);
     } catch (err) {
       console.error("Failed to copy to clipboard:", err);
+      toast.error("Couldn't copy the link — try the PDF instead");
     }
   };
 
@@ -146,17 +201,24 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
     if (showTutorial) dismissTutorial(false);
     if (downloading) return;
     setDownloading(true);
+    analytics.shareClicked("pdf");
     try {
       const googleMapsUrl = generateGoogleMapsUrl();
+      // The QR encodes the BarHop link, not the Google Maps one: a printed
+      // sheet passed around a table is a share surface too, and scanning it
+      // should land on the stop list rather than hand the group to Google.
+      // The Google Maps link stays as the footer text link for walking
+      // directions, which is what it's genuinely good at.
+      const qrTarget = bars.length >= 2 ? buildBarHopLink() : googleMapsUrl;
 
       // Fetch the QR as a data URL. Best-effort: an offline or slow qrserver
       // must not block the sheet, so a failure just drops the QR.
       let qrDataUrl: string | undefined;
-      if (googleMapsUrl) {
+      if (qrTarget) {
         try {
           const res = await fetch(
             `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-              googleMapsUrl
+              qrTarget
             )}`
           );
           if (res.ok) {
@@ -210,24 +272,32 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
 
         {isExpanded && (
           <div className="share-route-button-options">
+            {/* First, largest, and the only one that brings anybody back. */}
             <button
-              className="share-route-option"
-              onClick={handleShareToGoogleMaps}
-              title="Open in Google Maps"
+              className={`share-route-option share-route-option--primary ${
+                copiedToClipboard ? "copied" : ""
+              }`}
+              onClick={handleShareCrawl}
+              disabled={bars.length < 2}
+              title="Send the stop list to your group"
             >
-              <FiMapPin size={16} />
-              <span>Google Maps</span>
+              {copiedToClipboard ? (
+                <FiCheck size={16} />
+              ) : canNativeShare() ? (
+                <FiSend size={16} />
+              ) : (
+                <FiCopy size={16} />
+              )}
+              <span>{copiedToClipboard ? "Link copied!" : "Send to friends"}</span>
             </button>
 
             <button
-              className={`share-route-option ${
-                copiedToClipboard ? "copied" : ""
-              }`}
-              onClick={handleCopyRoute}
-              title="Copy route to clipboard"
+              className="share-route-option"
+              onClick={handleShareToGoogleMaps}
+              title="Open walking directions in Google Maps"
             >
-              {copiedToClipboard ? <FiCheck size={16} /> : <FiCopy size={16} />}
-              <span>{copiedToClipboard ? "Copied!" : "Copy Link"}</span>
+              <FiMapPin size={16} />
+              <span>Google Maps</span>
             </button>
 
             <button
@@ -250,8 +320,9 @@ export const ShareRouteButton: React.FC<ShareRouteButtonProps> = ({
           >
             <h4>Share your route 🎉</h4>
             <p>
-              Open it straight in Google Maps, copy a link to send friends, or
-              download a PDF of the stop order to keep on your phone.
+              Send the stop list to your group — they get the order on their
+              phone, no account needed. Or open walking directions in Google
+              Maps, or download a PDF to keep.
             </p>
             <button
               type="button"

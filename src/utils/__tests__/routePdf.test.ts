@@ -115,7 +115,7 @@ describe("buildRoutePdf layout", () => {
     buildRoutePdf(doc, { stops, qrDataUrl: QR });
     const band = rects[0]; // the ink band is drawn first
     const qr = images[0];
-    const caption = texts.find((t) => t.s === "Scan for directions")!;
+    const caption = texts.find((t) => t.s === "Scan to open on your phone")!;
     expect(band.y).toBe(0);
     expect(qr.y + qr.h).toBeLessThan(band.h);
     expect(caption.y).toBeLessThan(band.h);
@@ -133,7 +133,7 @@ describe("buildRoutePdf layout", () => {
     const { doc, images, texts } = makeDoc();
     buildRoutePdf(doc, { stops, qrDataUrl: QR });
     const qr = images[0];
-    const caption = texts.find((t) => t.s === "Scan for directions")!;
+    const caption = texts.find((t) => t.s === "Scan to open on your phone")!;
     expect(caption.x).toBeCloseTo(qr.x + qr.w / 2, 1);
   });
 

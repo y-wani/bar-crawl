@@ -134,7 +134,7 @@ export const buildRoutePdf = (doc: JsPdfType, input: RoutePdfInput): JsPdfType =
       // Sits inside the ink band, under the card — the band is tall enough for
       // both, which is the whole reason its height comes from the QR.
       doc.text(
-        "Scan for directions",
+        "Scan to open on your phone",
         QR_CARD_X + QR_CARD / 2,
         QR_CARD_Y + QR_CARD + 5,
         { align: "center" }

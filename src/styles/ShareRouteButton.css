@@ -248,3 +248,32 @@
     border-bottom: 7px solid var(--accent);
   }
 }
+
+/* Primary share — the BarHop link. This is the only option that brings anyone
+   back to the product, so it reads as the default action rather than sitting
+   level with "Google Maps" and "PDF" the way the old "Copy Link" did. */
+.share-route-option--primary {
+  background: var(--accent);
+  border-color: var(--accent-deep);
+  border-left-color: var(--accent-deep);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.share-route-option--primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  border-left-color: var(--accent-deep);
+  color: var(--text-on-accent);
+}
+
+.share-route-option--primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The copied state must still win over the amber fill. */
+.share-route-option--primary.copied {
+  background: var(--success-soft);
+  border-left-color: var(--success);
+  color: var(--success);
+}
