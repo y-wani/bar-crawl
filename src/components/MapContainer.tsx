@@ -88,6 +88,9 @@ interface MapContainerProps {
   visitedBarIds?: Set<string>;
   /** Live friend locations (group Live Crawl) — rendered as labeled dots */
   friendPositions?: FriendPosition[];
+  /** The floating Share Route menu. Off on Live Crawl, where Invite is the
+   *  share action and the menu would cover the panel on a phone. */
+  showShareRoute?: boolean;
 }
 
 export interface FriendPosition {
@@ -113,6 +116,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   isLoadingBars = false,
   visitedBarIds,
   friendPositions,
+  showShareRoute = true,
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -591,7 +595,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         bars={bars}
         startCoordinates={startCoordinates}
         endCoordinates={endCoordinates}
-        isVisible={!!route && bars.length > 0}
+        isVisible={showShareRoute && !!route && bars.length > 0}
       />
     </div>
   );

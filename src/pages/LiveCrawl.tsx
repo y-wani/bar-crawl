@@ -731,6 +731,7 @@ const LiveCrawl: React.FC = () => {
               endCoordinates={session.route.endCoordinates}
               visitedBarIds={visitedBarIds}
               friendPositions={friendPositions}
+              showShareRoute={false}
             />
           </div>
 
@@ -740,6 +741,12 @@ const LiveCrawl: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={springPanel}
           >
+            {/* Everything above the footer scrolls as ONE unit. Only the stop
+                list used to scroll, while the hero, presence and squad blocks
+                refused to shrink — so once a second person joined, the squad
+                block ate the list's height (desktop) and pushed End crawl out
+                of the clipped panel (phone). The footer stays pinned. */}
+            <div className="live-panel-body">
             {/* Incoming squad ping */}
             <AnimatePresence>
               {pingBanner && (
@@ -989,6 +996,7 @@ const LiveCrawl: React.FC = () => {
                 );
               })}
             </motion.div>
+            </div>
 
             {isHost && (
               <div className="live-panel-footer">
