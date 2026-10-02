@@ -8,12 +8,21 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { toPng } from "html-to-image";
 import party from "party-js";
-import { FiShare2, FiDownload, FiCheck, FiHome } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
+import {
+  FiShare2,
+  FiDownload,
+  FiCheck,
+  FiHome,
+  FiLink,
+  FiArrowRight,
+} from "react-icons/fi";
 import { toast } from "./Toaster";
 import { analytics } from "../utils/analytics";
 import { useAuth } from "../context/useAuth";
 import { springPanel, modalOverlay, modalPanel } from "./motion/variants";
 import { markHomeSafe, type CrawlSession } from "../services/sessionService";
+import { buildCrawlShareUrl } from "../utils/crawlLink";
 import "../styles/LiveCrawl.css";
 
 interface CrawlRecapProps {
@@ -125,6 +134,7 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
   onDone,
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -146,6 +156,30 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
     () => [...session.stops].sort((a, b) => a.order - b.order),
     [session.stops]
   );
+
+  // The night itself as a runnable link. A PNG in a group chat shows what
+  // happened but gives nobody anything to tap; this is the recap's way back
+  // into the product. Stops only: start/end can be someone's front door, and
+  // a recap gets posted far more widely than a planning link.
+  const nightLink = useMemo(
+    () =>
+      buildCrawlShareUrl(
+        {
+          name: session.crawlName || undefined,
+          stops: orderedStops.map((s) => ({
+            name: s.name,
+            lng: s.coordinates[0],
+            lat: s.coordinates[1],
+          })),
+        },
+        undefined,
+        "recap"
+      ),
+    [session.crawlName, orderedStops]
+  );
+
+  // Attendees get a "plan your own" path; the host already is a planner.
+  const isHost = !!user && session.hostUid === user.uid;
 
   // ----- Get home safe -----
   const members = useMemo(
@@ -282,7 +316,13 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         type: "image/png",
       });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "My BarHop crawl" });
+        // Link in `text`, not `url`: several targets drop `url` when a file is
+        // attached. Some drop text too, hence the separate Copy link button.
+        await navigator.share({
+          files: [file],
+          title: "My BarHop crawl",
+          text: `${stats.stopsHit} bars, ${stats.milesWalked} mi 🍻 Run the same crawl: ${nightLink}`,
+        });
       } else {
         downloadPng(dataUrl);
         toast.success("Recap saved — share it anywhere!");
@@ -312,6 +352,21 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
     } finally {
       setExporting(false);
     }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(nightLink);
+      analytics.recapShared("link");
+      toast.success("Crawl link copied — paste it in the group chat");
+    } catch {
+      toast.error("Couldn't copy the link");
+    }
+  };
+
+  const handlePlanOwn = () => {
+    analytics.plannerCta("recap");
+    navigate("/home?ref=recap");
   };
 
   const crawlDate = (() => {
@@ -422,6 +477,9 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
         >
           <FiHome /> Get home{isHomeSafe ? " ✅" : ""}
         </button>
+        <button className="btn btn--secondary" onClick={handleCopyLink}>
+          <FiLink /> Copy crawl link
+        </button>
         <button
           className="btn btn--ghost"
           onClick={handleDownload}
@@ -433,6 +491,17 @@ export const CrawlRecap: React.FC<CrawlRecapProps> = ({
           <FiCheck /> Done
         </button>
       </div>
+
+      {!isHost && (
+        <div className="recap-next">
+          <p className="recap-next-text">
+            Liked tonight? Plan the next one — it takes two minutes.
+          </p>
+          <button className="btn btn--primary" onClick={handlePlanOwn}>
+            Plan your own crawl <FiArrowRight />
+          </button>
+        </div>
+      )}
 
       {/* Get-home-safe modal — keeps ride links + safe-status out of the
           card/actions so the recap stays clean. */}

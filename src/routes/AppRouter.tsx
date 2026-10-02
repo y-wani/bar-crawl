@@ -1,11 +1,13 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route as RouterRoute, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from './ProtectedRoute';
+import InviteRoute from './InviteRoute';
 import PublicRoute from './PublicRoute';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { captureRef } from '../utils/attribution';
 
 // Lazy load page components
 const Landing = React.lazy(() => import('../pages/Landing'));
@@ -28,6 +30,12 @@ const Terms = React.lazy(() => import('../pages/Terms'));
 const AnimatedRoutes: React.FC = () => {
   const location = useLocation();
 
+  // First-touch attribution. Runs on every navigation but only ever records
+  // the first source a device arrived from (see utils/attribution.ts).
+  useEffect(() => {
+    captureRef(location.pathname, location.search);
+  }, [location.pathname, location.search]);
+
   return (
     <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
@@ -43,24 +51,27 @@ const AnimatedRoutes: React.FC = () => {
             It is the only page a shared link lands on, which makes it the
             product's growth loop — a wall here would close the loop. */}
         <RouterRoute path="/c" element={<CrawlList />} />
+        {/* Attendee surfaces: an invite link works with no account (an
+            anonymous user is minted). Starting a crawl or a plan still needs
+            a real account — Route.tsx gates that, not these routes. */}
         <RouterRoute
           path="/live"
           element={
-            <ProtectedRoute>
+            <InviteRoute inviteParam="join">
               <ErrorBoundary>
                 <LiveCrawl />
               </ErrorBoundary>
-            </ProtectedRoute>
+            </InviteRoute>
           }
         />
         <RouterRoute
           path="/plan"
           element={
-            <ProtectedRoute>
+            <InviteRoute inviteParam="id">
               <ErrorBoundary>
                 <PlanLobby />
               </ErrorBoundary>
-            </ProtectedRoute>
+            </InviteRoute>
           }
         />
         <RouterRoute

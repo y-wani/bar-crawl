@@ -93,6 +93,29 @@ service cloud.firestore {
         && resource.data.hostUid == request.auth.uid;
     }
 
+    // ----- First-party analytics (src/services/eventLog.ts) -----
+    // Append-only and write-only from the client: a row can be created by its
+    // own uid (anonymous counts) and never read, edited or deleted. Only
+    // scripts/metrics.mjs reads it, through the Admin credentials. The shape is
+    // pinned so the collection can't be used as free general-purpose storage.
+    match /events/{eventId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(
+          ['name', 'props', 'uid', 'guest', 'ref', 'path', 'at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.props is map
+        && request.resource.data.props.size() <= 8
+        && request.resource.data.guest is bool
+        && request.resource.data.ref is string
+        && request.resource.data.ref.size() <= 40
+        && request.resource.data.path is string
+        && request.resource.data.path.size() <= 100
+        && request.resource.data.at == request.time;
+      allow read, update, delete: if false;
+    }
+
     // A self-join adds exactly the caller (and nothing else of substance):
     // the session is active, memberUids grows by one to include the caller,
     // and the immutable crawl fields are unchanged.

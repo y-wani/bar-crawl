@@ -31,6 +31,7 @@ import {
 } from "react-icons/fi";
 import { MapContainer } from "../components/MapContainer";
 import { CrawlRecap } from "../components/CrawlRecap";
+import GuestNameForm from "../components/GuestNameForm";
 import PageTransition from "../components/motion/PageTransition";
 import {
   springPanel,
@@ -41,6 +42,7 @@ import {
 } from "../components/motion/variants";
 import { useAuth } from "../context/useAuth";
 import { useLiveTracking } from "../hooks/useLiveTracking";
+import { useGuestName } from "../hooks/useGuestName";
 import { toast } from "../components/Toaster";
 import {
   getActiveSessionForMember,
@@ -116,7 +118,10 @@ const formatCheckInTime = (at: unknown): string => {
 const LiveCrawl: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
+  // Invited attendees join without an account (InviteRoute mints an anonymous
+  // user); all they're asked for is a name for the squad list.
+  const [guestName, saveGuestName] = useGuestName();
 
   const [sessionId, setSessionId] = useState<string | null>(
     (location.state as { sessionId?: string } | null)?.sessionId ?? null
@@ -133,9 +138,16 @@ const LiveCrawl: React.FC = () => {
   );
 
   const myDisplayName = useMemo(
-    () => user?.displayName ?? user?.email?.split("@")[0] ?? null,
-    [user]
+    () =>
+      user?.displayName ??
+      (isGuest ? guestName : null) ??
+      user?.email?.split("@")[0] ??
+      null,
+    [user, isGuest, guestName]
   );
+  // A guest holding an invite is asked their name before the join write, so
+  // they never appear on everyone's squad list as "?".
+  const needsGuestName = !!joinId && isGuest && !guestName;
   const [routeGeometry, setRouteGeometry] =
     useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
@@ -156,7 +168,7 @@ const LiveCrawl: React.FC = () => {
 
   // ----- Join: a shared ?join=<id> link adds the caller as a member -----
   useEffect(() => {
-    if (!joinId || !user || joinHandled) return;
+    if (!joinId || !user || joinHandled || needsGuestName) return;
     let cancelled = false;
     setJoining(true);
     (async () => {
@@ -164,7 +176,7 @@ const LiveCrawl: React.FC = () => {
         await joinSession(joinId, user.uid, myDisplayName);
         if (cancelled) return;
         setSessionId(joinId);
-        analytics.crawlJoined();
+        analytics.crawlJoined(isGuest);
         toast.success("You're in! 🎉 Welcome to the crawl");
       } catch (error) {
         if (cancelled) return;
@@ -182,7 +194,7 @@ const LiveCrawl: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [joinId, user, joinHandled, myDisplayName, navigate]);
+  }, [joinId, user, joinHandled, needsGuestName, isGuest, myDisplayName, navigate]);
 
   // ----- Hydrate: state sessionId → else the user's active session -----
   // Skip while a join is pending (the join effect sets the sessionId).
@@ -632,6 +644,21 @@ const LiveCrawl: React.FC = () => {
   }, [sessionId]);
 
   // ----- Render -----
+  if (needsGuestName && !joinHandled) {
+    return (
+      <PageTransition>
+        <div className="guest-name-page">
+          <GuestNameForm
+            title="You're invited to a crawl 🍻"
+            subtitle="Join to see the next bar and where everyone is on the night."
+            cta="Join the crawl"
+            onSubmit={saveGuestName}
+          />
+        </div>
+      </PageTransition>
+    );
+  }
+
   if (hydrating || !session) {
     return (
       <PageTransition>
@@ -659,6 +686,11 @@ const LiveCrawl: React.FC = () => {
 
   const showLiveStats =
     tracking.isWatching && tracking.distanceToTargetMiles !== null;
+  // Only the host can end the night early. With strangers joining as guests,
+  // one stray tap on "End crawl" would otherwise end it for the whole group.
+  // Anyone can still finish once every stop is resolved (the hero card), so a
+  // host whose phone died can't strand the crawl.
+  const isHost = session.hostUid === user?.uid;
   const allResolved = !currentStop;
 
   return (
@@ -958,14 +990,16 @@ const LiveCrawl: React.FC = () => {
               })}
             </motion.div>
 
-            <div className="live-panel-footer">
-              <button
-                className="btn btn--secondary btn--full"
-                onClick={() => setShowEndModal(true)}
-              >
-                End crawl
-              </button>
-            </div>
+            {isHost && (
+              <div className="live-panel-footer">
+                <button
+                  className="btn btn--secondary btn--full"
+                  onClick={() => setShowEndModal(true)}
+                >
+                  End crawl
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
 

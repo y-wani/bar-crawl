@@ -21,10 +21,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // A guest IS a signed-in Firebase user, so `!user` alone would wave them
-  // straight through to /live. These routes need a real account. Guests go to
-  // signup rather than signin — they have nothing to sign in to. The intended
-  // destination is remembered either way (e.g. a shared /live?join=… link) so
-  // PublicRoute can return them there afterwards.
+  // straight through to /saved-crawls. These routes need a real account.
+  // Guests go to signup rather than signin — they have nothing to sign in to.
+  // The intended destination is remembered so PublicRoute can return them
+  // there afterwards. (/live and /plan moved to InviteRoute: attendees join
+  // without an account.)
   if (!user || isGuest) {
     return (
       <Navigate

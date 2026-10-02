@@ -206,7 +206,11 @@ const CrawlList: React.FC = () => {
           low-pressure way to become the next planner. */}
       <footer className="crawl-list-footer">
         <p>Someone planned this with BarHop.</p>
-        <Link to="/home" className="btn btn--secondary">
+        <Link
+          to="/home?ref=list"
+          className="btn btn--secondary"
+          onClick={() => analytics.plannerCta("list")}
+        >
           Plan your own crawl
         </Link>
       </footer>

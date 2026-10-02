@@ -46,6 +46,9 @@ export interface SavedBarCrawl {
   createdBy: string; // user ID
   isPublic: boolean;
   tags?: string[];
+  /** Set on a "Run it again" copy: the crawl it was cloned from. Lets
+   *  scripts/metrics.mjs count repeat organizers without guessing from names. */
+  duplicatedFrom?: string;
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;
 }
@@ -109,6 +112,29 @@ export const saveCrawl = async (
     throw new Error("Failed to save crawl. Please try again.");
   }
 };
+
+/**
+ * "Run it again": save a copy of a crawl under a new name, owned by `uid`.
+ * Built field-by-field rather than spread — Firestore rejects `undefined`, and
+ * optional fields (description, tags) are routinely absent on older crawls.
+ */
+export const duplicateCrawl = async (
+  source: SavedBarCrawl,
+  name: string,
+  uid: string
+): Promise<string> =>
+  saveCrawl({
+    name,
+    bars: source.bars,
+    route: source.route,
+    mapCenter: source.mapCenter,
+    searchRadius: source.searchRadius,
+    createdBy: uid,
+    isPublic: source.isPublic,
+    ...(source.description ? { description: source.description } : {}),
+    ...(source.tags?.length ? { tags: source.tags } : {}),
+    ...(source.id ? { duplicatedFrom: source.id } : {}),
+  });
 
 /**
  * Get all crawls for a specific user

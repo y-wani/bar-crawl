@@ -146,6 +146,15 @@ describe("buildCrawlShareUrl", () => {
     expect(readCrawlFromHash(new URL(url).hash)).toEqual(crawl);
   });
 
+  it("carries an attribution tag in the query, keeping the crawl in the fragment", () => {
+    const url = new URL(
+      buildCrawlShareUrl(crawl, "https://www.gobarhop.app", "recap")
+    );
+    expect(url.pathname).toBe("/c");
+    expect(url.searchParams.get("ref")).toBe("recap");
+    expect(readCrawlFromHash(url.hash)).toEqual(crawl);
+  });
+
   it("readCrawlFromHash tolerates a missing or bare hash", () => {
     expect(readCrawlFromHash("")).toBeNull();
     expect(readCrawlFromHash("#")).toBeNull();

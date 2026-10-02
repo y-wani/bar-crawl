@@ -184,10 +184,17 @@ export const decodeCrawl = (payload: string): SharedCrawl | null => {
 /** The public path a shared crawl opens at. Ungated on purpose. */
 export const CRAWL_LINK_PATH = "/c";
 
+/** `source` becomes `?ref=<source>` — read by utils/attribution.ts, so a link
+ *  shared from the recap is credited to the recap rather than to "list". The
+ *  tag sits in the query string, which (unlike the crawl) is fine to log. */
 export const buildCrawlShareUrl = (
   crawl: SharedCrawl,
-  origin: string = typeof window !== "undefined" ? window.location.origin : ""
-): string => `${origin.replace(/\/+$/, "")}${CRAWL_LINK_PATH}#${encodeCrawl(crawl)}`;
+  origin: string = typeof window !== "undefined" ? window.location.origin : "",
+  source?: string
+): string =>
+  `${origin.replace(/\/+$/, "")}${CRAWL_LINK_PATH}${
+    source ? `?ref=${encodeURIComponent(source)}` : ""
+  }#${encodeCrawl(crawl)}`;
 
 /** Read a crawl out of `location.hash` (with or without the leading '#'). */
 export const readCrawlFromHash = (hash: string): SharedCrawl | null => {

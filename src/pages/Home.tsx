@@ -106,8 +106,10 @@ const Home: React.FC = () => {
   // Resume entry: surface an in-progress crawl so the user can jump back in
   const [activeSession, setActiveSession] = useState<CrawlSession | null>(null);
   useEffect(() => {
-    // A guest can never own a crawlSession, and the query would just be denied.
-    if (!user || isGuest) return;
+    // Guests included: a guest can't START a crawl, but an invited one can be a
+    // member of one (InviteRoute), and "Leave" on /live sends them here to
+    // resume it. The query is a member-scoped read the rules already allow.
+    if (!user) return;
     let cancelled = false;
     (async () => {
       const active = await getActiveSessionForMember(user.uid);
@@ -116,7 +118,7 @@ const Home: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [user, isGuest]);
+  }, [user]);
 
   // Initialize cache management
   useCacheManager();

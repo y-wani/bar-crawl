@@ -20,9 +20,16 @@
 // of whether a crawl reaches the other people in the group, which is the only
 // growth loop the product has.
 //
+// Every event goes to TWO sinks. Vercel gives the dashboard view; the
+// first-party Firestore log (services/eventLog.ts) is the one that can answer
+// per-person questions — attendee → planner, organizer repeat rate — because
+// it carries a uid and keeps more than a month of history. Read it with
+// `npm run metrics`.
+//
 // Best-effort by design — analytics must never throw into the app.
 
 import { track } from "@vercel/analytics";
+import { logEvent } from "../services/eventLog";
 
 const safeTrack = (
   name: string,
@@ -33,6 +40,7 @@ const safeTrack = (
   } catch {
     /* analytics must never break the app */
   }
+  logEvent(name, props);
 };
 
 // Some events fire from effects that re-run (a remount, a dependency change, a
@@ -55,10 +63,12 @@ export const analytics = {
   crawlCreated: (stops: number) => safeTrack("crawl_created", { stops }),
   crawlStarted: (stops: number) => safeTrack("crawl_started", { stops }),
   inviteSent: () => safeTrack("invite_sent"),
-  crawlJoined: () => safeTrack("crawl_joined"),
+  /** `wasGuest` is the test of the organizer thesis: a group multiplier near
+   *  1.0 means nothing until attendees can join without an account. */
+  crawlJoined: (wasGuest: boolean) => safeTrack("crawl_joined", { wasGuest }),
   crawlCompleted: (stopsHit: number, stopsTotal: number) =>
     safeTrack("crawl_completed", { stopsHit, stopsTotal }),
-  recapShared: (method: "share" | "download") =>
+  recapShared: (method: "share" | "download" | "link") =>
     safeTrack("recap_shared", { method }),
   recapViewed: () => once("recap_viewed", () => safeTrack("recap_viewed")),
 
@@ -109,6 +119,14 @@ export const analytics = {
   planVote: () => safeTrack("plan_vote"),
   planLocked: (attendees: number, stops: number) =>
     safeTrack("plan_locked", { attendees, stops }),
+
+  // ----- Repeat organizer + the next-planner path -----
+  /** A saved crawl was cloned to run again — the repeat-organizer signal. */
+  crawlDuplicated: (stops: number) =>
+    safeTrack("crawl_duplicated", { stops }),
+  /** An attendee tapped a "plan your own" entry point. `from` says which
+   *  surface earned it, so the recap and the list can be compared directly. */
+  plannerCta: (from: "recap" | "list") => safeTrack("planner_cta", { from }),
 
   // ----- Get-home-safe -----
   homeRide: (provider: "uber" | "lyft") =>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full-bleed so the same art works as a maskable icon; everything that
+       matters sits inside the central 80% safe zone. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ECB256" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ECB256" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="#0B0A12"/>
+  <circle cx="256" cy="256" r="210" fill="url(#glow)"/>
+  <path d="M150 340 Q200 250 256 250 T362 170" fill="none" stroke="#ECB256"
+        stroke-width="26" stroke-linecap="round" opacity="0.45" filter="url(#soft)"/>
+  <path d="M150 340 Q200 250 256 250 T362 170" fill="none" stroke="#ECB256"
+        stroke-width="16" stroke-linecap="round"/>
+  <circle cx="150" cy="340" r="34" fill="#ECB256"/>
+  <circle cx="150" cy="340" r="13" fill="#0B0A12"/>
+  <circle cx="256" cy="250" r="34" fill="#ECB256"/>
+  <circle cx="256" cy="250" r="13" fill="#0B0A12"/>
+  <circle cx="362" cy="170" r="42" fill="#FFF4DC"/>
+  <circle cx="362" cy="170" r="30" fill="#ECB256"/>
+</svg>

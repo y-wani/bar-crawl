@@ -10,9 +10,11 @@ import { motion } from "framer-motion";
 import { FaArrowLeft, FaLock, FaThumbsUp } from "react-icons/fa";
 import { FiUserPlus, FiCheck } from "react-icons/fi";
 import { MapContainer } from "../components/MapContainer";
+import GuestNameForm from "../components/GuestNameForm";
 import PageTransition from "../components/motion/PageTransition";
 import { springPanel, staggerContainer, staggerItem } from "../components/motion/variants";
 import { useAuth } from "../context/useAuth";
+import { useGuestName } from "../hooks/useGuestName";
 import { toast } from "../components/Toaster";
 import {
   subscribeToPlan,
@@ -32,7 +34,11 @@ const initialOf = (name: string | null): string =>
 const PlanLobby: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
+  // Invited friends RSVP without an account (InviteRoute mints an anonymous
+  // user); a guest is asked for a name first so the attendee row isn't "?".
+  const [guestName, saveGuestName] = useGuestName();
+  const [askingName, setAskingName] = useState(false);
 
   const planId = useMemo(
     () =>
@@ -48,8 +54,12 @@ const PlanLobby: React.FC = () => {
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
 
   const myDisplayName = useMemo(
-    () => user?.displayName ?? user?.email?.split("@")[0] ?? null,
-    [user]
+    () =>
+      user?.displayName ??
+      (isGuest ? guestName : null) ??
+      user?.email?.split("@")[0] ??
+      null,
+    [user, isGuest, guestName]
   );
 
   // ----- Subscribe (snapshot is the source of truth) -----
@@ -122,11 +132,17 @@ const PlanLobby: React.FC = () => {
       .sort((a, b) => b.votes - a.votes);
   }, [plan]);
 
-  const handleRsvp = useCallback(async () => {
+  // `name` overrides myDisplayName for the guest who just typed one — the
+  // memo hasn't re-run yet in the same tick.
+  const handleRsvp = useCallback(async (name?: string) => {
     if (!plan || !user || busy) return;
+    if (isGuest && !guestName && !name) {
+      setAskingName(true);
+      return;
+    }
     setBusy(true);
     try {
-      await rsvpToPlan(plan.id!, user.uid, myDisplayName);
+      await rsvpToPlan(plan.id!, user.uid, name ?? myDisplayName);
       analytics.planRsvp();
       toast.success("You're in! 🍻 Vote for where to go");
     } catch (error) {
@@ -134,7 +150,7 @@ const PlanLobby: React.FC = () => {
     } finally {
       setBusy(false);
     }
-  }, [plan, user, busy, myDisplayName]);
+  }, [plan, user, busy, isGuest, guestName, myDisplayName]);
 
   const handleVote = useCallback(
     async (barId: string) => {
@@ -185,6 +201,25 @@ const PlanLobby: React.FC = () => {
       setBusy(false);
     }
   }, [plan, isHost, busy, myDisplayName]);
+
+  if (askingName && plan) {
+    return (
+      <PageTransition>
+        <div className="guest-name-page">
+          <GuestNameForm
+            title={`${plan.hostName || "A friend"} wants you on this crawl`}
+            subtitle="Add your name, then vote for where the group goes."
+            cta="I'm in"
+            onSubmit={(name) => {
+              saveGuestName(name);
+              setAskingName(false);
+              void handleRsvp(name);
+            }}
+          />
+        </div>
+      </PageTransition>
+    );
+  }
 
   if (hydrating || !plan) {
     return (
@@ -270,7 +305,7 @@ const PlanLobby: React.FC = () => {
                 <h2 className="plan-rsvp-name">{plan.hostName || "A friend"} wants you on this crawl</h2>
                 <button
                   className="btn btn--primary btn--full"
-                  onClick={handleRsvp}
+                  onClick={() => handleRsvp()}
                   disabled={busy}
                 >
                   <FaThumbsUp /> I'm in 🍻

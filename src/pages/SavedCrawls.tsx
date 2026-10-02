@@ -13,6 +13,7 @@ import {
   FiUnlock,
   FiArrowLeft,
   FiPlus,
+  FiRepeat,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/useAuth";
@@ -22,9 +23,17 @@ import { listItem, modalOverlay, modalPanel } from "../components/motion/variant
 import {
   getUserCrawls,
   deleteCrawl,
+  duplicateCrawl,
   convertSavedBarsToAppBars,
   type SavedBarCrawl,
 } from "../services/crawlService";
+import {
+  duplicateName,
+  nextSaturday,
+  parseDateInput,
+  toDateInput,
+} from "../utils/duplicateCrawl";
+import { analytics } from "../utils/analytics";
 import "../styles/SavedCrawls.css";
 
 const SavedCrawls: React.FC = () => {
@@ -35,6 +44,12 @@ const SavedCrawls: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [deletingCrawlId, setDeletingCrawlId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // "Run it again" — the repeat organizer's two-tap job: same night, new date.
+  const [runAgain, setRunAgain] = useState<SavedBarCrawl | null>(null);
+  const [runAgainDate, setRunAgainDate] = useState(() =>
+    toDateInput(nextSaturday(new Date()))
+  );
+  const [duplicating, setDuplicating] = useState(false);
 
   // Error boundary effect
   useEffect(() => {
@@ -103,7 +118,12 @@ const SavedCrawls: React.FC = () => {
     }
   };
 
-  const handleLoadCrawl = (crawl: SavedBarCrawl) => {
+  // `as` points the Route page's save modal at a different doc — used to open
+  // a fresh "Run it again" copy so later edits update the copy, not the source.
+  const handleLoadCrawl = (
+    crawl: SavedBarCrawl,
+    as?: { id: string; name: string }
+  ) => {
     // Convert saved crawl back to route format
     const bars = convertSavedBarsToAppBars(crawl.bars);
 
@@ -116,17 +136,17 @@ const SavedCrawls: React.FC = () => {
         mapCenter: crawl.mapCenter,
         searchRadius: crawl.searchRadius,
         loadedFromSaved: true,
-        crawlName: crawl.name,
+        crawlName: as?.name ?? crawl.name,
         startCoordinates: crawl.route?.startLocation
           ? [crawl.route.startLocation.lng, crawl.route.startLocation.lat]
           : undefined,
         endCoordinates: crawl.route?.endLocation
           ? [crawl.route.endLocation.lng, crawl.route.endLocation.lat]
           : undefined,
-        existingCrawl: crawl.id
+        existingCrawl: (as?.id ?? crawl.id)
           ? {
-              id: crawl.id,
-              name: crawl.name,
+              id: (as?.id ?? crawl.id)!,
+              name: as?.name ?? crawl.name,
               description: crawl.description,
               tags: crawl.tags,
               isPublic: crawl.isPublic,
@@ -134,6 +154,25 @@ const SavedCrawls: React.FC = () => {
           : undefined,
       },
     });
+  };
+
+  const runAgainName =
+    runAgain && parseDateInput(runAgainDate)
+      ? duplicateName(runAgain.name, parseDateInput(runAgainDate)!)
+      : null;
+
+  const confirmRunAgain = async () => {
+    if (!runAgain || !runAgainName || !user || duplicating) return;
+    setDuplicating(true);
+    try {
+      const id = await duplicateCrawl(runAgain, runAgainName, user.uid);
+      analytics.crawlDuplicated(runAgain.bars.length);
+      toast.success("Copy saved — tweak the stops, then share the new link");
+      handleLoadCrawl(runAgain, { id, name: runAgainName });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't copy the crawl");
+      setDuplicating(false);
+    }
   };
 
   const handleShareCrawl = async (crawl: SavedBarCrawl) => {
@@ -328,6 +367,14 @@ const SavedCrawls: React.FC = () => {
                       <FiShare2 />
                     </button>
                     <button
+                      className="action-btn repeat"
+                      onClick={() => setRunAgain(crawl)}
+                      title="Run it again"
+                      aria-label="Run it again"
+                    >
+                      <FiRepeat />
+                    </button>
+                    <button
                       className="action-btn edit"
                       onClick={() => handleLoadCrawl(crawl)}
                       title="Edit crawl"
@@ -411,6 +458,67 @@ const SavedCrawls: React.FC = () => {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {runAgain && (
+          <motion.div
+            className="modal-overlay"
+            variants={modalOverlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={() => !duplicating && setRunAgain(null)}
+          >
+            <motion.div
+              className="modal-panel"
+              variants={modalPanel}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="run-again-title"
+            >
+              <h2 className="modal-title" id="run-again-title">
+                <FiRepeat /> Run it again
+              </h2>
+              <p className="modal-subtitle">
+                Same stops and route, new night. You can change anything
+                before you share it.
+              </p>
+              <label className="field">
+                <span className="field-label">Date</span>
+                <input
+                  className="field-input"
+                  type="date"
+                  value={runAgainDate}
+                  onChange={(e) => setRunAgainDate(e.target.value)}
+                />
+              </label>
+              {runAgainName && (
+                <p className="modal-subtitle">
+                  Saves as <strong>{runAgainName}</strong>
+                </p>
+              )}
+              <div className="modal-footer">
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => setRunAgain(null)}
+                  disabled={duplicating}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn--primary"
+                  onClick={confirmRunAgain}
+                  disabled={!runAgainName || duplicating}
+                >
+                  <FiRepeat />
+                  {duplicating ? "Copying…" : "Create copy"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {confirmDeleteId && (

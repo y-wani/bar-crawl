@@ -6,7 +6,7 @@ import LegalLayout from "../components/LegalLayout";
 const SUPPORT_EMAIL = "yashw118@gmail.com";
 
 const PrivacyPolicy: React.FC = () => (
-  <LegalLayout title="Privacy Policy" updated="June 16, 2026">
+  <LegalLayout title="Privacy Policy" updated="October 1, 2026">
     <p className="legal-intro">
       This Privacy Policy explains what information BarHop ("BarHop", "we", "us")
       collects when you use the app at <strong>gobarhop.app</strong>, how we use
@@ -41,6 +41,20 @@ const PrivacyPolicy: React.FC = () => (
       service reliable. We use cookies and local browser storage to keep you
       signed in and remember preferences (for example, your location-permission
       choice and whether you've seen the tutorial).
+    </p>
+    <p>
+      We also keep our own log of product events (for example, "built a route",
+      "joined a crawl", "shared a recap") in our Firebase database, tied to your
+      account or to an anonymous ID if you don't have one, along with how you
+      first arrived (such as a shared link). We use it only to understand how
+      BarHop is used — for example, whether people who join a crawl go on to
+      plan one. It contains no location data and is never sold or shared.
+    </p>
+    <h3>Joining a crawl without an account</h3>
+    <p>
+      If you open a friend's invite link, we create an anonymous ID for you and
+      ask for a display name. That name and, during a Live Crawl, your location
+      are visible to the other people on that crawl.
     </p>
 
     <h2>How we use your information</h2>

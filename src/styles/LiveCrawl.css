@@ -354,6 +354,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* `safe` keeps the top of a recap taller than the screen reachable by
+     scrolling; browsers without it keep the plain `center` above. */
+  justify-content: safe center;
   gap: var(--space-5);
   padding: var(--space-5) var(--space-4);
   background: var(--bg-sunken);
@@ -957,4 +960,26 @@
   .friend-marker-pulse {
     animation: none;
   }
+}
+
+/* ===== Recap → next planner (attendees only) =====
+ * Sits outside the captured .recap-card, so translucency is fine here. */
+.recap-next {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 380px;
+  padding: var(--space-4);
+  border: 1px solid rgba(236, 178, 86, 0.3);
+  border-radius: var(--radius-lg);
+  background: var(--glass-2);
+  text-align: center;
+}
+
+.recap-next-text {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--text-secondary);
 }
