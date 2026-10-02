@@ -249,7 +249,7 @@ line("Attendees", attendees);
 line("…who later planned their own", converted, pct(converted, attendees));
 const ctas = events.filter((e) => e.name === "planner_cta");
 line(`"Plan your own" taps (${days}d)`, ctas.length);
-for (const from of ["recap", "list"]) {
+for (const from of ["recap", "list", "venue_map"]) {
   line(`  from ${from}`, ctas.filter((e) => e.props?.from === from).length);
 }
 
@@ -261,7 +261,7 @@ const refs = {};
 for (const e of events) {
   const r = (refs[e.ref ?? "direct"] ??= { uids: new Set(), opened: 0, routes: 0, started: 0, joined: 0 });
   r.uids.add(e.uid);
-  if (e.name === "shared_link_opened") r.opened += 1;
+  if (e.name === "shared_link_opened" || e.name === "venue_map_opened") r.opened += 1;
   if (e.name === "route_generated") r.routes += 1;
   if (e.name === "crawl_started") r.started += 1;
   if (e.name === "crawl_joined") r.joined += 1;

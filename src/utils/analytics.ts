@@ -98,6 +98,14 @@ export const analytics = {
       safeTrack("shared_link_opened", { stops, valid })
     ),
 
+  /** An event venue map (/v) was opened. Counted separately from
+   *  shared_link_opened: an attendee browsing 37 bars is not a group that was
+   *  handed a route, and mixing them would muddy the loop's main signal. */
+  venueMapOpened: (venues: number, valid: boolean) =>
+    once("venue_map_opened", () =>
+      safeTrack("venue_map_opened", { venues, valid })
+    ),
+
   // ----- The no-account night-of list ("just tell me the next bar") -----
   /** Advanced to the next stop. `index` is 0-based. */
   listAdvanced: (index: number, total: number) =>
@@ -126,7 +134,8 @@ export const analytics = {
     safeTrack("crawl_duplicated", { stops }),
   /** An attendee tapped a "plan your own" entry point. `from` says which
    *  surface earned it, so the recap and the list can be compared directly. */
-  plannerCta: (from: "recap" | "list") => safeTrack("planner_cta", { from }),
+  plannerCta: (from: "recap" | "list" | "venue_map") =>
+    safeTrack("planner_cta", { from }),
 
   // ----- Get-home-safe -----
   homeRide: (provider: "uber" | "lyft") =>

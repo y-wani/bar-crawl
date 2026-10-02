@@ -53,6 +53,11 @@ const COORD_DECIMALS = 5;
  *  into a thousand-row render. */
 export const MAX_SHARED_STOPS = 25;
 
+/** A venue map (/v) is every participating bar of an event, not a route to
+ *  walk — a 37-bar charity crawl is normal. Bounded for the same reason the
+ *  route cap is: a hostile link must not become a thousand-pin render. */
+export const MAX_VENUE_STOPS = 60;
+
 const MAX_NAME_CHARS = 120;
 const MAX_ADDRESS_CHARS = 160;
 
@@ -114,8 +119,11 @@ const fromBase64Url = (payload: string): string => {
 // where `null` costs four.
 // ---------------------------------------------------------------------------
 
-export const encodeCrawl = (crawl: SharedCrawl): string => {
-  const stops = crawl.stops.slice(0, MAX_SHARED_STOPS).map((stop) => [
+export const encodeCrawl = (
+  crawl: SharedCrawl,
+  maxStops: number = MAX_SHARED_STOPS
+): string => {
+  const stops = crawl.stops.slice(0, maxStops).map((stop) => [
     stop.name.slice(0, MAX_NAME_CHARS),
     round(stop.lng),
     round(stop.lat),
@@ -133,7 +141,10 @@ export const encodeCrawl = (crawl: SharedCrawl): string => {
   );
 };
 
-export const decodeCrawl = (payload: string): SharedCrawl | null => {
+export const decodeCrawl = (
+  payload: string,
+  maxStops: number = MAX_SHARED_STOPS
+): SharedCrawl | null => {
   if (!payload) return null;
 
   let parsed: unknown;
@@ -150,7 +161,7 @@ export const decodeCrawl = (payload: string): SharedCrawl | null => {
   if (!Array.isArray(rawStops)) return null;
 
   const stops: SharedStop[] = [];
-  for (const entry of rawStops.slice(0, MAX_SHARED_STOPS)) {
+  for (const entry of rawStops.slice(0, maxStops)) {
     if (!Array.isArray(entry)) return null;
     const [name, lng, lat, address] = entry;
     if (typeof name !== "string") return null;
@@ -196,10 +207,26 @@ export const buildCrawlShareUrl = (
     source ? `?ref=${encodeURIComponent(source)}` : ""
   }#${encodeCrawl(crawl)}`;
 
+/** The public path a venue map opens at. Same wire format as /c, different
+ *  page: unordered pins on a map instead of a stop-by-stop route. */
+export const VENUE_MAP_PATH = "/v";
+
+export const buildVenueMapUrl = (
+  crawl: SharedCrawl,
+  origin: string = typeof window !== "undefined" ? window.location.origin : "",
+  source?: string
+): string =>
+  `${origin.replace(/\/+$/, "")}${VENUE_MAP_PATH}${
+    source ? `?ref=${encodeURIComponent(source)}` : ""
+  }#${encodeCrawl(crawl, MAX_VENUE_STOPS)}`;
+
 /** Read a crawl out of `location.hash` (with or without the leading '#'). */
-export const readCrawlFromHash = (hash: string): SharedCrawl | null => {
+export const readCrawlFromHash = (
+  hash: string,
+  maxStops: number = MAX_SHARED_STOPS
+): SharedCrawl | null => {
   const payload = hash.startsWith("#") ? hash.slice(1) : hash;
-  return payload ? decodeCrawl(payload) : null;
+  return payload ? decodeCrawl(payload, maxStops) : null;
 };
 
 /** A short, stable id for a payload — used to key "which stop are they on"

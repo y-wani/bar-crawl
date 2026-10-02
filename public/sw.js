@@ -10,6 +10,8 @@
 //     index.html; the cached shell is only a fallback when the network fails.
 //   - /assets/* are content-hashed and immutable, so they're cache-first.
 //   - Google Fonts are cache-first so the offline page still looks right.
+//   - Event venue lists (/events/*.json) are network-first, cached as a
+//     fallback, because they're updated when a lineup is finalized.
 //   - Everything else (/api, Firestore, Mapbox, Places, analytics) is never
 //     touched — it goes straight to the network as if this file didn't exist.
 //
@@ -140,6 +142,22 @@ self.addEventListener("fetch", (event) => {
     }
     if (url.pathname.startsWith("/assets/")) {
       event.respondWith(cacheFirst(request, ASSET_CACHE));
+      return;
+    }
+    // Event venue lists (/events/<slug>.json) change when a lineup is
+    // finalized, so the network wins; the cached copy only covers no signal.
+    if (url.pathname.startsWith("/events/")) {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(ASSET_CACHE).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+          .catch(() => caches.match(request).then((hit) => hit || Response.error()))
+      );
     }
     return;
   }

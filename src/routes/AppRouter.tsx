@@ -16,6 +16,7 @@ const Route = React.lazy(() => import('../pages/Route'));
 const LiveCrawl = React.lazy(() => import('../pages/LiveCrawl'));
 const PlanLobby = React.lazy(() => import('../pages/PlanLobby'));
 const CrawlList = React.lazy(() => import('../pages/CrawlList'));
+const VenueMap = React.lazy(() => import('../pages/VenueMap'));
 const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
@@ -51,6 +52,10 @@ const AnimatedRoutes: React.FC = () => {
             It is the only page a shared link lands on, which makes it the
             product's growth loop — a wall here would close the loop. */}
         <RouterRoute path="/c" element={<CrawlList />} />
+        {/* An event's venue map: every participating bar, unordered. Same
+            no-account, fragment-only rules as /c. */}
+        <RouterRoute path="/v" element={<VenueMap />} />
+        <RouterRoute path="/v/:slug" element={<VenueMap />} />
         {/* Attendee surfaces: an invite link works with no account (an
             anonymous user is minted). Starting a crawl or a plan still needs
             a real account — Route.tsx gates that, not these routes. */}

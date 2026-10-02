@@ -3,6 +3,8 @@ import {
   encodeCrawl,
   decodeCrawl,
   buildCrawlShareUrl,
+  buildVenueMapUrl,
+  MAX_VENUE_STOPS,
   readCrawlFromHash,
   crawlFingerprint,
   MAX_SHARED_STOPS,
@@ -156,6 +158,43 @@ describe("buildCrawlShareUrl", () => {
   });
 
   it("readCrawlFromHash tolerates a missing or bare hash", () => {
+    expect(readCrawlFromHash("")).toBeNull();
+    expect(readCrawlFromHash("#")).toBeNull();
+  });
+});
+
+describe("venue maps (/v)", () => {
+  const venues = (n: number): SharedCrawl => ({
+    name: "Charity crawl (draft)",
+    stops: Array.from({ length: n }, (_, i) => ({
+      name: `Bar ${i + 1}`,
+      lng: -90.19 + i * 0.001,
+      lat: 38.62 + i * 0.001,
+    })),
+  });
+
+  it("keeps all 37 venues of a real event", () => {
+    const url = new URL(buildVenueMapUrl(venues(37), "https://www.gobarhop.app", "12boc"));
+    expect(url.pathname).toBe("/v");
+    expect(url.searchParams.get("ref")).toBe("12boc");
+    expect(readCrawlFromHash(url.hash, MAX_VENUE_STOPS)?.stops).toHaveLength(37);
+  });
+
+  it("still caps a route link at the route limit", () => {
+    // The same 37-stop payload read as a ROUTE must not grow past 25 — the
+    // higher cap is opt-in, never the default.
+    const url = new URL(buildVenueMapUrl(venues(37), "https://www.gobarhop.app"));
+    expect(readCrawlFromHash(url.hash)?.stops).toHaveLength(MAX_SHARED_STOPS);
+  });
+
+  it("bounds a venue map too", () => {
+    const url = new URL(buildVenueMapUrl(venues(MAX_VENUE_STOPS + 10), "https://www.gobarhop.app"));
+    expect(readCrawlFromHash(url.hash, MAX_VENUE_STOPS)?.stops).toHaveLength(MAX_VENUE_STOPS);
+  });
+});
+
+describe("readCrawlFromHash edge cases", () => {
+  it("tolerates a missing or bare hash", () => {
     expect(readCrawlFromHash("")).toBeNull();
     expect(readCrawlFromHash("#")).toBeNull();
   });

@@ -11,6 +11,8 @@
 //   ?ref=<tag>        — set by our own CTAs (recap, list, live) and outreach
 //   ?s=<tag>          — the per-organizer tag batch-routes.mjs puts on /c links
 //   /c with no tag    — someone opened a shared crawl list
+//   /v with no tag    — someone opened an event's venue map
+//   /v/<event>        — a short venue-map link; the event slug is the source
 //   /live?join=…      — someone opened a live-crawl invite
 //   /plan?id=…        — someone opened a plan-it-together invite
 //
@@ -46,6 +48,10 @@ export const refFromLocation = (
     return VALID_REF.test(tag) ? tag : null;
   }
   if (pathname === "/c") return "list";
+  if (pathname === "/v") return "venue_map";
+  // A short venue-map link (/v/<event>) is its own source: the event slug.
+  const venueSlug = /^\/v\/([^/]+)$/.exec(pathname)?.[1]?.toLowerCase();
+  if (venueSlug) return VALID_REF.test(venueSlug) ? venueSlug : "venue_map";
   if (pathname === "/live" && params.has("join")) return "invite";
   if (pathname === "/plan" && params.has("id")) return "plan_invite";
   return null;
