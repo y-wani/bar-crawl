@@ -52,6 +52,8 @@ const AnimatedRoutes: React.FC = () => {
             It is the only page a shared link lands on, which makes it the
             product's growth loop — a wall here would close the loop. */}
         <RouterRoute path="/c" element={<CrawlList />} />
+        {/* Short form: the payload is published at /events/<slug>.json. */}
+        <RouterRoute path="/c/:slug" element={<CrawlList />} />
         {/* An event's venue map: every participating bar, unordered. Same
             no-account, fragment-only rules as /c. */}
         <RouterRoute path="/v" element={<VenueMap />} />

@@ -13,10 +13,11 @@
 // behind ProtectedRoute and does not require the anonymous-user mint either.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { FiArrowLeft, FiCheck, FiMapPin, FiNavigation, FiRotateCcw } from "react-icons/fi";
 import { readCrawlFromHash, crawlFingerprint } from "../utils/crawlLink";
 import { analytics } from "../utils/analytics";
+import { useEventPayload } from "../hooks/useEventPayload";
 import "../styles/CrawlList.css";
 
 /** Where they got to, per crawl, on this device. localStorage throws in
@@ -47,17 +48,26 @@ const directionsUrl = (lng: number, lat: number): string =>
 
 const CrawlList: React.FC = () => {
   const location = useLocation();
+  // A short link (/c/<slug>) carries the same payload in a published file
+  // instead of the fragment — see hooks/useEventPayload.ts.
+  const { slug } = useParams();
+  const slugPayload = useEventPayload(slug);
+  const loading = !!slug && slugPayload === undefined;
 
   // The payload lives in the fragment, which react-router does not parse, so
   // read it off the hash directly. Recomputed only when the hash changes.
   const { crawl, fingerprint } = useMemo(() => {
     const hash = location.hash || window.location.hash;
-    const payload = hash.startsWith("#") ? hash.slice(1) : hash;
+    const payload = slug
+      ? slugPayload ?? ""
+      : hash.startsWith("#")
+        ? hash.slice(1)
+        : hash;
     return {
-      crawl: readCrawlFromHash(hash),
+      crawl: payload ? readCrawlFromHash(payload) : null,
       fingerprint: payload ? crawlFingerprint(payload) : "",
     };
-  }, [location.hash]);
+  }, [slug, slugPayload, location.hash]);
 
   const [index, setIndex] = useState(0);
 
@@ -71,8 +81,9 @@ const CrawlList: React.FC = () => {
   // The loop measurement. Fires for a broken link too — a link that arrives
   // mangled is a real failure and needs to be visible, not silently absent.
   useEffect(() => {
+    if (loading) return;
     analytics.sharedLinkOpened(crawl?.stops.length ?? 0, !!crawl);
-  }, [crawl]);
+  }, [loading, crawl]);
 
   const total = crawl?.stops.length ?? 0;
   const isLast = index >= total - 1;
@@ -97,6 +108,14 @@ const CrawlList: React.FC = () => {
     setIndex(0);
     writeProgress(fingerprint, 0);
   }, [fingerprint]);
+
+  if (loading) {
+    return (
+      <div className="crawl-list crawl-list--empty">
+        <p className="crawl-list-address">Loading the crawl…</p>
+      </div>
+    );
+  }
 
   if (!crawl) return <BrokenLink />;
 

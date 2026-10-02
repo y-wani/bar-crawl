@@ -41,6 +41,11 @@ describe("refFromLocation", () => {
     expect(refFromLocation("/v/%%%", "")).toBe("venue_map");
   });
 
+  it("credits a short route link to its event", () => {
+    expect(refFromLocation("/c/12boc-kc-downtown", "")).toBe("12boc-kc-downtown");
+    expect(refFromLocation("/c/%%%", "")).toBe("list");
+  });
+
   it("infers the attendee entry points", () => {
     expect(refFromLocation("/c", "")).toBe("list");
     expect(refFromLocation("/live", "?join=abc")).toBe("invite");

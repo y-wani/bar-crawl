@@ -24,6 +24,7 @@ import {
   type SharedStop,
 } from "../utils/crawlLink";
 import { analytics } from "../utils/analytics";
+import { useEventPayload } from "../hooks/useEventPayload";
 import "../styles/VenueMap.css";
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -34,38 +35,10 @@ const directionsUrl = (lng: number, lat: number): string =>
 const byName = (a: SharedStop, b: SharedStop) =>
   a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 
-/** Event slugs are batch-routes `source` tags; anything else never hits the network. */
-const VALID_SLUG = /^[a-z0-9][a-z0-9_-]{0,39}$/i;
-
 const VenueMap: React.FC = () => {
   const location = useLocation();
   const { slug } = useParams();
-
-  // undefined = still loading; null = no payload (missing file, bad slug).
-  const [slugPayload, setSlugPayload] = useState<string | null | undefined>(
-    slug ? undefined : null
-  );
-  useEffect(() => {
-    if (!slug) return;
-    if (!VALID_SLUG.test(slug)) {
-      setSlugPayload(null);
-      return;
-    }
-    let cancelled = false;
-    // An unknown slug falls through Vercel's SPA rewrite and returns HTML,
-    // which fails JSON parsing and lands in the broken-link state.
-    fetch(`/events/${slug}.json`, { cache: "no-cache" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { payload?: unknown } | null) => {
-        if (!cancelled) setSlugPayload(typeof d?.payload === "string" ? d.payload : null);
-      })
-      .catch(() => {
-        if (!cancelled) setSlugPayload(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
+  const slugPayload = useEventPayload(slug);
 
   const loading = !!slug && slugPayload === undefined;
   const crawl = useMemo(() => {
