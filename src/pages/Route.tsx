@@ -52,6 +52,10 @@ import {
 } from "../services/sessionService";
 import { createPlan } from "../services/planService";
 import { analytics } from "../utils/analytics";
+// Shared with scripts/batch-routes.mjs so a route the batch tool publishes is
+// ordered by exactly the same code that draws it when somebody opens the link.
+import { optimizeStopOrder } from "../utils/routeOptimizer";
+import { haversineMiles } from "../utils/geo";
 
 // Mapbox API constants and types
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -133,143 +137,6 @@ const RouteStopItem: React.FC<RouteStopItemProps> = ({
       </div>
     </Reorder.Item>
   );
-};
-
-// Helper function to calculate distance between two coordinates
-const calculateDistance = (
-  coord1: [number, number],
-  coord2: [number, number]
-): number => {
-  const R = 3959; // Earth's radius in miles
-  const dLat = ((coord2[1] - coord1[1]) * Math.PI) / 180;
-  const dLon = ((coord2[0] - coord1[0]) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((coord1[1] * Math.PI) / 180) *
-      Math.cos((coord2[1] * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
-// Optimize bar order for the full journey: start → bars → end.
-// Exact (branch-and-bound) for crawl-sized routes (≤ 8 stops), which is
-// the common case; nearest-neighbor + 2-opt + relocation for larger ones.
-const optimizeBarOrder = (
-  bars: AppBat[],
-  startLocation: [number, number],
-  endLocation?: [number, number] | null
-): AppBat[] => {
-  if (bars.length <= 1) return bars;
-
-  const end = endLocation ?? startLocation;
-  const coord = (bar: AppBat) => bar.location.coordinates as [number, number];
-
-  const totalLength = (order: AppBat[]): number => {
-    let d = calculateDistance(startLocation, coord(order[0]));
-    for (let i = 0; i < order.length - 1; i++) {
-      d += calculateDistance(coord(order[i]), coord(order[i + 1]));
-    }
-    d += calculateDistance(coord(order[order.length - 1]), end);
-    return d;
-  };
-
-  // --- Exact search with pruning: guaranteed shortest for n ≤ 8 ---
-  if (bars.length <= 8) {
-    let bestOrder = bars;
-    let bestLen = totalLength(bars);
-
-    const search = (
-      remaining: AppBat[],
-      path: AppBat[],
-      from: [number, number],
-      lenSoFar: number
-    ) => {
-      if (lenSoFar >= bestLen) return; // prune
-      if (remaining.length === 0) {
-        const full = lenSoFar + calculateDistance(from, end);
-        if (full < bestLen) {
-          bestLen = full;
-          bestOrder = path;
-        }
-        return;
-      }
-      for (let i = 0; i < remaining.length; i++) {
-        const next = remaining[i];
-        search(
-          [...remaining.slice(0, i), ...remaining.slice(i + 1)],
-          [...path, next],
-          coord(next),
-          lenSoFar + calculateDistance(from, coord(next))
-        );
-      }
-    };
-
-    search(bars, [], startLocation, 0);
-    return bestOrder;
-  }
-
-  // --- Heuristic for larger routes: NN seed + 2-opt + single relocation ---
-  const unvisited = [...bars];
-  let route: AppBat[] = [];
-  let current = startLocation;
-  while (unvisited.length > 0) {
-    let nearestIndex = 0;
-    let shortest = Infinity;
-    unvisited.forEach((bar, index) => {
-      const d = calculateDistance(current, coord(bar));
-      if (d < shortest) {
-        shortest = d;
-        nearestIndex = index;
-      }
-    });
-    const nearest = unvisited.splice(nearestIndex, 1)[0];
-    route.push(nearest);
-    current = coord(nearest);
-  }
-
-  let best = totalLength(route);
-  let improved = true;
-  while (improved) {
-    improved = false;
-    // 2-opt: reverse segments
-    for (let i = 0; i < route.length - 1; i++) {
-      for (let j = i + 1; j < route.length; j++) {
-        const candidate = [
-          ...route.slice(0, i),
-          ...route.slice(i, j + 1).reverse(),
-          ...route.slice(j + 1),
-        ];
-        const length = totalLength(candidate);
-        if (length < best - 1e-9) {
-          route = candidate;
-          best = length;
-          improved = true;
-        }
-      }
-    }
-    // Or-opt: relocate single stops (escapes 2-opt local optima)
-    for (let i = 0; i < route.length; i++) {
-      for (let j = 0; j < route.length; j++) {
-        if (i === j) continue;
-        const without = [...route.slice(0, i), ...route.slice(i + 1)];
-        const candidate = [
-          ...without.slice(0, j),
-          route[i],
-          ...without.slice(j),
-        ];
-        const length = totalLength(candidate);
-        if (length < best - 1e-9) {
-          route = candidate;
-          best = length;
-          improved = true;
-        }
-      }
-    }
-  }
-
-  return route;
 };
 
 // Geocode coordinates to address
@@ -550,7 +417,7 @@ const Route: React.FC = () => {
           // If the user's real location is far from the searched area,
           // anchor the route to the search center instead of routing
           // across states (IP-based geolocation can be way off)
-          if (calculateDistance(startCoords, effectiveState.mapCenter) > 25) {
+          if (haversineMiles(startCoords, effectiveState.mapCenter) > 25) {
             startCoords = effectiveState.mapCenter;
             setUserCoordinates(startCoords);
             setStartCoordinates(startCoords);
@@ -565,7 +432,7 @@ const Route: React.FC = () => {
         // Saved crawls already carry their stop order; only optimize new routes
         const orderedBars = effectiveState.loadedFromSaved
           ? effectiveState.selectedBars
-          : optimizeBarOrder(effectiveState.selectedBars, startCoords, endCoords);
+          : optimizeStopOrder(effectiveState.selectedBars, startCoords, endCoords);
         const initialBars = orderedBars.map((bar, index) => ({
           ...bar,
           order: index,
@@ -632,7 +499,7 @@ const Route: React.FC = () => {
     await new Promise((res) => setTimeout(res, 50));
 
     // Optimize against the actual route anchors, not just the user position
-    const optimized = optimizeBarOrder(
+    const optimized = optimizeStopOrder(
       draggableBars,
       optimizeStart,
       endCoordinates
