@@ -63,10 +63,10 @@ import {
 import type { FriendPosition } from "../components/MapContainer";
 import { haversineMiles, walkingEtaMinutes, GEOFENCE_MILES } from "../utils/geo";
 import { analytics } from "../utils/analytics";
+import { fetchWalkingRoute, walkingRouteCoords } from "../utils/walkingRoute";
 import type { AppBat } from "./Home";
 import "../styles/LiveCrawl.css";
 
-const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 /** Friend dots older than this are treated as stale and hidden */
 const FRIEND_STALE_MS = 10 * 60 * 1000;
@@ -296,32 +296,14 @@ const LiveCrawl: React.FC = () => {
   useEffect(() => {
     if (!session || routeGeometry || orderedStops.length < 2) return;
     const { startCoordinates, endCoordinates } = session.route;
-    const coords: string[] = [startCoordinates.join(",")];
-    orderedStops.forEach((s) => coords.push(s.coordinates.join(",")));
-    if (
-      endCoordinates &&
-      (startCoordinates[0] !== endCoordinates[0] ||
-        startCoordinates[1] !== endCoordinates[1])
-    ) {
-      coords.push(endCoordinates.join(","));
-    }
-    const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coords.join(
-      ";"
-    )}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
-
-    (async () => {
-      try {
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.routes?.length > 0) {
-          setRouteGeometry(
-            data.routes[0].geometry as GeoJSON.Feature<GeoJSON.LineString>
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching live route line:", error);
-      }
-    })();
+    const coords = walkingRouteCoords(
+      orderedStops.map((s) => s.coordinates),
+      startCoordinates,
+      endCoordinates
+    );
+    void fetchWalkingRoute(coords).then((line) => {
+      if (line) setRouteGeometry(line);
+    });
   }, [session, routeGeometry, orderedStops]);
 
   // ----- Check-in / skip / finish -----

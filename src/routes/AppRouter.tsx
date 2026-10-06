@@ -18,6 +18,7 @@ const PlanLobby = React.lazy(() => import('../pages/PlanLobby'));
 const CrawlList = React.lazy(() => import('../pages/CrawlList'));
 const VenueMap = React.lazy(() => import('../pages/VenueMap'));
 const OrgPage = React.lazy(() => import('../pages/OrgPage'));
+const OrgCrawlMap = React.lazy(() => import('../pages/OrgCrawlMap'));
 const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
@@ -67,6 +68,15 @@ const AnimatedRoutes: React.FC = () => {
           element={
             <ErrorBoundary>
               <OrgPage />
+            </ErrorBoundary>
+          }
+        />
+        {/* View-only map of one of the org's crawls ("See the map"). */}
+        <RouterRoute
+          path="/o/:slug/map/:crawlId"
+          element={
+            <ErrorBoundary>
+              <OrgCrawlMap />
             </ErrorBoundary>
           }
         />

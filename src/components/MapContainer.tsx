@@ -91,6 +91,10 @@ interface MapContainerProps {
   /** The floating Share Route menu. Off on Live Crawl, where Invite is the
    *  share action and the menu would cover the panel on a phone. */
   showShareRoute?: boolean;
+  /** Frame every stop (and the start/end) instead of sitting at zoom 13 on
+   *  the center. For a fixed crawl whose bars are a few blocks apart, zoom 13
+   *  stacks every pin on top of each other. */
+  fitToStops?: boolean;
 }
 
 export interface FriendPosition {
@@ -117,6 +121,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   visitedBarIds,
   friendPositions,
   showShareRoute = true,
+  fitToStops = false,
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -370,6 +375,16 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
     isInitialLoad.current = false;
   }, [center]);
+
+  // 2b. Frame the stops (opt-in, see fitToStops)
+  useEffect(() => {
+    if (!map.current || !fitToStops || bars.length === 0) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    bars.forEach((bar) => bounds.extend(bar.location.coordinates));
+    if (startCoordinates) bounds.extend(startCoordinates);
+    if (endCoordinates) bounds.extend(endCoordinates);
+    map.current.fitBounds(bounds, { padding: 56, maxZoom: 16, duration: 0 });
+  }, [fitToStops, bars, startCoordinates, endCoordinates]);
 
   // 3. Update Turf circle on center/radius change
   useEffect(() => {

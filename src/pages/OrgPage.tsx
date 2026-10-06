@@ -67,8 +67,8 @@ const OrgPage: React.FC = () => {
   const [guestName, saveGuestName] = useGuestName();
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
-  // The crawl a leader asked to start. Seeded from ?start=<crawlId>, which is
-  // how the Route page hands a guest back here instead of to a signup wall.
+  // The crawl a leader asked to start. Also seeded from ?start=<crawlId>, so
+  // a link can open straight into starting a given crawl.
   const [pendingStart, setPendingStart] = useState<string | null>(
     () => searchParams.get("start")
   );
@@ -299,7 +299,7 @@ const OrgPage: React.FC = () => {
                     Start our group's crawl
                   </button>
                   <Link
-                    to={`/route?crawlId=${encodeURIComponent(crawl.id ?? "")}&org=${encodeURIComponent(org.slug)}`}
+                    to={`/o/${org.slug}/map/${encodeURIComponent(crawl.id ?? "")}`}
                     className="btn btn--ghost btn--lg"
                   >
                     <FiMap size={17} aria-hidden="true" />

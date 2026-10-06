@@ -30,6 +30,23 @@ body {
   min-height: 100vh;
 }
 
+/* Full-screen app pages (map + panel) do all their scrolling inside their own
+   panels, so the document itself must not scroll at all. On an iPhone it
+   could: `100vh` above is the height with Safari's toolbar HIDDEN, so while
+   the toolbar shows, #root is ~80px taller than the screen. A swipe that
+   missed the panel scrolled the whole UI instead, the toolbar collapsed, the
+   layout resized, and the panel and the page fought over every scroll after
+   that. Pages that read like documents (/o, /c, /v, legal) are untouched. */
+html:has(.planner-page, .route-page, .live-page, .plan-page, .org-map-page),
+html:has(.planner-page, .route-page, .live-page, .plan-page, .org-map-page) body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html:has(.planner-page, .route-page, .live-page, .plan-page, .org-map-page) #root {
+  min-height: 0;
+}
+
 h1,
 h2,
 h3,
