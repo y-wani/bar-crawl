@@ -257,3 +257,11 @@
     justify-content: center;
   }
 }
+
+/* A match far from the map area — probably a same-named venue elsewhere. */
+.import-row-far {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: #f0a35e;
+}

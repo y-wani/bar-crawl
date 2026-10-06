@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useAddressAutocomplete } from "../hooks/useAddressAutocomplete";
+import {
+  useAddressAutocomplete,
+  type AddressSuggestion as SearchSuggestion,
+} from "../hooks/useAddressAutocomplete";
+import { toast } from "./Toaster";
 import { FiMapPin, FiSearch, FiLoader } from "react-icons/fi";
 import "../styles/AddressAutocomplete.css";
 
@@ -21,6 +25,10 @@ interface AddressAutocompleteProps {
   className?: string;
   disabled?: boolean;
   dropdownDirection?: "up" | "down";
+  /** [lng, lat] of the area being planned — results near it rank first. */
+  near?: [number, number] | null;
+  /** Drop results outside a box this many km around `near`. */
+  restrictKm?: number;
 }
 
 export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
@@ -33,17 +41,19 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   className = "",
   disabled = false,
   dropdownDirection = "down",
+  near = null,
+  restrictKm,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Set the proximity to Columbus, Ohio's coordinates.
-  const proximity: [number, number] = [-83.0007, 39.9612];
-
-  const { suggestions, isLoading, error, getSuggestions, clearSuggestions } =
-    useAddressAutocomplete({ proximity });
+  // Search where the user is planning, not a fixed city. This used to be
+  // hard-coded to Columbus, Ohio for everyone, so a Denver start point was
+  // ranked against Ohio and a weak local match lost to one on another continent.
+  const { suggestions, isLoading, error, getSuggestions, clearSuggestions, resolve } =
+    useAddressAutocomplete({ near, restrictKm });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -59,14 +69,20 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     }
   };
 
-  const handleSuggestionClick = (suggestion: AddressSuggestion) => {
-    console.log("Suggestion clicked:", suggestion.place_name);
+  // A Search Box suggestion has no coordinates until it's resolved, so the
+  // pick fills the box immediately and hands the place on once it has them.
+  const handleSuggestionClick = async (suggestion: SearchSuggestion) => {
     onChange(suggestion.place_name);
-    onSelect(suggestion);
     setIsOpen(false);
     clearSuggestions();
     setFocusedIndex(-1);
     inputRef.current?.blur();
+    const resolved = await resolve(suggestion);
+    if (resolved?.center) {
+      onSelect({ ...resolved, center: resolved.center });
+    } else {
+      toast.error("Couldn't locate that place — try another result");
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -141,6 +157,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       case "address":
         return "📍";
       case "place":
+      case "neighborhood":
         return "🏘️";
       default:
         return "📍";

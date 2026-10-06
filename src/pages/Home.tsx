@@ -515,9 +515,12 @@ const Home: React.FC = () => {
     setHoveredBarId(null);
     setHasManualSearch(true); // Mark that user has done a manual search
     try {
+      // Biased toward where the map already is, so a landmark or a shared
+      // town name ("Springfield") resolves locally first. Only a bias — this
+      // box is also how you jump to a different city.
       const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         location
-      )}.json?access_token=${MAPBOX_ACCESS_TOKEN}`;
+      )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&proximity=${mapCenter[0]},${mapCenter[1]}`;
       const geoResponse = await fetch(geocodeUrl);
       const geoData = await geoResponse.json();
       if (!geoData.features?.length) {
@@ -789,6 +792,19 @@ const Home: React.FC = () => {
       return next;
     });
 
+  // A bar found by name from the sidebar ("Find 'Ginn Mill' near here"):
+  // add it to the area's list if it isn't already there, and select it.
+  const handleAddFoundBar = (bar: AppBat) => {
+    setBars((prev) => (prev.some((b) => b.id === bar.id) ? prev : [bar, ...prev]));
+    setSelectedBarIds((prev) => {
+      if (prev.has(bar.id)) return prev;
+      const next = new Set(prev);
+      next.add(bar.id);
+      analytics.stopAdded(next.size);
+      return next;
+    });
+  };
+
   // New callback for slider radius changes
   const handleRadiusChange = (radius: number) => {
     setSearchRadius(radius);
@@ -827,6 +843,7 @@ const Home: React.FC = () => {
         mapCenter={mapCenter}
         radius={searchRadius}
         showOnlyInRadius={showOnlyInRadius}
+        onAddBar={handleAddFoundBar}
       />
 
       <div className="map-wrapper">

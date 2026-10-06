@@ -9,11 +9,15 @@ import { SearchBar } from './SearchBar';
 import { FilterGroup } from './FilterGroup';
 import { BarList } from './BarList';
 import type { Bar } from './BarListItem';
-import { FiNavigation, FiDownload } from 'react-icons/fi';
+import { FiNavigation, FiDownload, FiSearch } from 'react-icons/fi';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useBottomSheet } from '../hooks/useBottomSheet';
 import { ImportBarsModal } from './ImportBarsModal';
 import type { AppBat } from '../pages/Home';
+import { searchPlaceByText } from '../services/placesService';
+import { ApiError } from '../services/apiClient';
+import { haversineMiles } from '../utils/geo';
+import { toast } from './Toaster';
 import '../styles/Home.css';
 
 // Utility function to calculate distance between two coordinates in miles
@@ -41,7 +45,12 @@ interface SidebarProps {
   mapCenter: [number, number];
   radius: number;
   showOnlyInRadius: boolean;
+  /** Add a bar found by name (not among the loaded ones) and select it. */
+  onAddBar?: (bar: AppBat) => void;
 }
+
+/** A name match further than this from the map is a same-named bar elsewhere. */
+const FIND_MAX_MILES = 25;
 
 export const Sidebar: React.FC<SidebarProps> = ({
   user,
@@ -55,9 +64,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mapCenter,
   radius,
   showOnlyInRadius,
+  onAddBar,
 }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [finding, setFinding] = useState(false);
+
+  // The search box filters the bars already loaded for this area. A specific
+  // bar can still be missing from those (the area load is the top ~70 by
+  // popularity), so when nothing matches, look it up by name — in this area
+  // only. One billed Places text search, through the proxy's per-user limits.
+  const handleFindBar = async () => {
+    const term = searchTerm.trim();
+    if (term.length < 2 || finding || !onAddBar) return;
+    setFinding(true);
+    try {
+      const bar = await searchPlaceByText(term, { lat: mapCenter[1], lng: mapCenter[0] });
+      if (!bar) {
+        toast.error(`Couldn't find “${term}” near here`);
+        return;
+      }
+      const miles = haversineMiles(mapCenter, bar.location.coordinates as [number, number]);
+      if (miles > FIND_MAX_MILES) {
+        toast.error(`The only “${term}” found is ${Math.round(miles)} mi away — not in this area`);
+        return;
+      }
+      onAddBar(bar);
+      setSearchTerm(bar.name);
+      toast.success(`Added ${bar.name}`);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'GUEST_QUOTA') {
+        toast.error('Guest searches are used up for today — sign up to keep searching');
+      } else {
+        toast.error('Search failed — try again');
+      }
+    } finally {
+      setFinding(false);
+    }
+  };
   const [activeFilter, setActiveFilter] = useState<'Distance' | 'Popularity'>('Distance');
   const isMobile = useIsMobile();
   // Short resting height so most of the map stays visible; drag up to browse.
@@ -154,6 +198,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="search-and-filters">
         <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+        {onAddBar && searchTerm.trim().length >= 2 && filteredAndSortedBars.length === 0 && (
+          <button
+            type="button"
+            className="btn-import-list"
+            onClick={handleFindBar}
+            disabled={finding}
+          >
+            <FiSearch size={15} />{' '}
+            {finding ? 'Searching…' : `Find “${searchTerm.trim()}” near here`}
+          </button>
+        )}
         <FilterGroup activeFilter={activeFilter} onFilterChange={setActiveFilter} />
         <button
           className="btn-import-list"

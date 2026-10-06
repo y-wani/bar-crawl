@@ -57,6 +57,10 @@ import { analytics } from "../utils/analytics";
 import { optimizeStopOrder } from "../utils/routeOptimizer";
 import { haversineMiles } from "../utils/geo";
 
+// Start/end searches stay within this many km of the crawl's stops — a
+// metro area, comfortably more than any walkable crawl.
+const AREA_SEARCH_KM = 40;
+
 // Mapbox API constants and types
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
@@ -164,7 +168,7 @@ const Route: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, loading: authLoading, ensureGuest } = useAuth();
   const isMobile = useIsMobile();
   // Opens fairly tall (arranging stops is the main task) but leaves a strip
   // of map visible; drag up for the full list.
@@ -273,6 +277,18 @@ const Route: React.FC = () => {
   const savedSignature = useRef<string | null>(null);
 
   const isInitialLoad = useRef(true);
+
+  // A shared crawl link (/route?crawlId=…) is a Firestore read, and the rules
+  // require SOME signed-in user. A signed-out visitor — exactly who a shared
+  // link is for — hit a permission error on first open and was bounced to
+  // /home; /home then minted a guest, which is why pasting the link a second
+  // time "worked". Mint the guest here first; the init effect waits for it.
+  const hasUser = !!user;
+  const [loadedCrawlName, setLoadedCrawlName] = useState<string | null>(null);
+  useEffect(() => {
+    if (authLoading || user || !searchParams.get("crawlId")) return;
+    void ensureGuest();
+  }, [authLoading, user, searchParams, ensureGuest]);
   // The order the user originally picked their bars in (before any
   // auto/manual optimization) — lets them restore it with one click
   const originalOrderIds = useRef<string[] | null>(null);
@@ -453,6 +469,7 @@ const Route: React.FC = () => {
           navigate("/home");
           return;
         }
+        setLoadedCrawlName(crawl.name ?? null);
         const bars = convertSavedBarsToAppBars(crawl.bars);
         originalOrderIds.current = bars.map((b) => b.id);
         const currentCoords = [crawl.route.startLocation.lng, crawl.route.startLocation.lat] as [number, number];
@@ -486,10 +503,10 @@ const Route: React.FC = () => {
 
     if (effectiveState?.selectedBars?.length) {
       initializeFromState();
-    } else if (crawlId) {
+    } else if (crawlId && hasUser) {
       initializeFromCrawlId();
     }
-  }, [effectiveState, getCurrentLocation, throttledGenerateRoute, navigate, searchParams]);
+  }, [effectiveState, getCurrentLocation, throttledGenerateRoute, navigate, searchParams, hasUser]);
 
   const handleOptimizeRoute = useCallback(async () => {
     const optimizeStart = startCoordinates ?? userCoordinates;
@@ -654,6 +671,22 @@ const Route: React.FC = () => {
   );
   const isSaved = savedCrawlId !== null && savedSignature.current === crawlSignature;
 
+  // Where this crawl is: the middle of its stops. Start/end searches are kept
+  // to this area, so "Coors Field" means the one in Denver — Mapbox's
+  // proximity is only a ranking hint, and the old code biased every search
+  // toward Columbus, Ohio regardless of where the crawl was.
+  const areaCenter = useMemo<[number, number] | null>(() => {
+    if (draggableBars.length === 0) return startCoordinates ?? null;
+    const [lng, lat] = draggableBars.reduce<[number, number]>(
+      (acc, bar) => [
+        acc[0] + bar.location.coordinates[0],
+        acc[1] + bar.location.coordinates[1],
+      ],
+      [0, 0]
+    );
+    return [lng / draggableBars.length, lat / draggableBars.length];
+  }, [draggableBars, startCoordinates]);
+
   const handleSaveCrawl = () => {
     if (!user || isGuest) {
       setGuestPrompt("save");
@@ -732,7 +765,7 @@ const Route: React.FC = () => {
         })),
         crawlId:
           effectiveState?.existingCrawl?.id ?? searchParams.get("crawlId") ?? null,
-        crawlName: effectiveState?.crawlName ?? "",
+        crawlName: effectiveState?.crawlName ?? loadedCrawlName ?? "",
         route: {
           startCoordinates,
           endCoordinates: endCoordinates ?? startCoordinates,
@@ -969,6 +1002,8 @@ const Route: React.FC = () => {
                 placeholder="Enter starting point..."
                 label="Start Location"
                 icon={null}
+                near={areaCenter}
+                restrictKm={AREA_SEARCH_KM}
               />
             </div>
           </div>
@@ -1019,6 +1054,8 @@ const Route: React.FC = () => {
                 placeholder="Enter ending point..."
                 label="End Location"
                 icon={null}
+                near={areaCenter}
+                restrictKm={AREA_SEARCH_KM}
                 dropdownDirection="up"
               />
             </div>

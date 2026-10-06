@@ -23,6 +23,7 @@ import { searchPlaceByText } from "../services/placesService";
 import { cleanBarListWithAI, isGeminiEnabled } from "../services/geminiService";
 import { forwardGeocode } from "../utils/geocode";
 import { cleanLine } from "../utils/listCleanup";
+import { haversineMiles } from "../utils/geo";
 import type { AppBat } from "../pages/Home";
 import "../styles/ImportBarsModal.css";
 
@@ -46,7 +47,16 @@ interface ImportEntry {
   manualName: string;
   manualAddress: string;
   geocoding: boolean;
+  /** Miles from the map area when the match is suspiciously far away. */
+  farMiles?: number;
 }
+
+// A match this far from the area on the map is probably a same-named venue in
+// another city ("El Patio" exists in dozens). Google's location bias is only a
+// hint, so a strong name match elsewhere can win. Such rows are flagged and
+// left unticked rather than silently added — but not blocked, because
+// importing a list for a different city is a real use.
+const FAR_MILES = 25;
 
 // Best-effort split of "Name, 123 Main St, City" into name + address, used to
 // pre-fill the manual fields when Places can't match a line.
@@ -148,7 +158,14 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
         try {
           const bar = await searchPlaceByText(entry.query, bias);
           if (bar) {
-            updateEntry(entry.id, { status: "found", bar, include: true });
+            const miles = haversineMiles(mapCenter, bar.location.coordinates as [number, number]);
+            const far = miles > FAR_MILES;
+            updateEntry(entry.id, {
+              status: "found",
+              bar,
+              include: !far,
+              ...(far ? { farMiles: Math.round(miles) } : {}),
+            });
             return;
           }
         } catch (error) {
@@ -189,7 +206,14 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
                   location: { type: "Point", coordinates: geo.coordinates },
                   address: geo.placeName,
                 };
-                updateEntry(entry.id, { status: "found", bar, include: true });
+                const miles = haversineMiles(mapCenter, geo.coordinates);
+                const far = miles > FAR_MILES;
+                updateEntry(entry.id, {
+                  status: "found",
+                  bar,
+                  include: !far,
+                  ...(far ? { farMiles: Math.round(miles) } : {}),
+                });
                 resolved = true;
                 break;
               }
@@ -388,6 +412,13 @@ export const ImportBarsModal: React.FC<ImportBarsModalProps> = ({
                             {entry.bar.address && (
                               <span className="import-row-addr">
                                 {entry.bar.address}
+                              </span>
+                            )}
+                            {entry.farMiles !== undefined && (
+                              <span className="import-row-far">
+                                {entry.farMiles} mi from the map area — likely a
+                                different place with the same name. Tick it only
+                                if that's really the one.
                               </span>
                             )}
                           </span>
