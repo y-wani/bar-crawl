@@ -17,6 +17,7 @@ const LiveCrawl = React.lazy(() => import('../pages/LiveCrawl'));
 const PlanLobby = React.lazy(() => import('../pages/PlanLobby'));
 const CrawlList = React.lazy(() => import('../pages/CrawlList'));
 const VenueMap = React.lazy(() => import('../pages/VenueMap'));
+const OrgPage = React.lazy(() => import('../pages/OrgPage'));
 const SavedCrawls = React.lazy(() => import('../pages/SavedCrawls'));
 const SignIn = React.lazy(() => import('../pages/SignIn'));
 const SignUp = React.lazy(() => import('../pages/SignUp'));
@@ -58,6 +59,17 @@ const AnimatedRoutes: React.FC = () => {
             no-account, fragment-only rules as /c. */}
         <RouterRoute path="/v" element={<VenueMap />} />
         <RouterRoute path="/v/:slug" element={<VenueMap />} />
+        {/* An organizer's branded page. Open to guests: a group leader starts
+            their group's crawl with no account (OrgPage mints an anonymous
+            user and asks only for a name). */}
+        <RouterRoute
+          path="/o/:slug"
+          element={
+            <ErrorBoundary>
+              <OrgPage />
+            </ErrorBoundary>
+          }
+        />
         {/* Attendee surfaces: an invite link works with no account (an
             anonymous user is minted). Starting a crawl or a plan still needs
             a real account — Route.tsx gates that, not these routes. */}

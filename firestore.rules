@@ -93,6 +93,16 @@ service cloud.firestore {
         && resource.data.hostUid == request.auth.uid;
     }
 
+    // ----- Organizations (src/services/orgService.ts) -----
+    // An org's branded page (/o/<slug>) is public by design: it is what the
+    // organizer sends to every group. It holds only a name, colours and the
+    // ids of its crawls. Writes go through scripts/org.mjs with the Admin
+    // credentials until org staff editing exists.
+    match /orgs/{slug} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ----- First-party analytics (src/services/eventLog.ts) -----
     // Append-only and write-only from the client: a row can be created by its
     // own uid (anonymous counts) and never read, edited or deleted. Only

@@ -799,11 +799,16 @@ const LiveCrawl: React.FC = () => {
                 </span>
               </div>
               {isActive && (
+                // Alone on the crawl, inviting the group IS the next step (a
+                // leader who started from an org page lands here with nobody
+                // else yet), so the button says so until someone joins.
                 <button
-                  className="btn btn--ghost btn--sm live-invite-btn"
+                  className={`btn ${
+                    members.length > 1 ? "btn--ghost" : "btn--primary"
+                  } btn--sm live-invite-btn`}
                   onClick={handleInvite}
                 >
-                  <FiUserPlus /> Invite
+                  <FiUserPlus /> {members.length > 1 ? "Invite" : "Invite your group"}
                 </button>
               )}
             </div>

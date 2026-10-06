@@ -106,6 +106,15 @@ export const analytics = {
       safeTrack("venue_map_opened", { venues, valid })
     ),
 
+  // ----- Organization mode (/o/<slug>) -----
+  /** An org page was opened. `crawls` is how many it listed (0 = broken). */
+  orgPageOpened: (org: string, crawls: number) =>
+    once("org_page_opened", () => safeTrack("org_page_opened", { org, crawls })),
+  /** A group leader started their group's run of an org crawl — the event the
+   *  org would count as "a group did our crawl". */
+  orgCrawlStarted: (org: string, stops: number, wasGuest: boolean) =>
+    safeTrack("org_crawl_started", { org, stops, wasGuest }),
+
   // ----- The no-account night-of list ("just tell me the next bar") -----
   /** Advanced to the next stop. `index` is 0-based. */
   listAdvanced: (index: number, total: number) =>

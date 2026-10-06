@@ -1,0 +1,229 @@
+/*
+ * OrgPage — an organizer's branded page (/o/<slug>).
+ *
+ * Opened on a phone by a group leader the organizer sent it to, usually
+ * before the night. The org's colour replaces BarHop's amber through the
+ * --accent tokens (utils/orgBranding.ts sets them inline on .org-page), so
+ * nothing in here names a colour of its own.
+ */
+
+.org-page {
+  min-height: 100dvh;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+}
+
+.org-page--center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-4);
+}
+
+.org-page-muted {
+  margin: 0;
+  color: var(--text-tertiary);
+}
+
+/* ----- Header ----- */
+
+.org-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.org-page-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 11vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.02;
+  color: var(--accent);
+  text-wrap: balance;
+}
+
+.org-page-logo {
+  max-width: 220px;
+  max-height: 96px;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.org-page-tagline {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ----- How it works ----- */
+
+.org-page-steps {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background-color: var(--glass-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.org-page-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.org-page-steps strong {
+  color: var(--text-primary);
+}
+
+.org-page-step-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* ----- Crawl cards ----- */
+
+.org-page-crawls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.org-crawl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  background-color: var(--glass-2);
+  border: 1px solid var(--glass-border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+}
+
+.org-crawl-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.org-crawl-meta {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.org-crawl-description {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.org-crawl-stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.org-crawl-stops li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-base);
+}
+
+.org-crawl-stop-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--glass-3);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.org-crawl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.org-crawl-actions .btn {
+  flex: 1 1 auto;
+  min-height: 52px;
+  text-decoration: none;
+}
+
+/* ----- Footer ----- */
+
+.org-page-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--glass-border);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.org-page-footer p {
+  margin: 0;
+}
+
+.org-page-footer a {
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The name prompt reuses .guest-name-page; stack the Back link under it. */
+.org-page-name {
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .org-page {
+    max-width: 36rem;
+    margin: 0 auto;
+  }
+}

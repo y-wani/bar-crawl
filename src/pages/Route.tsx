@@ -52,6 +52,7 @@ import {
 } from "../services/sessionService";
 import { createPlan } from "../services/planService";
 import { analytics } from "../utils/analytics";
+import { isValidOrgSlug } from "../utils/orgBranding";
 // Shared with scripts/batch-routes.mjs so a route the batch tool publishes is
 // ordered by exactly the same code that draws it when somebody opens the link.
 import { optimizeStopOrder } from "../utils/routeOptimizer";
@@ -739,6 +740,17 @@ const Route: React.FC = () => {
 
   const handleStartCrawl = async () => {
     if (draggableBars.length < 2 || !startCoordinates) return;
+    // Opened from an org page (/o/<slug> → "See the map"): that page starts
+    // the org's crawl, guest or not — no signup wall for a group leader, and
+    // the session gets tagged with the org.
+    const orgSlug = searchParams.get("org");
+    const orgCrawlId = searchParams.get("crawlId");
+    if (orgSlug && orgCrawlId && isValidOrgSlug(orgSlug)) {
+      navigate(
+        `/o/${orgSlug}?start=${encodeURIComponent(orgCrawlId)}`
+      );
+      return;
+    }
     if (!user || isGuest) {
       setGuestPrompt("live");
       return;

@@ -102,6 +102,9 @@ export interface CrawlSession {
   /** Link to the saved barCrawls doc, when started from a saved crawl */
   crawlId?: string | null;
   crawlName?: string;
+  /** Set when a group started this from an org page (/o/<slug>): which
+   *  organizer's crawl it is, for their numbers. */
+  orgSlug?: string | null;
   /** Denormalized, ordered stops — works for never-saved routes too */
   stops: SessionStop[];
   /** Convenience denormalization; the UI re-derives the current stop as
@@ -137,6 +140,7 @@ export interface CreateSessionInput {
   stops: SessionStop[];
   crawlId?: string | null;
   crawlName?: string;
+  orgSlug?: string | null;
   route: CrawlSession["route"];
 }
 
@@ -161,6 +165,7 @@ export const createSession = async (
       status: "active" as SessionStatus,
       crawlId: input.crawlId ?? null,
       crawlName: input.crawlName ?? "",
+      orgSlug: input.orgSlug ?? null,
       stops: input.stops,
       currentStopIndex: 0,
       checkIns: {},
