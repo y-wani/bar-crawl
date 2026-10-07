@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FiExternalLink, FiMap, FiPlay } from "react-icons/fi";
 import { useAuth } from "../context/useAuth";
+import { auth } from "../firebase/config";
 import { useGuestName } from "../hooks/useGuestName";
 import GuestNameForm from "../components/GuestNameForm";
 import PageTransition from "../components/motion/PageTransition";
@@ -81,7 +82,16 @@ const OrgPage: React.FC = () => {
   // Never mint while auth is still restoring a returning user's session.
   useEffect(() => {
     if (authLoading || user || !validSlug) return;
-    void ensureGuest();
+    // ensureGuest swallows its own errors; no user afterwards means the mint
+    // failed (e.g. Firebase's per-IP sign-up limit, which a crowd on one bar's
+    // Wi-Fi can hit). Say so rather than sit on "Loading…" forever.
+    let cancelled = false;
+    void ensureGuest().then(() => {
+      if (!cancelled && !auth.currentUser) setState({ status: "error" });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, user, validSlug, ensureGuest]);
 
   useEffect(() => {

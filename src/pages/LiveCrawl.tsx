@@ -51,11 +51,13 @@ import {
   updateMemberPosition,
   checkInStop,
   skipStop,
-  updateWalkedMiles,
+  subscribeToPresence,
   finishSession,
   abandonSession,
   sendSquadPing,
   type CrawlSession,
+  type MemberPosition,
+  type MemberPresence,
   type SessionStop,
   type CheckInMethod,
   type SessionStats,
@@ -127,6 +129,8 @@ const LiveCrawl: React.FC = () => {
     (location.state as { sessionId?: string } | null)?.sessionId ?? null
   );
   const [session, setSession] = useState<CrawlSession | null>(null);
+  // Every member's own live state (position, walked miles), one doc each.
+  const [presence, setPresence] = useState<Record<string, MemberPresence>>({});
   const [hydrating, setHydrating] = useState(true);
   const [joining, setJoining] = useState(false);
   const [joinHandled, setJoinHandled] = useState(false);
@@ -227,9 +231,6 @@ const LiveCrawl: React.FC = () => {
           navigate("/home");
           return;
         }
-        if (walkedTotalRef.current === null) {
-          walkedTotalRef.current = snapshot.walkedMiles ?? 0;
-        }
         setSession(snapshot);
         setHydrating(false);
       },
@@ -240,6 +241,26 @@ const LiveCrawl: React.FC = () => {
     );
     return unsubscribe;
   }, [sessionId, navigate]);
+
+  // ----- Presence: positions + walked miles, one doc per member -----
+  // Seeds my walked-miles accumulator from my own doc, so a refresh mid-crawl
+  // keeps my distance. If presence can't be read the crawl still works; my
+  // distance just starts from zero and friends' dots don't appear.
+  useEffect(() => {
+    if (!sessionId || !user) return;
+    return subscribeToPresence(
+      sessionId,
+      (next) => {
+        if (walkedTotalRef.current === null) {
+          walkedTotalRef.current = next[user.uid]?.walkedMiles ?? 0;
+        }
+        setPresence(next);
+      },
+      () => {
+        if (walkedTotalRef.current === null) walkedTotalRef.current = 0;
+      }
+    );
+  }, [sessionId, user]);
 
   // ----- Derived state -----
   const orderedStops = useMemo(
@@ -317,12 +338,6 @@ const LiveCrawl: React.FC = () => {
     [orderedStops, session]
   );
 
-  const flushWalkedMiles = useCallback(() => {
-    if (sessionId && walkedTotalRef.current !== null) {
-      updateWalkedMiles(sessionId, walkedTotalRef.current);
-    }
-  }, [sessionId]);
-
   const handleCheckIn = useCallback(
     async (method: CheckInMethod) => {
       if (!session || !sessionId || !currentStop || busy) return;
@@ -336,7 +351,6 @@ const LiveCrawl: React.FC = () => {
           nextIndexAfter(currentStop.barId),
           user ? { uid: user.uid, displayName: myDisplayName } : undefined
         );
-        flushWalkedMiles();
         // A verified arrival at a specific stop. This is the only proof the
         // product can offer that a group physically walked into a given bar,
         // which is what makes paid placement sellable later — an impression
@@ -364,7 +378,6 @@ const LiveCrawl: React.FC = () => {
       currentStop,
       busy,
       nextIndexAfter,
-      flushWalkedMiles,
       user,
       myDisplayName,
       orderedStops,
@@ -391,7 +404,7 @@ const LiveCrawl: React.FC = () => {
 
   const computeStats = useCallback((): SessionStats => {
     const total = orderedStops.length;
-    let miles = walkedTotalRef.current ?? session?.walkedMiles ?? 0;
+    let miles = walkedTotalRef.current ?? 0;
     // Tracking denied/empty: approximate from the planned route distance
     if (miles === 0 && stopsHit > 0 && session?.route.plannedDistanceMiles) {
       miles = session.route.plannedDistanceMiles * (stopsHit / total);
@@ -457,13 +470,6 @@ const LiveCrawl: React.FC = () => {
     }
   }, [tracking.permissionDenied]);
 
-  // Periodic walked-miles flush while active
-  useEffect(() => {
-    if (!isActive) return;
-    const interval = setInterval(flushWalkedMiles, 60000);
-    return () => clearInterval(interval);
-  }, [isActive, flushWalkedMiles]);
-
   // ----- Group presence: publish my position, render friends' dots -----
   const lastPositionPublishRef = useRef(0);
   useEffect(() => {
@@ -471,11 +477,14 @@ const LiveCrawl: React.FC = () => {
     const now = Date.now();
     if (now - lastPositionPublishRef.current < POSITION_PUBLISH_MS) return;
     lastPositionPublishRef.current = now;
+    // Walked miles ride along: no separate write, so no extra fan-out to
+    // every member's listener.
     updateMemberPosition(
       sessionId,
       user.uid,
       tracking.coords[0],
-      tracking.coords[1]
+      tracking.coords[1],
+      walkedTotalRef.current
     );
   }, [tracking.coords, isActive, sessionId, user]);
 
@@ -492,23 +501,26 @@ const LiveCrawl: React.FC = () => {
       .sort((a, b) => (a.isHost ? -1 : 0) - (b.isHost ? -1 : 0));
   }, [session, user]);
 
+  // A member's latest published fix: their presence doc, or the legacy field
+  // on the session doc from a client that predates presence (mid-rollout).
+  const positionOf = useCallback(
+    (uid: string): MemberPosition | null =>
+      presence[uid]?.lastPosition ?? session?.members?.[uid]?.lastPosition ?? null,
+    [presence, session]
+  );
+
   // Friends' live dots (exclude me + stale fixes)
   const friendPositions: FriendPosition[] = useMemo(() => {
     if (!session || !user) return [];
     const now = Date.now();
-    return Object.entries(session.members ?? {})
-      .filter(([uid, m]) => {
-        if (uid === user.uid || !m.lastPosition) return false;
-        const at = tsToMillis(m.lastPosition.at);
-        return at === null || now - at < FRIEND_STALE_MS;
-      })
-      .map(([uid, m]) => ({
-        uid,
-        displayName: m.displayName,
-        lng: m.lastPosition!.lng,
-        lat: m.lastPosition!.lat,
-      }));
-  }, [session, user]);
+    return Object.entries(session.members ?? {}).flatMap(([uid, m]) => {
+      const pos = positionOf(uid);
+      if (uid === user.uid || !pos) return [];
+      const at = tsToMillis(pos.at);
+      if (at !== null && now - at >= FRIEND_STALE_MS) return [];
+      return [{ uid, displayName: m.displayName, lng: pos.lng, lat: pos.lat }];
+    });
+  }, [session, user, positionOf]);
 
   // Squad tracker: each member's live distance + walking ETA to the current
   // stop, sorted closest-first. Pure client compute from the snapshot's
@@ -519,18 +531,15 @@ const LiveCrawl: React.FC = () => {
     const target = currentStop?.coordinates ?? null;
     const rows = Object.entries(session.members ?? {}).map(([uid, m]) => {
       const isSelf = uid === user?.uid;
+      const pos = positionOf(uid);
       const coords: [number, number] | null =
         isSelf && tracking.coords
           ? tracking.coords
-          : m.lastPosition
-            ? [m.lastPosition.lng, m.lastPosition.lat]
+          : pos
+            ? [pos.lng, pos.lat]
             : null;
       const fixAt =
-        isSelf && tracking.coords
-          ? now
-          : m.lastPosition
-            ? tsToMillis(m.lastPosition.at)
-            : null;
+        isSelf && tracking.coords ? now : pos ? tsToMillis(pos.at) : null;
       const stale =
         coords === null || (fixAt !== null && now - fixAt > FRIEND_STALE_MS);
       const miles =
@@ -552,7 +561,7 @@ const LiveCrawl: React.FC = () => {
       return am - bm;
     });
     return rows;
-  }, [session, user, currentStop, tracking.coords]);
+  }, [session, user, currentStop, tracking.coords, positionOf]);
 
   // Once anyone reaches the next stop, flag the stragglers so the group
   // notices who to wait for.

@@ -66,6 +66,26 @@ service cloud.firestore {
           || isSelfJoin());
       allow delete: if request.auth != null
         && resource.data.hostUid == request.auth.uid;
+
+      // ----- Live presence: one doc per member (position, walked miles) -----
+      // Positions used to be written into the session doc, so a group of N
+      // put N writes every 12 s on ONE document; a 50-person load test fell a
+      // minute behind. Each member now writes only their own doc. Any member
+      // of the session can read the group's docs (friend dots); the field
+      // list is pinned so this can't become free storage.
+      function sessionData() {
+        return get(/databases/$(database)/documents/crawlSessions/$(sessionId)).data;
+      }
+      match /presence/{uid} {
+        allow read: if request.auth != null
+          && request.auth.uid in sessionData().memberUids;
+        allow create, update: if request.auth != null
+          && request.auth.uid == uid
+          && request.auth.uid in sessionData().memberUids
+          && request.resource.data.keys().hasOnly(['lastPosition', 'walkedMiles', 'updatedAt']);
+        allow delete: if request.auth != null
+          && (request.auth.uid == uid || sessionData().hostUid == request.auth.uid);
+      }
     }
 
     // ----- Crawl plans (the "plan it together" lobby) -----

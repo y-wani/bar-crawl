@@ -12,6 +12,7 @@ import { FiArrowLeft } from "react-icons/fi";
 import { MapContainer } from "../components/MapContainer";
 import PageTransition from "../components/motion/PageTransition";
 import { useAuth } from "../context/useAuth";
+import { auth } from "../firebase/config";
 import { getOrg, type Org } from "../services/orgService";
 import {
   convertSavedBarsToAppBars,
@@ -40,7 +41,16 @@ const OrgCrawlMap: React.FC = () => {
   // Saved crawls are a signed-in read (firestore.rules); a guest is enough.
   useEffect(() => {
     if (authLoading || user || !valid) return;
-    void ensureGuest();
+    // ensureGuest swallows its own errors; no user afterwards means the mint
+    // failed (e.g. Firebase's per-IP sign-up limit, which a crowd on one bar's
+    // Wi-Fi can hit). Say so rather than sit on "Loading…" forever.
+    let cancelled = false;
+    void ensureGuest().then(() => {
+      if (!cancelled && !auth.currentUser) setState({ status: "error" });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, user, valid, ensureGuest]);
 
   useEffect(() => {

@@ -22,6 +22,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  setDoc,
   getDocs,
   onSnapshot,
   query,
@@ -78,10 +79,26 @@ export interface SquadPing {
 export interface SessionMember {
   displayName: string | null;
   joinedAt: Timestamp | Date;
-  /** Group live mode: last published GPS fix, for friend dots on the map */
+  /** LEGACY: where positions lived before they moved to presence/{uid}. Only
+   *  read as a fallback, for sessions still running on an older client. */
   lastPosition?: MemberPosition;
   /** Set when the member taps "I'm home safe" on the recap */
   homeSafeAt?: Timestamp | Date;
+}
+
+/** One member's own live state: crawlSessions/{id}/presence/{uid}.
+ *
+ *  Positions used to be written into the session doc itself, so a group of N
+ *  sent N writes every 12 s to ONE document. Firestore sustains about one
+ *  write per second per document: a load test (scripts/load-test-live.mjs)
+ *  showed a group of 35 lagging by seconds and a group of 50 falling a minute
+ *  behind, silently. Each member now writes only their own doc, so group size
+ *  no longer piles writes onto one place. */
+export interface MemberPresence {
+  lastPosition?: MemberPosition;
+  /** This member's own walked distance. The session-level walkedMiles was
+   *  overwritten by every member's flush (last writer won). */
+  walkedMiles?: number;
 }
 
 export interface SessionStats {
@@ -120,7 +137,8 @@ export interface CrawlSession {
     plannedDistanceMiles: number | null;
     plannedDurationMin: number | null;
   };
-  /** Running accumulator fed by watchPosition deltas, flushed periodically */
+  /** Set once, from the finisher's stats. Live per-member distance is in
+   *  presence/{uid}.walkedMiles. */
   walkedMiles: number;
   /** Latest squad ping (regroup nudge / quick shout-out); newest overwrites */
   lastPing?: SquadPing;
@@ -133,6 +151,10 @@ export interface CrawlSession {
 }
 
 const SESSIONS_COLLECTION = "crawlSessions";
+const PRESENCE_COLLECTION = "presence";
+
+const presenceRef = (sessionId: string, uid: string) =>
+  doc(db, SESSIONS_COLLECTION, sessionId, PRESENCE_COLLECTION, uid);
 
 export interface CreateSessionInput {
   hostUid: string;
@@ -282,27 +304,57 @@ export const joinSession = async (
 };
 
 /**
- * Publish the caller's latest GPS fix so other members can see their dot.
+ * Publish the caller's latest GPS fix so other members can see their dot,
+ * with their walked-miles total riding along in the same write (it only
+ * changes when they move, which is exactly when this is called). Written to
+ * the caller's own presence doc, never the shared session doc.
  * Best-effort (called on a throttle) — a failure is non-fatal.
  */
 export const updateMemberPosition = async (
   sessionId: string,
   uid: string,
   lng: number,
-  lat: number
+  lat: number,
+  walkedMiles: number | null
 ): Promise<void> => {
   try {
-    await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
-      [`members.${uid}.lastPosition`]: {
-        lng,
-        lat,
-        at: serverTimestamp(),
+    await setDoc(
+      presenceRef(sessionId, uid),
+      {
+        lastPosition: { lng, lat, at: serverTimestamp() },
+        ...(walkedMiles === null ? {} : { walkedMiles: Math.round(walkedMiles * 100) / 100 }),
+        updatedAt: serverTimestamp(),
       },
-    });
+      { merge: true }
+    );
   } catch (error) {
     console.warn("⚠️ Failed to publish member position:", error);
   }
 };
+
+/**
+ * Every member's presence doc, keyed by uid. Rules let any member of the
+ * session read them (firestore.rules → presence).
+ */
+export const subscribeToPresence = (
+  sessionId: string,
+  onData: (presence: Record<string, MemberPresence>) => void,
+  onError?: (error: Error) => void
+): Unsubscribe =>
+  onSnapshot(
+    collection(db, SESSIONS_COLLECTION, sessionId, PRESENCE_COLLECTION),
+    (snapshot) => {
+      const presence: Record<string, MemberPresence> = {};
+      snapshot.forEach((d) => {
+        presence[d.id] = d.data() as MemberPresence;
+      });
+      onData(presence);
+    },
+    (error) => {
+      console.error("❌ Presence subscription error:", error);
+      onError?.(error);
+    }
+  );
 
 /**
  * Send a squad ping — a regroup nudge or quick status shout-out. Writes a
@@ -433,25 +485,6 @@ export const markHomeSafe = async (
   } catch (error) {
     console.error("❌ Error marking home safe:", error);
     throw new Error("Couldn't update your status. Please try again.");
-  }
-};
-
-/**
- * Persist the walked-miles accumulator (called on a throttle and at
- * check-in/finish — not per GPS fix).
- */
-export const updateWalkedMiles = async (
-  sessionId: string,
-  miles: number
-): Promise<void> => {
-  try {
-    await updateDoc(doc(db, SESSIONS_COLLECTION, sessionId), {
-      walkedMiles: Math.round(miles * 100) / 100,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    // Non-fatal: the accumulator is best-effort
-    console.warn("⚠️ Failed to persist walked miles:", error);
   }
 };
 

@@ -17,6 +17,7 @@
     "seed:metros:live": "node --env-file=.env scripts/seed-metro-cache.mjs --live",
     "metrics": "node --env-file=.env scripts/metrics.mjs",
     "org": "node --env-file=.env scripts/org.mjs",
+    "loadtest:live": "node --env-file=.env scripts/load-test-live.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
